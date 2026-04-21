@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teste Observação Meteorológica</title>
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet/dist/leaflet.css"
+    />
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            margin: 16px;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+
+        .container {
+            padding: 16px;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        .coords {
+            margin: 12px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mapa de Portugal - Teste da API</h1>
+
+    <div id="map"></div>
+
+    <div class="container">
+        <div class="coords" id="coords">Clica no mapa para obter coordenadas</div>
+        <pre id="output">Sem dados ainda...</pre>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([39.5, -8.0], 7);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        let marker = null;
+
+        map.on('click', async function (e) {
+            const lat = e.latlng.lat.toFixed(6);
+            const lon = e.latlng.lng.toFixed(6);
+
+            document.getElementById('coords').textContent =
+                `Latitude: ${lat} | Longitude: ${lon}`;
+
+            if (marker) {
+                map.removeLayer(marker);
+            }
+
+            marker = L.marker([lat, lon]).addTo(map);
+
+            const output = document.getElementById('output');
+            output.textContent = 'A obter dados...';
+
+            try {
+                const response = await fetch(
+                    `http://127.0.0.1:8000/weather/observation?lat=${lat}&lon=${lon}`
+                );
+
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                output.textContent = 'Erro ao obter dados da API: ' + error;
+            }
+        });
+    </script>
+</body>
+</html>
