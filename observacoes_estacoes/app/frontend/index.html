@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Teste Observação Meteorológica</title>
+    <title>Teste API Meteorológica</title>
 
     <link
         rel="stylesheet"
@@ -30,6 +30,15 @@
             padding: 16px;
         }
 
+        .controls {
+            margin: 12px 0;
+        }
+
+        .coords {
+            margin: 12px 0;
+            font-weight: bold;
+        }
+
         pre {
             background: #f4f4f4;
             padding: 12px;
@@ -38,9 +47,8 @@
             white-space: pre-wrap;
         }
 
-        .coords {
-            margin: 12px 0;
-            font-weight: bold;
+        label {
+            margin-right: 16px;
         }
     </style>
 </head>
@@ -50,6 +58,17 @@
     <div id="map"></div>
 
     <div class="container">
+        <div class="controls">
+            <label>
+                <input type="radio" name="modo" value="observation" checked />
+                Observação
+            </label>
+            <label>
+                <input type="radio" name="modo" value="marine" />
+                Previsão - Marítimo
+            </label>
+        </div>
+
         <div class="coords" id="coords">Clica no mapa para obter coordenadas</div>
         <pre id="output">Sem dados ainda...</pre>
     </div>
@@ -64,9 +83,14 @@
 
         let marker = null;
 
+        function obterModoSelecionado() {
+            return document.querySelector('input[name="modo"]:checked').value;
+        }
+
         map.on('click', async function (e) {
             const lat = e.latlng.lat.toFixed(6);
             const lon = e.latlng.lng.toFixed(6);
+            const modo = obterModoSelecionado();
 
             document.getElementById('coords').textContent =
                 `Latitude: ${lat} | Longitude: ${lon}`;
@@ -80,11 +104,16 @@
             const output = document.getElementById('output');
             output.textContent = 'A obter dados...';
 
-            try {
-                const response = await fetch(
-                    `http://127.0.0.1:8000/weather/observation?lat=${lat}&lon=${lon}`
-                );
+            let endpoint = '';
 
+            if (modo === 'observation') {
+                endpoint = `http://127.0.0.1:8000/weather/observation?lat=${lat}&lon=${lon}`;
+            } else if (modo === 'marine') {
+                endpoint = `http://127.0.0.1:8000/weather/marine?lat=${lat}&lon=${lon}`;
+            }
+
+            try {
+                const response = await fetch(endpoint);
                 const data = await response.json();
                 output.textContent = JSON.stringify(data, null, 2);
             } catch (error) {

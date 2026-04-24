@@ -42,7 +42,7 @@ def normalize_foreca_observation(obs: dict):
         "source": "foreca",
         "station": {
             "name": obs.get("station"),
-            "id": None,
+            #"id": None,
             "distanceKm": extrair_distancia_km(obs.get("distance")),
             #"distanceKm": None,
             "latitude": obs.get("latitude"),
