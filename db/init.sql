@@ -7,9 +7,12 @@ CREATE TABLE calendar_dimensao (
     ano INT,
     mes INT,
     dia INT,
-    semana_ano INT,
+	nome_mes TEXT,
     dia_semana INT,
-    trimestre INT
+	nome_dia_semana TEXT,
+	semestre INT,
+    trimestre INT,
+    semana_ano INT
 );
 
 -- DIMENSÃO HORA
@@ -37,7 +40,7 @@ CREATE TABLE fonte_dimensao (
     nome TEXT,
     url_base TEXT,
     modelo_meteorologico TEXT,
-    intervalo_atualizacao_min INT,
+    intervalo_atualizacao_hora INT,
     natureza_dado TEXT
 );
 
@@ -64,6 +67,8 @@ CREATE TABLE contexto_dimensao (
 -- TABELA DE FACTOS
 CREATE TABLE medicao_factos (
     id_medicao SERIAL PRIMARY KEY,
+	
+	id_chamada TEXT,
 
     valor DOUBLE PRECISION,
     valor_normalizado DOUBLE PRECISION,
