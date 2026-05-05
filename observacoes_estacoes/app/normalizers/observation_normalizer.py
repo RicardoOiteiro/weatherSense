@@ -17,6 +17,16 @@ def valor_ipma(value):
         return None
     return value
 
+def split_date_hour(date_time):
+    if not date_time:
+        return None, None
+
+    parts = date_time.split("T")
+    date = parts[0]
+    hour = parts[1][:5] if len(parts) > 1 else None
+
+    return date, hour
+
 def normalize_foreca_observation(obs: dict):
     visibilidade_m = obs.get("visibility")
     visibilidade_km = None
@@ -36,10 +46,19 @@ def normalize_foreca_observation(obs: dict):
                 break
         if precipitacao_mm is not None:
             break
+    
+
+    data_hora = obs.get("time")
+    date, hour = split_date_hour(data_hora)
 
 
     return {
         "source": "foreca",
+        "meta": {
+            "dataNature": "Observation",
+            "temporalResolution": "Hourly",
+
+        },
         "station": {
             "name": obs.get("station"),
             #"id": None,
@@ -49,18 +68,23 @@ def normalize_foreca_observation(obs: dict):
             "longitude": obs.get("longitude"),
             "elevationM": obs.get("elevation"),
         },
+        "time": {
+            "date" : date,
+            "hour": hour
+
+        },
         "observation": {
-            "dataHora": obs.get("time"),
-            "temperaturaC": obs.get("temperature"),
-            "ventoVelocidadeKmh": obs.get("windSpeed"),
-            "ventoDirecaoGraus": obs.get("windDir"),
-            "ventoDirecaoCardinal": obs.get("windDirString"),
-            "precipitacaoMm": precipitacao_mm,
-            "precipitacaoPeriodo": precipitacao_periodo,
-            "humidade": obs.get("relHumidity"),
-            "visibilidadeKm": visibilidade_km,
-            "pressaoHpa": obs.get("pressure"),
-            "rajadaVentoKmh": obs.get("windGust"),
+            #"dataHora": obs.get("time"),
+            "temperatureC": obs.get("temperature"),
+            "windSpeedKmh": obs.get("windSpeed"),
+            "windDirectionDegrees": obs.get("windDir"),
+            "windDirectionCardinal": obs.get("windDirString"),
+            "precipitationMm": precipitacao_mm,
+            "precipitationPeriod": precipitacao_periodo,
+            "humidityPercent": obs.get("relHumidity"),
+            "visibilityKm": visibilidade_km,
+            "pressureHpa": obs.get("pressure"),
+            "windGustKmh": obs.get("windGust"),
         },
     }
 
@@ -68,28 +92,39 @@ def normalize_foreca_observation(obs: dict):
 def normalize_ipma_observation(estacao: dict, observacao: dict, direcao_cardinal: str):
     dados = observacao.get("dados", {}) if observacao else {}
 
+    data_hora = observacao.get("time") if observacao else None
+    date, hour = split_date_hour(data_hora)
+
     return {
         "source": "ipma",
+        "meta": {
+            "dataNature": "observation",
+            "temporalResolution": "hourly",
+        },
         "station": {
             "name": estacao.get("station_name") if estacao else None,
-            "id": estacao.get("station_id") if estacao else None,
+            #"id": estacao.get("station_id") if estacao else None,
             "distanceKm": estacao.get("distance_km") if estacao else None,
             "latitude": estacao.get("station_latitude") if estacao else None,
             "longitude": estacao.get("station_longitude") if estacao else None,
             "elevationM": None,
         },
+        "time": {
+            "date": date,
+            "hour": hour,
+        },
         "observation": {
-            "dataHora": observacao.get("time") if observacao else None,
-            "temperaturaC": valor_ipma(dados.get("temperatura")),
-            "ventoVelocidadeKmh": valor_ipma(dados.get("intensidadeVentoKM")),
-            "ventoDirecaoGraus": None,
-            "ventoDirecaoCardinal": direcao_cardinal,
-            "precipitacaoMm": valor_ipma(dados.get("precAcumulada")),
-            "precipitacaoPeriodo": "1h",
-            "humidade": valor_ipma(dados.get("humidade")),
-            "visibilidadeKm": None,
-           "pressaoHpa": valor_ipma(dados.get("pressao")),
-           "rajadaVentoKmh": None,
+            #"dataHora": observacao.get("time") if observacao else None,
+            "temperatureC": valor_ipma(dados.get("temperatura")),
+            "windSpeedKmh": valor_ipma(dados.get("intensidadeVentoKM")),
+            "windDirectionDegrees": None,
+            "windDirectionCardinal": direcao_cardinal,
+            "precipitationMm": valor_ipma(dados.get("precAcumulada")),
+            "precipitationPeriod": "1h",
+            "humidityPercent": valor_ipma(dados.get("humidade")),
+            "visibilityKm": None,
+            "pressureHpa": valor_ipma(dados.get("pressao")),
+            "windGustKmh": None,
         
         },
     }

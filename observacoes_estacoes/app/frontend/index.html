@@ -1,14 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Teste API Meteorológica</title>
 
-    <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet/dist/leaflet.css"
-    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
     <style>
         body {
@@ -50,8 +48,15 @@
         label {
             margin-right: 16px;
         }
+
+        button {
+            margin-right: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+        }
     </style>
 </head>
+
 <body>
     <h1>Mapa de Portugal - Teste da API</h1>
 
@@ -67,9 +72,16 @@
                 <input type="radio" name="modo" value="marine" />
                 Previsão - Marítimo
             </label>
+            <label>
+                <input type="radio" name="modo" value="terrestrial" />
+                Previsão - Terrestre
+            </label>
         </div>
 
         <div class="coords" id="coords">Clica no mapa para obter coordenadas</div>
+
+        <div id="fontesContainer" class="controls"></div>
+
         <pre id="output">Sem dados ainda...</pre>
     </div>
 
@@ -87,6 +99,69 @@
             return document.querySelector('input[name="modo"]:checked').value;
         }
 
+        function criarBotoesFontes(data, modo) {
+            const container = document.getElementById('fontesContainer');
+            const output = document.getElementById('output');
+
+            container.innerHTML = '';
+
+            for (const fonte in data) {
+                if (fonte === 'requested_location') continue;
+
+                const button = document.createElement('button');
+                button.textContent = fonte.toUpperCase();
+
+                button.onclick = function () {
+                    if (modo === 'terrestrial' && fonte === 'openmeteo') {
+                        criarBotoesModelos(fonte, data[fonte], data);
+                        return;
+                    }
+
+                    output.textContent = JSON.stringify({
+                        requested_location: data.requested_location,
+                        [fonte]: data[fonte]
+                    }, null, 2);
+                };
+
+                container.appendChild(button);
+            }
+        }
+
+        function criarBotoesModelos(nomeFonte, fonteData, dataCompleta) {
+            const container = document.getElementById('fontesContainer');
+            const output = document.getElementById('output');
+
+            container.innerHTML = '';
+
+            const voltar = document.createElement('button');
+            voltar.textContent = '← Voltar às fontes';
+            voltar.onclick = function () {
+                criarBotoesFontes(dataCompleta, 'terrestrial');
+                output.textContent = 'Escolhe uma fonte acima.';
+            };
+            container.appendChild(voltar);
+
+            for (const modelo in fonteData) {
+                const button = document.createElement('button');
+                const modeloData = fonteData[modelo];
+
+                button.textContent = modeloData?.meta?.model || modelo;
+
+                button.onclick = function () {
+                    output.textContent = JSON.stringify({
+                        requested_location: dataCompleta.requested_location,
+                        [nomeFonte]: {
+                            [modelo]: modeloData
+                        }
+                    }, null, 2);
+                };
+
+                container.appendChild(button);
+            }
+
+            output.textContent = `Escolhe um modelo da fonte ${nomeFonte.toUpperCase()}.`;
+        }
+
         map.on('click', async function (e) {
             const lat = e.latlng.lat.toFixed(6);
             const lon = e.latlng.lng.toFixed(6);
@@ -102,7 +177,10 @@
             marker = L.marker([lat, lon]).addTo(map);
 
             const output = document.getElementById('output');
+            const fontesContainer = document.getElementById('fontesContainer');
+
             output.textContent = 'A obter dados...';
+            fontesContainer.innerHTML = '';
 
             let endpoint = '';
 
@@ -110,16 +188,33 @@
                 endpoint = `http://127.0.0.1:8000/weather/observation?lat=${lat}&lon=${lon}`;
             } else if (modo === 'marine') {
                 endpoint = `http://127.0.0.1:8000/weather/marine?lat=${lat}&lon=${lon}`;
+            } else if (modo === 'terrestrial') {
+                endpoint = `http://127.0.0.1:8000/weather/terrestrial?lat=${lat}&lon=${lon}`;
             }
 
             try {
                 const response = await fetch(endpoint);
                 const data = await response.json();
-                output.textContent = JSON.stringify(data, null, 2);
+
+                if (!response.ok) {
+                    output.textContent = `Erro da API: ${data.detail || JSON.stringify(data, null, 2)}`;
+                    return;
+                }
+
+                if (modo === 'observation') {
+                    fontesContainer.innerHTML = '';
+                    output.textContent = JSON.stringify(data, null, 2);
+                    return;
+                }
+
+                criarBotoesFontes(data, modo);
+                output.textContent = 'Escolhe uma fonte acima.';
+
             } catch (error) {
                 output.textContent = 'Erro ao obter dados da API: ' + error;
             }
         });
     </script>
 </body>
+
 </html>
