@@ -15,6 +15,7 @@ VALUES
 
 INSERT INTO source_dimension (name, base_url, weather_model, update_interval_hour, data_nature, data_type)
 VALUES
+('worldweatheronline', 'https://api.openweathermap.org/data/2.5/forecast', 'Proprietary Model - WWO', NULL, 'forecast', 'terrestrial'),
 ('worldweatheronline', 'https://api.worldweatheronline.com/premium/v1/marine.ashx', 'Proprietary Model - WWO', NULL, 'forecast', 'marine'),
 ('open-meteo', 'https://api.open-meteo.com/v1/forecast', 'ECMWF', 6, 'forecast', 'terrestrial'),
 ('open-meteo', 'https://api.open-meteo.com/v1/forecast', 'ICON', 3, 'forecast', 'terrestrial'),
@@ -122,7 +123,7 @@ SELECT
     EXTRACT(QUARTER FROM d),
     EXTRACT(WEEK FROM d)
 
-FROM generate_series('2025-01-01', '2030-12-31', interval '1 day') d;
+FROM generate_series('2025-01-01', '2026-12-31', interval '1 day') d;
 
 
 -- hora_dimensao

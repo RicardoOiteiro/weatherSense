@@ -75,17 +75,15 @@ CREATE TABLE measurement_facts (
 	request_id TEXT NOT NULL,
 
     value DOUBLE PRECISION,
+    normalized_value DOUBLE PRECISION,
     raw_json JSONB,
     distance_km DOUBLE PRECISION,
 
-    data_status TEXT NOT NULL,
+    data_timestamp TIMESTAMP,
+    request_timestamp TIMESTAMP,
 
-    id_date_request INT NOT NULL REFERENCES calendar_dimension(id_date),
-    id_hour_request INT NOT NULL REFERENCES hour_dimension(id_hour),
-
-    id_date_data INT NOT NULL REFERENCES calendar_dimension(id_date),
-    id_hour_data INT NOT NULL REFERENCES hour_dimension(id_hour),
-
+    id_date INT NOT NULL REFERENCES calendar_dimension(id_date),
+    id_hour INT NOT NULL REFERENCES hour_dimension(id_hour),
     id_location INT NOT NULL REFERENCES location_dimension(id_location),
     id_source INT NOT NULL REFERENCES source_dimension(id_source),
     id_variable INT NOT NULL REFERENCES variable_dimension(id_variable),
@@ -96,5 +94,4 @@ CREATE TABLE measurement_facts (
 
 -- ÍNDICES (recomendado para pesquisas rápidas) 
 CREATE INDEX idx_request_id ON measurement_facts(request_id); 
-CREATE INDEX idx_request_time ON measurement_facts(id_date_request, id_hour_request);
-CREATE INDEX idx_data_time ON measurement_facts(id_date_data, id_hour_data);
+CREATE INDEX idx_time ON measurement_facts(id_date, id_hour);
