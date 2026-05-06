@@ -1,87 +1,97 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- DIMENSÃO CALENDÁRIO
-CREATE TABLE calendar_dimensao (
-    id_data SERIAL PRIMARY KEY,
-    data DATE NOT NULL,
-    ano INT,
-    mes INT,
-    dia INT,
-	nome_mes TEXT,
-    dia_semana INT,
-	nome_dia_semana TEXT,
-	semestre INT,
-    trimestre INT,
-    semana_ano INT
+CREATE TABLE calendar_dimension (
+    id_date SERIAL PRIMARY KEY,
+    date DATE NOT NULL UNIQUE,
+    year INT,
+    month INT,
+    day INT,
+	month_name TEXT,
+    day_of_week INT,
+	day_name TEXT,
+	semester INT,
+    quarter INT,
+    week_of_year INT
 );
 
 -- DIMENSÃO HORA
-CREATE TABLE hora_dimensao (
-    id_hora SERIAL PRIMARY KEY,
-    hora INT,
-    minuto INT,
-    periodo_dia TEXT
+CREATE TABLE hour_dimension (
+    id_hour SERIAL PRIMARY KEY,
+    hour INT NOT NULL,
+    minute INT NOT NULL,
+    time TIME NOT NULL,
+    day_period TEXT,
+    UNIQUE (hour, minute)
 );
 
 -- DIMENSÃO LOCAL
-CREATE TABLE local_dimensao (
-    id_local SERIAL PRIMARY KEY,
-    nome TEXT,
-    latitude DOUBLE PRECISION,
-    longitude DOUBLE PRECISION,
-    contexto TEXT,
-    regiao TEXT,
-    pais TEXT
+CREATE TABLE location_dimension (
+    id_location SERIAL PRIMARY KEY,
+    name TEXT,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    location_context TEXT,
+    region TEXT,
+    country TEXT,
+    UNIQUE (latitude, longitude)
 );
 
 -- DIMENSÃO FONTE
-CREATE TABLE fonte_dimensao (
-    id_fonte SERIAL PRIMARY KEY,
-    nome TEXT,
-    url_base TEXT,
-    modelo_meteorologico TEXT,
-    intervalo_atualizacao_hora INT,
-    natureza_dado TEXT
+CREATE TABLE source_dimension (
+    id_source SERIAL PRIMARY KEY,
+    name TEXT,
+    base_url TEXT,
+    weather_model TEXT,
+    update_interval_hour INT, 
+    data_nature TEXT, 
+    data_type TEXT
 );
 
 -- DIMENSÃO VARIÁVEL
-CREATE TABLE variavel_dimensao (
-    id_variavel SERIAL PRIMARY KEY,
-    nome_campo TEXT,
-    descricao TEXT,
-    unidade TEXT,
-    categoria TEXT
+CREATE TABLE variable_dimension (
+    id_variable SERIAL PRIMARY KEY,
+    field_name TEXT,
+    description TEXT,
+    unit TEXT,
+    category TEXT
 );
 
 -- DIMENSÃO CONTEXTO
-CREATE TABLE contexto_dimensao (
-    id_contexto SERIAL PRIMARY KEY,
-    tipo TEXT,
-    limite_vento_drone_kmh DOUBLE PRECISION,
-    limite_rajada_drone_kmh DOUBLE PRECISION,
-    limite_precipitacao_drone DOUBLE PRECISION,
-    limite_onda_costeiro_m DOUBLE PRECISION,
-    limite_vento_costeiro_kmh DOUBLE PRECISION
+CREATE TABLE context_dimension (
+    id_context SERIAL PRIMARY KEY,
+    type TEXT NOT NULL UNIQUE,
+    drone_wind_limit_kmh DOUBLE PRECISION,
+    drone_gust_limit_kmh DOUBLE PRECISION,
+    drone_precipitation_limit DOUBLE PRECISION,
+    coastal_wave_limit_m DOUBLE PRECISION,
+    coastal_wind_limit_kmh DOUBLE PRECISION
 );
 
 -- TABELA DE FACTOS
-CREATE TABLE medicao_factos (
-    id_medicao SERIAL PRIMARY KEY,
+CREATE TABLE measurement_facts (
+    id_measurement SERIAL PRIMARY KEY,
 	
-	id_chamada TEXT,
+	request_id TEXT NOT NULL,
 
-    valor DOUBLE PRECISION,
-    valor_normalizado DOUBLE PRECISION,
+    value DOUBLE PRECISION,
+    normalized_value DOUBLE PRECISION,
     raw_json JSONB,
-    concordancia DOUBLE PRECISION,
+    distance_km DOUBLE PRECISION,
 
-    timestamp_dados TIMESTAMP,
-    timestamp_pedido TIMESTAMP,
+    data_timestamp TIMESTAMP,
+    request_timestamp TIMESTAMP,
 
-    id_data INT REFERENCES calendar_dimensao(id_data),
-    id_hora INT REFERENCES hora_dimensao(id_hora),
-    id_local INT REFERENCES local_dimensao(id_local),
-    id_fonte INT REFERENCES fonte_dimensao(id_fonte),
-    id_variavel INT REFERENCES variavel_dimensao(id_variavel),
-    id_contexto INT REFERENCES contexto_dimensao(id_contexto)
+    id_date INT NOT NULL REFERENCES calendar_dimension(id_date),
+    id_hour INT NOT NULL REFERENCES hour_dimension(id_hour),
+    id_location INT NOT NULL REFERENCES location_dimension(id_location),
+    id_source INT NOT NULL REFERENCES source_dimension(id_source),
+    id_variable INT NOT NULL REFERENCES variable_dimension(id_variable),
+    id_context INT NOT NULL REFERENCES context_dimension(id_context)
 );
+
+
+
+-- ÍNDICES (recomendado para pesquisas rápidas) 
+CREATE INDEX idx_request_id ON measurement_facts(request_id); 
+CREATE INDEX idx_time ON measurement_facts(id_date, id_hour);
