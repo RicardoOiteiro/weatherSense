@@ -1,9 +1,12 @@
 import os,re
 from pathlib import Path
-
+import uuid
 
 import requests
 from dotenv import load_dotenv
+
+from app.db.database import get_connection
+from app.db.save_observation import save_observation
 
 from app.normalizers.observation_normalizer import normalize_foreca_observation
 
@@ -49,4 +52,26 @@ def get_foreca_observation(lat: float, lon: float):
     observations,
     key=lambda item: extrair_distancia_km(item.get("distance"))
 )
-    return normalize_foreca_observation(obs)
+    normalized = normalize_foreca_observation(obs)
+
+    print("ANTES DE GRAVAR FORECA NA BD")
+    conn = get_connection()
+
+    try:
+        inserted_count = save_observation(
+            conn=conn,
+            normalized_data=normalized,
+            request_id=str(uuid.uuid4()),
+            context_type="drone"
+        )
+
+        print(f"FORECA GRAVADA: {inserted_count} medições")
+
+    finally:
+        conn.close()
+
+    
+    return normalized
+
+
+    

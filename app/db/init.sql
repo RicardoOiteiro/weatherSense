@@ -74,6 +74,7 @@ CREATE TABLE measurement_facts (
 	
 	request_id TEXT NOT NULL,
 
+   
     value DOUBLE PRECISION,
     raw_json JSONB,
     distance_km DOUBLE PRECISION,

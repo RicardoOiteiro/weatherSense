@@ -126,7 +126,7 @@ FROM generate_series('2025-01-01', '2030-12-31', interval '1 day') d;
 
 
 -- hora_dimensao
-INSERT INTO hour_dimension (hour, minute, time, day_period)
+INSERT INTO hour_dimension (hour, minute, full_time, day_period)
 SELECT 
     h,
     m,
