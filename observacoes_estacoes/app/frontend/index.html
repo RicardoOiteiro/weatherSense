@@ -87,11 +87,31 @@
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
+        const leiriaBounds = [
+            [39.10, -9.60], // sudoeste
+            [40.20, -8.10]  // nordeste
+        ];
+
         const map = L.map('map').setView([39.5, -8.0], 7);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
+
+        // AQUI
+        fetch('leiria.geojson')
+            .then(response => response.json())
+            .then(leiriaGeoJson => {
+                const leiriaLayer = L.geoJSON(leiriaGeoJson, {
+                    style: {
+                        color: 'blue',
+                        weight: 3,
+                        fillOpacity: 0.05
+                    }
+                }).addTo(map);
+
+                map.fitBounds(leiriaLayer.getBounds());
+            });
 
         let marker = null;
 
@@ -163,6 +183,12 @@
         }
 
         map.on('click', async function (e) {
+            if (!L.latLngBounds(leiriaBounds).contains(e.latlng)) {
+                document.getElementById('output').textContent =
+                    'Só são permitidas localizações dentro da área definida para o projecto.';
+                return;
+            }
+
             const lat = e.latlng.lat.toFixed(6);
             const lon = e.latlng.lng.toFixed(6);
             const modo = obterModoSelecionado();

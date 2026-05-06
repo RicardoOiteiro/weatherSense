@@ -1,3 +1,5 @@
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.services.observation.foreca_observation_service import get_foreca_observation
@@ -21,10 +23,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/frontend", StaticFiles(directory="app/frontend"), name="frontend")
+
 
 @app.get("/")
 def root():
-    return {"message": "API meteorológica a funcionar"}
+    return FileResponse("app/frontend/index.html")
 
 
 @app.get("/weather/observation")
