@@ -1,28 +1,39 @@
 import json
-from datetime import datetime, date, time
+from datetime import datetime
 
 
 NUMERIC_VARIABLES = {
-    "temperatureC",
+    "waveHeightM",
+    "waveHeightMinM",
+    "waveHeightMaxM",
+    "totalSeaMinM",
+    "totalSeaMaxM",
+    "waveDirectionDegrees",
+    "wavePeriodS",
+    "wavePeriodMinS",
+    "wavePeriodMaxS",
+    "wavePeakPeriodS",
+    "swellHeightM",
+    "swellDirectionDegrees",
+    "swellPeriodS",
+    "waterTemperatureC",
+    "waterTemperatureMinC",
+    "waterTemperatureMaxC",
+    "currentSpeedMs",
+    "currentDirectionDegrees",
     "windSpeedKmh",
     "windDirectionDegrees",
     "windGustKmh",
-    "precipitationMm",
-    "precipitationPeriod",
-    "humidityPercent",
-    "visibilityKm",
-    "pressureHpa",
 }
 
 TEXT_VARIABLES = {
+    "waveDirectionCardinal",
+    "swellDirectionCardinal",
     "windDirectionCardinal",
 }
 
 
 def parse_hour(hour_text):
-    """
-    Recebe '14:30' e devolve (14, 30).
-    """
     if not hour_text:
         return None, None
 
@@ -68,9 +79,9 @@ def get_hour_id(cursor, hour_text):
     return row[0]
 
 
-def get_location_id(cursor, station):
-    latitude = station.get("latitude")
-    longitude = station.get("longitude")
+def get_location_id(cursor, location):
+    latitude = location.get("latitude")
+    longitude = location.get("longitude")
 
     if latitude is None or longitude is None:
         raise ValueError("Latitude e longitude são obrigatórias.")
@@ -97,10 +108,10 @@ def get_location_id(cursor, station):
         RETURNING id_location
         """,
         (
-            station.get("name"),
+            location.get("name"),
             latitude,
             longitude,
-            "station",
+            "coastal",
             None,
             "Portugal",
         )
@@ -111,18 +122,23 @@ def get_location_id(cursor, station):
 
 def get_source_id(cursor, normalized_data):
     source_name = normalized_data.get("source")
-    meta = normalized_data.get("meta", {})
+    meta = normalized_data.get("meta") or {}
 
     data_nature = meta.get("dataNature")
-    data_type = "terrestrial"
+    data_type = "marine"
+
+    #print("DEBUG NORMALIZED META:", meta)
+    #print("DEBUG SOURCE NAME:", repr(source_name))
+    #print("DEBUG DATA NATURE:", repr(data_nature))
+    #print("DEBUG DATA TYPE:", repr(data_type))
 
     cursor.execute(
         """
         SELECT id_source
         FROM source_dimension
-        WHERE name = %s
+        WHERE LOWER(name) = LOWER(%s)
           AND LOWER(data_nature) = LOWER(%s)
-          AND data_type = %s
+          AND LOWER(data_type) = LOWER(%s)
         LIMIT 1
         """,
         (source_name, data_nature, data_type)
@@ -131,7 +147,10 @@ def get_source_id(cursor, normalized_data):
     row = cursor.fetchone()
 
     if not row:
-        raise ValueError(f"Fonte não encontrada em source_dimension: {source_name}")
+        raise ValueError(
+            f"Fonte marítima não encontrada em source_dimension: "
+            f"{source_name} | {data_nature} | {data_type}"
+        )
 
     return row[0]
 
@@ -172,19 +191,19 @@ def get_context_id(cursor, context_type):
     return row[0]
 
 
-def save_observation(conn, normalized_data, request_id, context_type):
-    """
-    Guarda uma observação normalizada na measurement_facts.
-
-    conn -> ligação psycopg2
-    normalized_data -> resultado do normalizer
-    request_id -> id único do pedido
-    context_type -> 'drone' ou 'coastal'
-    """
-
-    station = normalized_data.get("station", {})
-    observation = normalized_data.get("observation", {})
+def save_marine_forecast(conn, normalized_data, request_id, context_type="coastal"):
+    location = normalized_data.get("location", {})
     time_data = normalized_data.get("time", {})
+
+    marine = normalized_data.get("marine", {})
+    wind = normalized_data.get("wind", {})
+    current = normalized_data.get("current", {})
+
+    all_data = {
+        **marine,
+        **wind,
+        **current,
+    }
 
     data_date = time_data.get("date")
     data_hour = time_data.get("hour")
@@ -204,21 +223,18 @@ def save_observation(conn, normalized_data, request_id, context_type):
         id_date_data = get_calendar_id(cursor, data_date)
         id_hour_data = get_hour_id(cursor, data_hour)
 
-        id_location = get_location_id(cursor, station)
+        id_location = get_location_id(cursor, location)
         id_source = get_source_id(cursor, normalized_data)
         id_context = get_context_id(cursor, context_type)
 
-        distance_km = station.get("distanceKm")
+        distance_km = location.get("distanceKm")
 
-        for field_name, value in observation.items():
+        for field_name, value in all_data.items():
             if value is None:
                 continue
 
             if field_name in NUMERIC_VARIABLES:
-                if field_name == "precipitationPeriod":
-                    value_numeric = float(str(value).replace("h", ""))
-                else:
-                    value_numeric = value
+                value_numeric = value
                 value_text = None
 
             elif field_name in TEXT_VARIABLES:
@@ -260,7 +276,7 @@ def save_observation(conn, normalized_data, request_id, context_type):
                     value_text,
                     raw_json,
                     distance_km,
-                    "observation",
+                    "forecast",
                     id_date_request,
                     id_hour_request,
                     id_date_data,

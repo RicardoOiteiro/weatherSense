@@ -7,6 +7,11 @@ IPMA_STATIONS_URL = "https://api.ipma.pt/open-data/observation/meteorology/stati
 IPMA_OBS_URL = "https://api.ipma.pt/open-data/observation/meteorology/stations/observations.json"
 
 
+from datetime import datetime
+from app.db.database import get_connection
+from app.db.save_observation import save_observation
+
+
 def direcao_ipma_texto(id_direcc_vento):
     mapa = {
         0: "Sem rumo",
@@ -86,8 +91,27 @@ def get_ipma_observation(lat: float, lon: float):
     dados = melhor_observacao["dados"]
     direcao_cardinal = direcao_ipma_texto(dados.get("idDireccVento"))
 
-    return normalize_ipma_observation(
+    normalized = normalize_ipma_observation(
         estacao=melhor_estacao,
         observacao=melhor_observacao,
         direcao_cardinal=direcao_cardinal
     )
+
+    print("ANTES DE GRAVAR IPMA NA BD")
+
+    conn = get_connection()
+
+    try:
+        inserted_count = save_observation(
+            conn=conn,
+            normalized_data=normalized,
+            request_id=datetime.now().strftime("OBS-%y%m%d-%H%M"),
+            context_type="drone"
+        )
+
+        print(f"IPMA GRAVADA: {inserted_count} medições")
+
+    finally:
+        conn.close()
+
+    return normalized

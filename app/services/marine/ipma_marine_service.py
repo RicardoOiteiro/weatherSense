@@ -8,6 +8,10 @@ from app.normalizers.marine_normalizer import normalize_ipma_marine
 IPMA_SEA_LOCATIONS_URL = "https://api.ipma.pt/open-data/sea-locations.json"
 IPMA_SEA_FORECAST_URL = "https://api.ipma.pt/open-data/forecast/oceanography/daily/hp-daily-sea-forecast-day{id_day}.json"
 
+from datetime import datetime
+
+from app.db.database import get_connection
+from app.db.save_marine_forecast import save_marine_forecast
 
 def calculate_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     earth_radius_km = 6371
@@ -68,6 +72,12 @@ def get_nearest_ipma_sea_location(lat: float, lon: float) -> dict:
 
     return nearest_location
 
+def get_ipma_marine_3_days(lat: float, lon: float) -> list[dict]:
+    return [
+        get_ipma_marine_daily(lat, lon, id_day)
+        for id_day in [0, 1, 2]
+    ]
+
 def get_ipma_marine_daily(lat: float, lon: float, id_day: int = 0) -> dict:
     if id_day not in [0, 1, 2]:
         raise HTTPException(
@@ -107,17 +117,30 @@ def get_ipma_marine_daily(lat: float, lon: float, id_day: int = 0) -> dict:
             detail="Sem previsão IPMA para o local marítimo mais próximo."
         )
 
-    return normalize_ipma_marine(
+    resultado = normalize_ipma_marine(
         requested_lat=lat,
         requested_lon=lon,
         location=nearest_location,
         forecast=forecast,
         daily=forecast_for_location
     )
+    print("ANTES DE GRAVAR IPMA MARINE NA BD")
+
+    conn = get_connection()
+
+    try:
+        inserted_count = save_marine_forecast(
+            conn=conn,
+            normalized_data=resultado,
+            request_id = datetime.now().strftime("FOR_M-%y%m%d-%H%M"),
+            context_type="coastal"
+        )
+
+        print(f"IPMA MARINE GRAVADO: {inserted_count} medições")
+
+    finally:
+        conn.close()
+
+    return resultado
 
 
-def get_ipma_marine_3_days(lat: float, lon: float) -> list[dict]:
-    return [
-        get_ipma_marine_daily(lat, lon, id_day)
-        for id_day in [0, 1, 2]
-    ]

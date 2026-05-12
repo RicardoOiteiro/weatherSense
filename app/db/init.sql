@@ -76,6 +76,7 @@ CREATE TABLE measurement_facts (
 
    
     value DOUBLE PRECISION,
+    value_text TEXT, 
     raw_json JSONB,
     distance_km DOUBLE PRECISION,
 

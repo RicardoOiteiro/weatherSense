@@ -6,7 +6,8 @@ from datetime import datetime
 
 from app.normalizers.marine_normalizer import normalize_wwo_marine
 from app.utils.distance import haversine_km
-
+from app.db.database import get_connection
+from app.db.save_marine_forecast import save_marine_forecast
 
 WWO_URL = "https://api.worldweatheronline.com/premium/v1/marine.ashx"
 
@@ -82,13 +83,31 @@ def get_wwo_marine(lat: float, lon: float):
     api_lon = lon
     distance_km = round(haversine_km(lat, lon, api_lat, api_lon), 2)
 
-    # 3️⃣ NORMALIZAR
     resultado = normalize_wwo_marine(
-        lat=api_lat,
-        lon=api_lon,
-        distance_km=distance_km,
-        date=primeiro_dia.get("date"),
-        hourly=bloco_mais_proximo
-    )
+    lat=lat,
+    lon=lon,
+    distance_km=0,
+    date=primeiro_dia.get("date"),
+    hourly=bloco_mais_proximo
+)
+    #print("WWO NORMALIZED:", resultado)
+    #print("WWO META:", resultado.get("meta"))
+    print("ANTES DE GRAVAR WWO MARINE NA BD")
+
+    conn = get_connection()
+
+    try:
+        inserted_count = save_marine_forecast(
+            conn=conn,
+            normalized_data=resultado,
+            request_id = datetime.now().strftime("FOR_M-%y%m%d-%H%M"),
+            context_type="coastal"
+        )
+
+        print(f"WWO MARINE GRAVADO: {inserted_count} medições")
+
+    finally:
+        conn.close()
+        
 
     return resultado

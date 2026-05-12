@@ -1,6 +1,6 @@
 import os,re
 from pathlib import Path
-import uuid
+from datetime import datetime
 
 import requests
 from dotenv import load_dotenv
@@ -61,7 +61,7 @@ def get_foreca_observation(lat: float, lon: float):
         inserted_count = save_observation(
             conn=conn,
             normalized_data=normalized,
-            request_id=str(uuid.uuid4()),
+            request_id = datetime.now().strftime("OBS-%y%m%d-%H%M"),
             context_type="drone"
         )
 

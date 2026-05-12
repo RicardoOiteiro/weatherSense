@@ -11,6 +11,7 @@ from app.services.marine.ipma_marine_service import get_ipma_marine_daily
 from app.services.terrestrial.openmeteo_terrestrial_service import get_openmeteo_terrestrial_all_models
 from app.services.terrestrial.ipma_terrestrial_service import get_ipma_terrestrial
 from app.services.terrestrial.openweather_terrestrial_service import get_openweather_terrestrial
+from app.db.database import get_connection
 
 
 app = FastAPI(title="Projeto Meteorológico API")
@@ -104,3 +105,74 @@ def get_weather_terrestrial(lat: float, lon: float):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/data/observations")
+def get_stored_observations(limit: int = 100):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 
+                    mf.id_measurement,
+                    mf.request_id,
+                    sd.name AS source,
+                    vd.field_name,
+                    vd.description,
+                    vd.unit,
+                    mf.value,
+                    mf.value_text,
+                    cd.date,
+                    hd.full_time,
+                    ld.name AS location_name,
+                    ld.latitude,
+                    ld.longitude,
+                    mf.distance_km
+                FROM measurement_facts mf
+                JOIN source_dimension sd 
+                    ON mf.id_source = sd.id_source
+                JOIN variable_dimension vd 
+                    ON mf.id_variable = vd.id_variable
+                JOIN calendar_dimension cd 
+                    ON mf.id_date_data = cd.id_date
+                JOIN hour_dimension hd 
+                    ON mf.id_hour_data = hd.id_hour
+                JOIN location_dimension ld 
+                    ON mf.id_location = ld.id_location
+                ORDER BY mf.id_measurement DESC
+                LIMIT %s
+                """,
+                (limit,)
+            )
+
+            rows = cursor.fetchall()
+
+            return [
+                {
+                    "idMeasurement": row[0],
+                    "requestId": row[1],
+                    "source": row[2],
+                    "variable": {
+                        "fieldName": row[3],
+                        "description": row[4],
+                        "unit": row[5],
+                    },
+                    "value": row[6] if row[6] is not None else row[7],
+                    "date": str(row[8]),
+                    "time": str(row[9]),
+                    "location": {
+                        "name": row[10],
+                        "latitude": row[11],
+                        "longitude": row[12],
+                        "distanceKm": row[13],
+                    }
+                }
+                for row in rows
+            ]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        conn.close()

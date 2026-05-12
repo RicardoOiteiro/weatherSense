@@ -4,7 +4,8 @@ from datetime import datetime
 from app.utils.distance import haversine_km
 
 from app.normalizers.marine_normalizer import normalize_openmeteo_marine
-
+from app.db.database import get_connection
+from app.db.save_marine_forecast import save_marine_forecast
 
 OPENMETEO_MARINE_URL = "https://marine-api.open-meteo.com/v1/marine"
 
@@ -59,7 +60,7 @@ def get_openmeteo_marine(lat: float, lon: float):
     distance_km = round(haversine_km(lat, lon, api_lat, api_lon), 2)
 
 
-    return normalize_openmeteo_marine(
+    resultado = normalize_openmeteo_marine(
         lat=api_lat,
         lon=api_lon,
         distance_km=distance_km,
@@ -67,3 +68,21 @@ def get_openmeteo_marine(lat: float, lon: float):
         index=index,
        
     )
+    print("ANTES DE GRAVAR OPENMETEO MARINE NA BD")
+
+    conn = get_connection()
+
+    try:
+        inserted_count = save_marine_forecast(
+            conn=conn,
+            normalized_data=resultado,
+            request_id = datetime.now().strftime("FOR_M-%y%m%d-%H%M"),
+            context_type="coastal"
+        )
+
+        print(f"OPENMETEO MARINE GRAVADO: {inserted_count} medições")
+
+    finally:
+        conn.close()
+
+    return resultado

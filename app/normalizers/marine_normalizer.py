@@ -43,7 +43,7 @@ def normalize_wwo_marine(lat: float, lon: float, distance_km: float, date: str, 
         "source": "worldweatheronline",
         "meta":{
             "model": "Modelo Proprietario - WWO",
-            "dataNature": "Previsão",
+            "dataNature": "forecast",
             "temporalResolution": "horaria",
             "updateIntervalHours": "Não definido N/A"
             
@@ -98,7 +98,7 @@ def normalize_openmeteo_marine(lat: float, lon: float, distance_km: float, hourl
         "source": "open-meteo",
        "meta":{
             "model": "Multi-model (DWD EWAM)",
-            "dataNature": "Previsão",
+            "dataNature": "forecast",
             "temporalResolution": "horaria",
             "updateIntervalHours": "12"
         },
@@ -150,7 +150,7 @@ def normalize_ipma_marine(requested_lat, requested_lon, location, forecast, dail
         "source": "ipma",
         "meta":{
             "model": "ECMWF + AROME",
-            "dataNature": "Previsão",
+            "dataNature": "forecast",
             "temporalResolution": "diaria",
             "updateIntervalHours": "2x/dia -> 12h"
         },
