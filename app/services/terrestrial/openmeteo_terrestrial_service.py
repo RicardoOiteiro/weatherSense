@@ -5,6 +5,9 @@ from datetime import datetime
 from app.utils.distance import haversine_km
 
 from app.normalizers.terrestrial_normalizer import normalize_openmeteo_terrestrial
+from datetime import datetime
+from app.db.database import get_connection
+from app.db.save_terrestrial_forecast import save_terrestrial_forecast
 
 
 OPENMETEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -91,6 +94,28 @@ def get_openmeteo_terrestrial_all_models(lat: float, lon: float):
     resultados = {}
 
     for model in OPENMETEO_MODELS:
-        resultados[model] = get_openmeteo_terrestrial(lat, lon, model)
+        resultado = get_openmeteo_terrestrial(lat, lon, model)
+
+        print(f"ANTES DE GRAVAR OPENMETEO {model} NA BD")
+
+        conn = get_connection()
+
+        try:
+            inserted_count = save_terrestrial_forecast(
+                conn=conn,
+                normalized_data=resultado,
+                request_id=datetime.now().strftime("FOR_T-%y%m%d-%H%M"),
+                context_type="drone"
+            )
+
+            print(
+                f"OPENMETEO {model} GRAVADO: "
+                f"{inserted_count} medições"
+            )
+
+        finally:
+            conn.close()
+
+        resultados[model] = resultado
 
     return resultados

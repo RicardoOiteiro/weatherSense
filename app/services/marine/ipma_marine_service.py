@@ -1,7 +1,7 @@
 import math
 import requests
 from fastapi import HTTPException
-
+from zoneinfo import ZoneInfo
 from app.normalizers.marine_normalizer import normalize_ipma_marine
 
 
@@ -132,7 +132,7 @@ def get_ipma_marine_daily(lat: float, lon: float, id_day: int = 0) -> dict:
         inserted_count = save_marine_forecast(
             conn=conn,
             normalized_data=resultado,
-            request_id = datetime.now().strftime("FOR_M-%y%m%d-%H%M"),
+            request_id = datetime.now(ZoneInfo("Europe/Lisbon")).strftime("FOR_M-%y%m%d-%H%M"),
             context_type="coastal"
         )
 

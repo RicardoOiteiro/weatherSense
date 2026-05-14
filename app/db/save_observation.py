@@ -1,5 +1,6 @@
 import json
-from datetime import datetime, date, time
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 
 NUMERIC_VARIABLES = {
@@ -189,7 +190,7 @@ def save_observation(conn, normalized_data, request_id, context_type):
     data_date = time_data.get("date")
     data_hour = time_data.get("hour")
 
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("Europe/Lisbon"))
     request_date = now.date().isoformat()
     request_hour = now.strftime("%H:%M")
 

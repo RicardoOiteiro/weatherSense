@@ -2,34 +2,35 @@ import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+
 NUMERIC_VARIABLES = {
-    "waveHeightM",
-    "waveHeightMinM",
-    "waveHeightMaxM",
-    "totalSeaMinM",
-    "totalSeaMaxM",
-    "waveDirectionDegrees",
-    "wavePeriodS",
-    "wavePeriodMinS",
-    "wavePeriodMaxS",
-    "wavePeakPeriodS",
-    "swellHeightM",
-    "swellDirectionDegrees",
-    "swellPeriodS",
-    "waterTemperatureC",
-    "waterTemperatureMinC",
-    "waterTemperatureMaxC",
-    "currentSpeedMs",
-    "currentDirectionDegrees",
+    "temperatureC",
+    "temperatureMinC",
+    "temperatureMaxC",
+    "feelsLikeTemperatureC",
+
+    "humidityPercent",
+    "pressureHpa",
+    "cloudCoverPercent",
+    "visibilityKm",
+
     "windSpeedKmh",
-    "windDirectionDegrees",
+    "windSpeedMaxKmh",
     "windGustKmh",
+    "windDirectionDegrees",
+
+    "precipitationMm",
+    "precipitationProbabilityPercent",
+
+    "strongWindProbabilityPercent",
+    "fogProbabilityPercent",
+    "thunderstormProbabilityPercent",
 }
 
 TEXT_VARIABLES = {
-    "waveDirectionCardinal",
-    "swellDirectionCardinal",
     "windDirectionCardinal",
+    "sunriseH",
+    "sunsetH",
 }
 
 
@@ -111,7 +112,7 @@ def get_location_id(cursor, location):
             location.get("name"),
             latitude,
             longitude,
-            "coastal",
+            "terrestrial",
             None,
             "Portugal",
         )
@@ -125,34 +126,46 @@ def get_source_id(cursor, normalized_data):
     meta = normalized_data.get("meta") or {}
 
     data_nature = meta.get("dataNature")
-    data_type = "marine"
+    data_type = "terrestrial"
+    weather_model = meta.get("model")
 
-    #print("DEBUG NORMALIZED META:", meta)
-    #print("DEBUG SOURCE NAME:", repr(source_name))
-    #print("DEBUG DATA NATURE:", repr(data_nature))
-    #print("DEBUG DATA TYPE:", repr(data_type))
-
-    cursor.execute(
-        """
-        SELECT id_source
-        FROM source_dimension
-        WHERE LOWER(name) = LOWER(%s)
-          AND LOWER(data_nature) = LOWER(%s)
-          AND LOWER(data_type) = LOWER(%s)
-        LIMIT 1
-        """,
-        (source_name, data_nature, data_type)
-    )
+    if source_name == "open-meteo":
+        cursor.execute(
+            """
+            SELECT id_source
+            FROM source_dimension
+            WHERE LOWER(name) = LOWER(%s)
+              AND LOWER(data_nature) = LOWER(%s)
+              AND LOWER(data_type) = LOWER(%s)
+              AND LOWER(weather_model) = LOWER(%s)
+            LIMIT 1
+            """,
+            (source_name, data_nature, data_type, weather_model)
+        )
+    else:
+        cursor.execute(
+            """
+            SELECT id_source
+            FROM source_dimension
+            WHERE LOWER(name) = LOWER(%s)
+              AND LOWER(data_nature) = LOWER(%s)
+              AND LOWER(data_type) = LOWER(%s)
+            LIMIT 1
+            """,
+            (source_name, data_nature, data_type)
+        )
 
     row = cursor.fetchone()
 
     if not row:
         raise ValueError(
-            f"Fonte marítima não encontrada em source_dimension: "
-            f"{source_name} | {data_nature} | {data_type}"
+            f"Fonte terrestre não encontrada em source_dimension: "
+            f"{source_name} | {weather_model} | {data_nature} | {data_type}"
         )
 
     return row[0]
+
+
 
 
 def get_variable_id(cursor, field_name):
@@ -191,18 +204,22 @@ def get_context_id(cursor, context_type):
     return row[0]
 
 
-def save_marine_forecast(conn, normalized_data, request_id, context_type="coastal"):
+def save_terrestrial_forecast(conn, normalized_data, request_id, context_type="drone"):
     location = normalized_data.get("location", {})
     time_data = normalized_data.get("time", {})
 
-    marine = normalized_data.get("marine", {})
+    weather = normalized_data.get("weather", {})
     wind = normalized_data.get("wind", {})
-    current = normalized_data.get("current", {})
+    precipitation = normalized_data.get("precipitation", {})
+    risk = normalized_data.get("risk", {})
+    sun = normalized_data.get("sun", {})
 
     all_data = {
-        **marine,
+        **weather,
         **wind,
-        **current,
+        **precipitation,
+        **risk,
+        **sun,
     }
 
     data_date = time_data.get("date")
@@ -234,7 +251,11 @@ def save_marine_forecast(conn, normalized_data, request_id, context_type="coasta
                 continue
 
             if field_name in NUMERIC_VARIABLES:
-                value_numeric = value
+                if field_name == "precipitationPeriod":
+                    value_numeric = float(str(value).replace("h", ""))
+                else:
+                    value_numeric = value
+
                 value_text = None
 
             elif field_name in TEXT_VARIABLES:

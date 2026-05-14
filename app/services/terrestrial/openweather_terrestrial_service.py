@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 
 from app.normalizers.terrestrial_normalizer import normalize_openweather_terrestrial
 
+from datetime import datetime
+from app.db.database import get_connection
+from app.db.save_terrestrial_forecast import save_terrestrial_forecast
+
 
 OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/forecast"
 
@@ -76,5 +80,26 @@ def get_openweather_terrestrial(lat: float, lon: float):
             "city": data.get("city")
         }
     )
+
+    print("ANTES DE GRAVAR OPENWEATHER TERRESTRIAL NA BD")
+
+    conn = get_connection()
+
+    try:
+        inserted_count = save_terrestrial_forecast(
+            conn=conn,
+            normalized_data=resultado,
+            request_id=datetime.now().strftime("FOR_T-%y%m%d-%H%M"),
+            context_type="drone"
+        )
+
+        print(
+            f"OPENWEATHER TERRESTRIAL GRAVADO: "
+            f"{inserted_count} medições"
+        )
+
+    finally:
+        conn.close()
+
 
     return resultado

@@ -2,6 +2,7 @@ import requests
 
 from app.normalizers.observation_normalizer import normalize_ipma_observation
 from app.utils.distance import haversine_km
+from zoneinfo import ZoneInfo
 
 IPMA_STATIONS_URL = "https://api.ipma.pt/open-data/observation/meteorology/stations/stations.json"
 IPMA_OBS_URL = "https://api.ipma.pt/open-data/observation/meteorology/stations/observations.json"
@@ -105,7 +106,7 @@ def get_ipma_observation(lat: float, lon: float):
         inserted_count = save_observation(
             conn=conn,
             normalized_data=normalized,
-            request_id=datetime.now().strftime("OBS-%y%m%d-%H%M"),
+            request_id =datetime.now(ZoneInfo("Europe/Lisbon")).strftime("OBS-%y%m%d-%H%M"),
             context_type="drone"
         )
 

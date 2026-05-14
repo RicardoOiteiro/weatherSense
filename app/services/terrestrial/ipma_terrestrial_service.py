@@ -5,6 +5,10 @@ from datetime import datetime
 from app.normalizers.terrestrial_normalizer import normalize_ipma_terrestrial
 from app.utils.distance import haversine_km
 
+from datetime import datetime
+from app.db.database import get_connection
+from app.db.save_terrestrial_forecast import save_terrestrial_forecast
+
 
 IPMA_LOCATIONS_URL = "https://api.ipma.pt/open-data/distrits-islands.json"
 IPMA_FORECAST_URL = "https://api.ipma.pt/open-data/forecast/meteorology/cities/daily/{global_id}.json"
@@ -116,7 +120,7 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
     aggregate_data = get_ipma_aggregate(global_id)
     aggregate_current = get_nearest_aggregate_forecast(aggregate_data)
 
-    return normalize_ipma_terrestrial(
+    resultado = normalize_ipma_terrestrial(
         requested_lat=lat,
         requested_lon=lon,
         location=location,
@@ -125,3 +129,22 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
         data_update=data.get("dataUpdate"),
         global_id=data.get("globalIdLocal", global_id),
     )
+
+    print("ANTES DE GRAVAR IPMA TERRESTRIAL NA BD")
+
+    conn = get_connection()
+
+    try:
+        inserted_count = save_terrestrial_forecast(
+            conn=conn,
+            normalized_data=resultado,
+            request_id=datetime.now().strftime("FOR_T-%y%m%d-%H%M"),
+            context_type="drone"
+        )
+
+        print(f"IPMA TERRESTRIAL GRAVADO: {inserted_count} medições")
+
+    finally:
+        conn.close()
+
+    return resultado

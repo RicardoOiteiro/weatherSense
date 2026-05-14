@@ -32,15 +32,25 @@ INSERT INTO variable_dimension (field_name, description, unit, category)
 VALUES
 --atmosfera
 ('temperatureC', 'Air temperature', 'C', 'Atmosphere'),
+('temperatureMinC', 'Minimum air temperature', 'C', 'Atmosphere'),
+('temperatureMaxC', 'Maximum air temperature', 'C', 'Atmosphere'),
+('feelsLikeTemperatureC', 'Feels like temperature', 'C', 'Atmosphere'),
 ('windSpeedKmh', 'Wind speed', 'km/h', 'Wind'),
+('windSpeedMaxKmh', 'Maximum wind speed', 'km/h', 'Wind'),
 ('windDirectionDegrees', 'Wind direction (degrees)', 'degrees', 'Wind'),
 ('windDirectionCardinal', 'Wind direction (cardinal)', 'cardinal', 'Wind'),
 ('windGustKmh', 'Wind gust speed', 'km/h', 'Wind'),
 ('precipitationMm', 'Precipitation', 'mm', 'Precipitation'),
+('precipitationProbabilityPercent', 'Precipitation probability', '%', 'Precipitation'),
 ('precipitationPeriod', 'Precipitation period', 'h', 'Precipitation'),
 ('humidityPercent', 'Relative humidity', '%', 'Atmosphere'),
+('cloudCoverPercent', 'Cloud cover', '%', 'Atmosphere'),
 ('visibilityKm', 'Visibility', 'km', 'Atmosphere'),
 ('pressureHpa', 'Atmospheric pressure', 'hPa', 'Atmosphere'),
+
+('sunriseH', 'Sunrise Time', 'h', 'Atmosphere'),
+('sunsetH', 'Sunset Time', 'h', 'Atmosphere'),
+
 -- mar
 ('waveHeightM', 'Wave height', 'm', 'Maritime'),
 ('waveHeightMinM', 'Minimum wave height', 'm', 'Maritime'),

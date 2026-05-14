@@ -2,6 +2,7 @@ import requests
 from fastapi import HTTPException
 from datetime import datetime
 from app.utils.distance import haversine_km
+from zoneinfo import ZoneInfo
 
 from app.normalizers.marine_normalizer import normalize_openmeteo_marine
 from app.db.database import get_connection
@@ -76,7 +77,7 @@ def get_openmeteo_marine(lat: float, lon: float):
         inserted_count = save_marine_forecast(
             conn=conn,
             normalized_data=resultado,
-            request_id = datetime.now().strftime("FOR_M-%y%m%d-%H%M"),
+            request_id = datetime.now(ZoneInfo("Europe/Lisbon")).strftime("FOR_M-%y%m%d-%H%M"),
             context_type="coastal"
         )
 

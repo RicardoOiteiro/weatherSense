@@ -1,3 +1,7 @@
+# =========================================================
+# FUNÇÕES UTILITÁRIAS
+# =========================================================
+
 def para_float(valor):
     if valor in (None, "", "null"):
         return None
@@ -15,6 +19,34 @@ def para_int(valor):
     except (TypeError, ValueError):
         return None
 
+def split_date_hour(date_time):
+    if not date_time:
+        return None, None
+
+    if "T" in date_time:
+        parts = date_time.split("T")
+    else:
+        parts = date_time.split(" ")
+
+    date = parts[0]
+    hour = parts[1][:5] if len(parts) > 1 else None
+
+    return date, hour
+
+def extract_hour_only(datetime_text):
+    if not datetime_text:
+        return None
+
+    if "T" in datetime_text:
+        return datetime_text.split("T")[1][:5]
+
+    return datetime_text[:5]
+
+def extrair_data(data_hora: str):
+    if not data_hora:
+        return None
+
+    return data_hora.split("T")[0]
 
 def get_lista_valor(dados: dict, campo: str, index: int):
     valores = dados.get(campo)
@@ -26,15 +58,7 @@ def get_lista_valor(dados: dict, campo: str, index: int):
         return valores[index]
     except (IndexError, TypeError):
         return None
-
-
-def extrair_data(data_hora: str):
-    if not data_hora:
-        return None
-
-    return data_hora.split("T")[0]
-
-
+    
 def get_daily_index_by_date(daily: dict, data: str):
     datas = daily.get("time", [])
 
@@ -49,26 +73,13 @@ def get_daily_index_by_date(daily: dict, data: str):
 
 def map_openmeteo_model(model: str):
     mapping = {
-        "ecmwf_ifs": "IFS e AIFS (ECMWF)",
+        "ecmwf_ifs": "ECMWF",
         "icon_eu": "ICON",
         "meteofrance_arpege_europe": "ARPEGE & AROME",
     }
 
     return mapping.get(model, model)
 
-def split_date_hour(date_time):
-    if not date_time:
-        return None, None
-
-    if "T" in date_time:
-        parts = date_time.split("T")
-    else:
-        parts = date_time.split(" ")
-
-    date = parts[0]
-    hour = parts[1][:5] if len(parts) > 1 else None
-
-    return date, hour
 
 def normalize_openmeteo_terrestrial(lat: float, lon: float, distance_km: float, hourly: dict, daily: dict, index: int, model: str):
     data_hora = get_lista_valor(hourly, "time", index)
@@ -98,7 +109,7 @@ def normalize_openmeteo_terrestrial(lat: float, lon: float, distance_km: float, 
             "temperatureC": para_float(get_lista_valor(hourly, "temperature_2m", index)),
             "temperatureMinC": para_float(get_lista_valor(daily, "temperature_2m_min", daily_index)) if daily_index is not None else None,
             "temperatureMaxC": para_float(get_lista_valor(daily, "temperature_2m_max", daily_index)) if daily_index is not None else None,
-            "feelsLikeTemperatureC": para_float(get_lista_valor(hourly, "apparent_temperature", index)),
+            #"feelsLikeTemperatureC": para_float(get_lista_valor(hourly, "apparent_temperature", index)),
             "humidityPercent": para_int(get_lista_valor(hourly, "relative_humidity_2m", index)),
             "pressureHpa": para_float(get_lista_valor(hourly, "pressure_msl", index)),
             "cloudCoverPercent": para_int(get_lista_valor(hourly, "cloud_cover", index)),
@@ -121,14 +132,13 @@ def normalize_openmeteo_terrestrial(lat: float, lon: float, distance_km: float, 
             "precipitationProbabilityPercent": None,
             
         },
-        "risk": {
-            "strongWindProbabilityPercent": None,
-            "fogProbabilityPercent": None,
-            "thunderstormProbabilityPercent": None,
-        },
         "sun": {
-            "sunrise": get_lista_valor(daily, "sunrise", daily_index) if daily_index is not None else None,
-            "sunset": get_lista_valor(daily, "sunset", daily_index) if daily_index is not None else None,
+            "sunriseH": extract_hour_only(
+                get_lista_valor(daily, "sunrise", daily_index)
+            ) if daily_index is not None else None,
+             "sunsetH": extract_hour_only(
+                get_lista_valor(daily, "sunset", daily_index)
+            ) if daily_index is not None else None,
         },
     }
 
@@ -175,16 +185,11 @@ def normalize_ipma_terrestrial(
             "pressureHpa": para_float(aggregate_current.get("hR")),
             "pressureHpa": None,
             "cloudCoverPercent": None,
-            "visibilidadeKm": None,
-            #"codigoTempo": para_int(
-            #   aggregate_current.get("idTipoTempo")
-            #   or forecast.get("idTipoTempo")
-            #    or forecast.get("idWeatherType")
-            #),
+            "visibilityKm": None,
         },
         "wind": {
-            "precipitationMm": para_float(aggregate_current.get("ffVento")),
-            "windSpeedMaxKmh": None,
+            #"precipitationMm": para_float(aggregate_current.get("ffVento")),
+            "windSpeedKmh": para_float(aggregate_current.get("ffVento")),
             "windGustKmh": None,
             "windDirectionDegrees": None,
             "windDirectionCardinal": (
@@ -205,11 +210,6 @@ def normalize_ipma_terrestrial(
             #    or forecast.get("idIntensidadePrecipita")
             #    or forecast.get("classPrecInt")
             #),
-        },
-        "risk": {
-            "strongWindProbabilityPercent": None,
-            "fogProbabilityPercent": None,
-            "thunderstormProbabilityPercent": None,
         },
         "sun": {
             "sunrise": None,
@@ -258,7 +258,7 @@ def normalize_openweather_terrestrial(lat, lon, data):
         "source": "openweather",
         "meta": {
             "model": "Modelo Proprietário - OpenWeather",
-            "dataNature": "Previsão",
+            "dataNature": "forecast",
             "temporalResolution": "horaria/diaria",
             "updateIntervalHours": "A cada 3 horas;"
         },
@@ -298,13 +298,8 @@ def normalize_openweather_terrestrial(lat, lon, data):
                 if bloco.get("pop") is not None else None
             ),
         },
-        "risk": {
-            "strongWindProbabilityPercent": None,
-            "fogProbabilityPercent": None,
-            "thunderstormProbabilityPercent": None,
-        },
         "sun": {
-            "sunrise": None,
-            "sunset": None,
+            "sunriseH": None,
+            "sunsetH": None,
         },
     }
