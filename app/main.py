@@ -140,7 +140,7 @@ def get_stored_observations(limit: int = 100):
                     ON mf.id_hour_data = hd.id_hour
                 JOIN location_dimension ld 
                     ON mf.id_location = ld.id_location
-                ORDER BY mf.id_measurement DESC
+                ORDER BY mf.request_id DESC, mf.id_measurement DESC
                 LIMIT %s
                 """,
                 (limit,)

@@ -3,14 +3,14 @@ from app.services.observation.ipma_observation_service import get_ipma_observati
 
 LOCATIONS = [
     {
-        "name": "Monte Real",
-        "lat": 39.83,
-        "lon": -8.88
-    },
-    {
         "name": "Leiria (Aeródromo)",
         "lat": 39.780553,
         "lon": -8.818166
+    },
+    {
+        "name": "São Pedro de Moel",
+        "lat": 39.766853,
+        "lon": -9.019775
     },
     {
         "name": "Figueira da Foz",
@@ -21,6 +21,11 @@ LOCATIONS = [
         "name": "Nazaré",
         "lat": 39.601,
         "lon": -9.07
+    },
+    {
+        "name": "Peniche",
+        "lat": 39.361378,
+        "lon": -9.387817
     }
 ]
 
