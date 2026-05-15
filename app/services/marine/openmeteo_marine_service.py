@@ -1,16 +1,25 @@
 import requests
-from fastapi import HTTPException
 from datetime import datetime
-from app.utils.distance import haversine_km
 from zoneinfo import ZoneInfo
+
+from fastapi import HTTPException
 
 from app.normalizers.marine_normalizer import normalize_openmeteo_marine
 from app.db.database import get_connection
 from app.db.save_marine_forecast import save_marine_forecast
+from app.utils.distance import haversine_km
+
+
+
+# =====================================================
+# CONFIG
+# =====================================================
 
 OPENMETEO_MARINE_URL = "https://marine-api.open-meteo.com/v1/marine"
 
-
+# =====================================================
+# HELPERS
+# =====================================================
 def get_nearest_hour_index(times: list[str]) -> int:
     now = datetime.now()
     times_dt = [datetime.fromisoformat(t) for t in times]
@@ -20,6 +29,10 @@ def get_nearest_hour_index(times: list[str]) -> int:
         key=lambda i: abs(times_dt[i] - now)
     )
 
+
+# =====================================================
+# SERVICES
+# =====================================================
 
 def get_openmeteo_marine(lat: float, lon: float):
     params = {

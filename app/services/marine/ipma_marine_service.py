@@ -1,18 +1,24 @@
 import math
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 import requests
 from fastapi import HTTPException
-from zoneinfo import ZoneInfo
+
 from app.normalizers.marine_normalizer import normalize_ipma_marine
-
-
-IPMA_SEA_LOCATIONS_URL = "https://api.ipma.pt/open-data/sea-locations.json"
-IPMA_SEA_FORECAST_URL = "https://api.ipma.pt/open-data/forecast/oceanography/daily/hp-daily-sea-forecast-day{id_day}.json"
-
-from datetime import datetime
-
 from app.db.database import get_connection
 from app.db.save_marine_forecast import save_marine_forecast
 
+# =====================================================
+# CONFIG
+# =====================================================
+IPMA_SEA_LOCATIONS_URL = "https://api.ipma.pt/open-data/sea-locations.json"
+IPMA_SEA_FORECAST_URL = "https://api.ipma.pt/open-data/forecast/oceanography/daily/hp-daily-sea-forecast-day{id_day}.json"
+
+
+# =====================================================
+# HELPERS
+# =====================================================
 def calculate_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     earth_radius_km = 6371
 
@@ -39,6 +45,9 @@ def calculate_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) ->
 def km_to_nm(km: float) -> float:
     return km / 1.852
 
+# =====================================================
+# SERVICES
+# =====================================================
 
 def get_nearest_ipma_sea_location(lat: float, lon: float) -> dict:
     response = requests.get(IPMA_SEA_LOCATIONS_URL, timeout=20)

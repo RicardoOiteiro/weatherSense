@@ -3,6 +3,10 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 
+# =====================================================
+# CONFIG
+# =====================================================
+
 NUMERIC_VARIABLES = {
     "temperatureC",
     "windSpeedKmh",
@@ -19,6 +23,11 @@ TEXT_VARIABLES = {
     "windDirectionCardinal",
 }
 
+# =====================================================
+# HELPERS
+# =====================================================
+
+
 
 def parse_hour(hour_text):
     """
@@ -30,6 +39,9 @@ def parse_hour(hour_text):
     parts = hour_text.split(":")
     return int(parts[0]), int(parts[1])
 
+# =====================================================
+# DIMENSION LOOKUPS
+# =====================================================
 
 def get_calendar_id(cursor, date_text):
     cursor.execute(
@@ -173,16 +185,11 @@ def get_context_id(cursor, context_type):
     return row[0]
 
 
+# =====================================================
+# SAVE
+# =====================================================
+
 def save_observation(conn, normalized_data, request_id, context_type):
-    """
-    Guarda uma observação normalizada na measurement_facts.
-
-    conn -> ligação psycopg2
-    normalized_data -> resultado do normalizer
-    request_id -> id único do pedido
-    context_type -> 'drone' ou 'coastal'
-    """
-
     station = normalized_data.get("station", {})
     observation = normalized_data.get("observation", {})
     time_data = normalized_data.get("time", {})

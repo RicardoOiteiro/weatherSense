@@ -1,6 +1,6 @@
-# =========================================================
-# FUNÇÕES UTILITÁRIAS
-# =========================================================
+# =====================================================
+# HELPERS
+# =====================================================
 
 def para_float(valor):
     if valor in (None, "", "null"):
@@ -80,6 +80,9 @@ def map_openmeteo_model(model: str):
 
     return mapping.get(model, model)
 
+# =====================================================
+# NORMALIZERS
+# =====================================================
 
 def normalize_openmeteo_terrestrial(lat: float, lon: float, distance_km: float, hourly: dict, daily: dict, index: int, model: str):
     data_hora = get_lista_valor(hourly, "time", index)

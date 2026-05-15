@@ -1,5 +1,8 @@
 import re
 
+# =====================================================
+# HELPERS
+# =====================================================
 
 def extrair_distancia_km(distance_text):
     if not distance_text:
@@ -26,6 +29,10 @@ def split_date_hour(date_time):
     hour = parts[1][:5] if len(parts) > 1 else None
 
     return date, hour
+
+# =====================================================
+# NORMALIZERS
+# =====================================================
 
 def normalize_foreca_observation(obs: dict):
     visibilidade_m = obs.get("visibility")

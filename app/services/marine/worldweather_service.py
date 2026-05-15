@@ -1,24 +1,33 @@
-from dotenv import load_dotenv
+
 import os
-import requests
-from fastapi import HTTPException
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
+import requests
+from fastapi import HTTPException
 
 from app.normalizers.marine_normalizer import normalize_wwo_marine
 from app.utils.distance import haversine_km
 from app.db.database import get_connection
 from app.db.save_marine_forecast import save_marine_forecast
 
+
+# =====================================================
+# CONFIG
+# =====================================================
+
+
 WWO_URL = "https://api.worldweatheronline.com/premium/v1/marine.ashx"
 
+# =====================================================
+# HELPERS
+# =====================================================
 
 def get_nearest_wwo_hour_block(hourly: list[dict]) -> dict:
     now = datetime.now()
 
     def block_datetime(block):
-        # Na WWO, o campo "time" costuma vir como:
-        # "0", "100", "200", ..., "2300"
+        # Na WWO, o campo "time" costuma vir como: "0", "100", "200", ..., "2300"
         raw_time = str(block.get("time", "0")).zfill(4)
 
         hour = int(raw_time[:2])
@@ -33,6 +42,9 @@ def get_nearest_wwo_hour_block(hourly: list[dict]) -> dict:
 
 
 
+# =====================================================
+# SERVICES
+# =====================================================
 
 def get_wwo_marine(lat: float, lon: float):
 
@@ -44,7 +56,7 @@ def get_wwo_marine(lat: float, lon: float):
             detail="API key da WorldWeatherOnline não definida"
         )
 
-    # 1️⃣ REQUEST À API
+    #REQUEST À API
     params = {
         "key": api_key,
         "q": f"{lat},{lon}",
@@ -58,7 +70,7 @@ def get_wwo_marine(lat: float, lon: float):
 
     data = response.json()
 
-    # 2️⃣ EXTRAIR DADOS IMPORTANTES
+    # EXTRAIR DADOS
     weather = data.get("data", {}).get("weather", [])
 
     if not weather:

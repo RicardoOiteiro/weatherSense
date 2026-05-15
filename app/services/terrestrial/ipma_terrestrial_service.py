@@ -1,19 +1,26 @@
+from datetime import datetime
+
 import requests
 from fastapi import HTTPException
-from datetime import datetime
 
 from app.normalizers.terrestrial_normalizer import normalize_ipma_terrestrial
 from app.utils.distance import haversine_km
-
-from datetime import datetime
 from app.db.database import get_connection
 from app.db.save_terrestrial_forecast import save_terrestrial_forecast
 
+# =====================================================
+# CONFIG
+# =====================================================
 
 IPMA_LOCATIONS_URL = "https://api.ipma.pt/open-data/distrits-islands.json"
 IPMA_FORECAST_URL = "https://api.ipma.pt/open-data/forecast/meteorology/cities/daily/{global_id}.json"
 IPMA_AGGREGATE_URL = "https://api.ipma.pt/public-data/forecast/aggregate/{global_id}.json"
 
+
+
+# =====================================================
+# HELPERS
+# =====================================================
 
 def get_ipma_locations():
     response = requests.get(IPMA_LOCATIONS_URL, timeout=20)
@@ -86,6 +93,9 @@ def find_nearest_ipma_location(lat: float, lon: float):
     nearest["distanceKm"] = nearest_distance
     return nearest
 
+# =====================================================
+# SERVICES
+# =====================================================
 
 def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
     location = find_nearest_ipma_location(lat, lon)

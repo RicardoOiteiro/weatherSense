@@ -1,3 +1,7 @@
+# =====================================================
+# HELPERS
+# =====================================================
+
 def normalizar_hora_wwo(time_value):
     if time_value is None:
         return None
@@ -34,7 +38,11 @@ def split_date_hour(date_time):
     hour = parts[1][:5] if len(parts) > 1 else None
 
     return date, hour
+   
 
+# =====================================================
+# NORMALIZERS
+# =====================================================
 
 def normalize_wwo_marine(lat: float, lon: float, distance_km: float, date: str, hourly: dict):
     data_hora = juntar_data_hora_wwo(date, hourly.get("time"))

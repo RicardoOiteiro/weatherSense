@@ -1,16 +1,20 @@
 import os
+from datetime import datetime
+
 import requests
 from fastapi import HTTPException
-from datetime import datetime
+
 from pathlib import Path
 from dotenv import load_dotenv
 
 from app.normalizers.terrestrial_normalizer import normalize_openweather_terrestrial
-
-from datetime import datetime
 from app.db.database import get_connection
 from app.db.save_terrestrial_forecast import save_terrestrial_forecast
 
+
+# =====================================================
+# CONFIG
+# =====================================================
 
 OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/forecast"
 
@@ -20,6 +24,9 @@ ENV_PATH = BASE_DIR / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
 
 
+# =====================================================
+# HELPERS
+# =====================================================
 
 def get_nearest_openweather_block(lista: list[dict]) -> dict:
     now = datetime.now()
@@ -36,6 +43,10 @@ def get_nearest_openweather_block(lista: list[dict]) -> dict:
         key=lambda block: abs(block_datetime(block) - now)
     )
 
+
+# =====================================================
+# SERVICES
+# =====================================================
 
 def get_openweather_terrestrial(lat: float, lon: float):
 

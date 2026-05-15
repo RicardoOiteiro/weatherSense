@@ -1,17 +1,25 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 import requests
 
 from app.normalizers.observation_normalizer import normalize_ipma_observation
+from app.db.database import get_connection
+from app.db.save_observation import save_observation
 from app.utils.distance import haversine_km
-from zoneinfo import ZoneInfo
+
+
+
+# =====================================================
+# CONFIG
+# =====================================================
 
 IPMA_STATIONS_URL = "https://api.ipma.pt/open-data/observation/meteorology/stations/stations.json"
 IPMA_OBS_URL = "https://api.ipma.pt/open-data/observation/meteorology/stations/observations.json"
 
-
-from datetime import datetime
-from app.db.database import get_connection
-from app.db.save_observation import save_observation
-
+# =====================================================
+# HELPERS
+# =====================================================
 
 def direcao_ipma_texto(id_direcc_vento):
     mapa = {
@@ -26,7 +34,11 @@ def direcao_ipma_texto(id_direcc_vento):
         8: "NW",
         9: "N",
     }
-    return mapa.get(id_direcc_vento, None)
+    return mapa.get(id_direcc_vento)
+    #return mapa.get(id_direcc_vento, None)
+# =====================================================
+# SERVICES
+# =====================================================
 
 
 def get_ipma_observation(lat: float, lon: float):

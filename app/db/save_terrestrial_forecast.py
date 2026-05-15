@@ -2,6 +2,9 @@ import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+# =====================================================
+# CONFIG
+# ====================================================
 
 NUMERIC_VARIABLES = {
     "temperatureC",
@@ -34,6 +37,10 @@ TEXT_VARIABLES = {
 }
 
 
+# =====================================================
+# HELPERS
+# =====================================================
+
 def parse_hour(hour_text):
     if not hour_text:
         return None, None
@@ -41,6 +48,9 @@ def parse_hour(hour_text):
     parts = hour_text.split(":")
     return int(parts[0]), int(parts[1])
 
+# =====================================================
+# DIMENSION LOOKUPS
+# =====================================================
 
 def get_calendar_id(cursor, date_text):
     cursor.execute(
@@ -204,10 +214,13 @@ def get_context_id(cursor, context_type):
     return row[0]
 
 
+# =====================================================
+# SAVE
+# =====================================================
+
 def save_terrestrial_forecast(conn, normalized_data, request_id, context_type="drone"):
     location = normalized_data.get("location", {})
     time_data = normalized_data.get("time", {})
-
     weather = normalized_data.get("weather", {})
     wind = normalized_data.get("wind", {})
     precipitation = normalized_data.get("precipitation", {})

@@ -1,4 +1,5 @@
-import os,re
+import os
+import re
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -8,8 +9,11 @@ from dotenv import load_dotenv
 
 from app.db.database import get_connection
 from app.db.save_observation import save_observation
-
 from app.normalizers.observation_normalizer import normalize_foreca_observation
+
+# =====================================================
+# CONFIG
+# =====================================================
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 ENV_PATH = BASE_DIR / ".env"
@@ -17,6 +21,10 @@ ENV_PATH = BASE_DIR / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
 
 FORECA_TOKEN = os.getenv("FORECA_TOKEN")
+
+# =====================================================
+# HELPERS
+# =====================================================
 
 def extrair_distancia_km(distance_text):
     if not distance_text:
@@ -50,8 +58,8 @@ def get_foreca_observation(lat: float, lon: float):
         return None
 
     obs = min(
-    observations,
-    key=lambda item: extrair_distancia_km(item.get("distance"))
+        observations,
+        key=lambda item: extrair_distancia_km(item.get("distance"))
 )
     normalized = normalize_foreca_observation(obs)
 

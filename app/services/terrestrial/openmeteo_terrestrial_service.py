@@ -1,14 +1,17 @@
+from datetime import datetime
+
 import requests
 from fastapi import HTTPException
-from datetime import datetime
 
 from app.utils.distance import haversine_km
-
 from app.normalizers.terrestrial_normalizer import normalize_openmeteo_terrestrial
-from datetime import datetime
 from app.db.database import get_connection
 from app.db.save_terrestrial_forecast import save_terrestrial_forecast
 
+
+# =====================================================
+# CONFIG
+# =====================================================
 
 OPENMETEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 
@@ -17,6 +20,10 @@ OPENMETEO_MODELS = [
     "icon_eu",
     "meteofrance_arpege_europe",
 ]
+
+# =====================================================
+# HELPERS
+# =====================================================
 
 
 def get_nearest_hour_index(times: list[str]) -> int:
@@ -28,6 +35,10 @@ def get_nearest_hour_index(times: list[str]) -> int:
         key=lambda i: abs(times_dt[i] - now)
     )
 
+
+# =====================================================
+# SERVICES
+# =====================================================
 
 def get_openmeteo_terrestrial(lat: float, lon: float, model: str):
     params = {
