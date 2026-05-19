@@ -83,6 +83,9 @@ const pontosObservacao = [
         lat: 40.002723,
         lon: -8.205671
     },
+    {   name: "Caranguejeira",
+        lat: 39.744706,
+        lon: -8.691161},
 
 ];
 
@@ -410,5 +413,3 @@ function agruparPorRequestIdEFonte(data) {
 
         return unidades[unidade] ?? unidade ?? '';
     }
-
-
