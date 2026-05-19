@@ -63,6 +63,11 @@ def get_foreca_observation(lat: float, lon: float):
 )
     normalized = normalize_foreca_observation(obs)
 
+    normalized["requestedLocation"] = {
+        "latitude": lat,
+        "longitude": lon
+}
+
     print("ANTES DE GRAVAR FORECA NA BD")
     conn = get_connection()
 

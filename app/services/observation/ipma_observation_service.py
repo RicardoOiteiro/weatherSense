@@ -110,6 +110,11 @@ def get_ipma_observation(lat: float, lon: float):
         direcao_cardinal=direcao_cardinal
     )
 
+    normalized["requestedLocation"] = {
+        "latitude": lat,
+        "longitude": lon
+}
+
     print("ANTES DE GRAVAR IPMA NA BD")
 
     conn = get_connection()

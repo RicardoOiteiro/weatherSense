@@ -6,39 +6,74 @@ let selectedLat = null;
 let selectedLon = null;
 
 let selectedPoint = null;
-const TOLERANCIA_GERAL = 0.08;
+
+const DISTANCIA_MAX_KM = 5;
+
+function distanciaKm(lat1, lon1, lat2, lon2) {
+
+    const R = 6371;
+
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+}
 
 const pontosObservacao = [
     {
         name: "Leiria (Aeródromo)",
         lat: 39.780553,
         lon: -8.818166,
-        tolerancia: 0.05
     },
     {
         name: "São Pedro de Moel",
         lat: 39.766853,
         lon: -9.019775,
-        tolerancia: 0.03
     },
     {
         name: "Figueira da Foz",
         lat: 40.1508,
         lon: -8.8618,
-        tolerancia: 0.08
     },
     {
         name: "Nazaré / Alcobaça",
         lat: 39.601,
         lon: -9.07,
-        tolerancia: 0.15
     },
     {
         name: "Peniche / Cabo Carvoeiro",
         lat: 39.361378,
         lon: -9.387817,
-        tolerancia: 0.04
+    },
+    {
+        name: "Óbidos",
+        lat: 39.360421,
+        lon: -9.157214
+    },
+    {
+        name: "Bidoeira de Cima",
+        lat: 39.9033,
+        lon: -8.7527
+    },
+    {
+        name: "ESTG Leiria",
+        lat: 39.7345,
+        lon: -8.8209
+    },
+    {
+        name: "Pinhal de Leiria",
+        lat: 39.8225,
+        lon: -8.9450
     }
+
 ];
 
 carregarDistritoLeiria(map)
@@ -98,7 +133,8 @@ map.on('click', function (e) {
     atualizarTextoLocalizacao();
     colocarMarker(selectedLat, selectedLon);
 
-    carregarHistorico();
+    document.getElementById('historico').innerHTML =
+        'Seleciona um ponto azul para ver o histórico oficial dessa zona.';
 });
 
 function colocarMarker(lat, lon) {
@@ -123,7 +159,6 @@ function atualizarTextoLocalizacao() {
 
 async function carregarHistorico() {
     const historicoDiv = document.getElementById('historico');
-
     const startDate = document.getElementById('histStartDate').value;
     const endDate = document.getElementById('histEndDate').value;
     const type = document.getElementById('histType').value;
@@ -151,6 +186,8 @@ async function carregarHistorico() {
             return;
         }
 
+
+
         let filtrado = data;
 
         // filtro por coordenadas
@@ -159,24 +196,63 @@ async function carregarHistorico() {
             const latSelecionada = Number(selectedLat);
             const lonSelecionada = Number(selectedLon);
 
-            let tolerancia = TOLERANCIA_GERAL;
+            filtrado = filtrado
+                .map(item => {
 
-            if (selectedPoint?.tolerancia) {
-                tolerancia = Math.max(TOLERANCIA_GERAL, selectedPoint.tolerancia);
+                    if (!item.requestedLocation) return null;
+
+                    const latItem =
+                        Number(item.requestedLocation.latitude);
+
+                    const lonItem =
+                        Number(item.requestedLocation.longitude);
+
+                    const distancia = distanciaKm(
+                        latSelecionada,
+                        lonSelecionada,
+                        latItem,
+                        lonItem
+                    );
+
+                    const distanciaEstacao = item.location
+                        ? distanciaKm(
+                            latSelecionada,
+                            lonSelecionada,
+                            Number(item.location.latitude),
+                            Number(item.location.longitude)
+                        )
+                        : null;
+
+                    return {
+                        ...item,
+                        distanciaCalculada: distancia,
+                        distanciaEstacao
+                    };
+                })
+                .filter(item => item !== null);
+
+            filtrado.sort(
+                (a, b) =>
+                    a.distanciaCalculada - b.distanciaCalculada
+            );
+
+            filtrado = filtrado.filter(
+                item => item.distanciaCalculada <= DISTANCIA_MAX_KM
+            );
+
+            if (selectedPoint) {
+
+                filtrado = filtrado.filter(item => {
+
+                    const pontoMaisProximo =
+                        pontoMaisProximoDaEstacao(item);
+
+                    return (
+                        pontoMaisProximo &&
+                        pontoMaisProximo.name === selectedPoint.name
+                    );
+                });
             }
-
-            filtrado = filtrado.filter(item => {
-
-                if (!item.location) return false;
-
-                const latItem = Number(item.location.latitude);
-                const lonItem = Number(item.location.longitude);
-
-                return (
-                    Math.abs(latItem - latSelecionada) <= tolerancia &&
-                    Math.abs(lonItem - lonSelecionada) <= tolerancia
-                );
-            });
         }
 
         // filtro tipo
@@ -265,11 +341,25 @@ async function carregarHistorico() {
 
     </div>
 
-    <p class="location">
-        Localização:
-        ${primeira.location.latitude},
-        ${primeira.location.longitude}
-    </p>
+   <p class="location">
+    <strong>Estação:</strong>
+    ${primeira.location.name || 'Desconhecida'}
+
+    <br>
+
+    <strong>Localização:</strong>
+    ${primeira.location.latitude},
+    ${primeira.location.longitude}
+
+    <br>
+    <strong>Distancia Estação KM:</strong>
+    ${primeira.distanciaEstacao?.toFixed(1) ?? '-'} km
+    <br>
+    <!--
+    <strong>Distância:</strong>
+    ${primeira.distanciaCalculada?.toFixed(1) ?? '-'} km 
+    -->
+</p>
 `;
 
             const details = document.createElement('details');
@@ -288,7 +378,8 @@ async function carregarHistorico() {
                 'Precipitation',
                 'Precipitation period',
                 'Relative humidity',
-                'Atmospheric pressure'
+                'Atmospheric pressure',
+                'Visibility'
             ];
 
             grupo.sort((a, b) => {
@@ -366,7 +457,8 @@ function formatarNomeVariavel(nome) {
         'Precipitation': '🌧️ Precipitação',
         'Precipitation period': '⏱️ Período da precipitação',
         'Relative humidity': '💧 Humidade',
-        'Atmospheric pressure': '📈 Pressão atmosférica'
+        'Atmospheric pressure': '📈 Pressão atmosférica',
+        'Visibility': '👁️ Visibilidade'
     };
 
     return nomes[nome] || nome;
@@ -385,4 +477,30 @@ function formatarUnidade(unidade) {
     };
 
     return unidades[unidade] ?? unidade ?? '';
+}
+
+function pontoMaisProximoDaEstacao(item) {
+    if (!item.requestedLocation) return null;
+
+    const latItem = Number(item.requestedLocation?.latitude);
+    const lonItem = Number(item.requestedLocation?.longitude);
+
+    let pontoMaisProximo = null;
+    let menorDistancia = Infinity;
+
+    pontosObservacao.forEach(ponto => {
+        const distancia = distanciaKm(
+            latItem,
+            lonItem,
+            ponto.lat,
+            ponto.lon
+        );
+
+        if (distancia < menorDistancia) {
+            menorDistancia = distancia;
+            pontoMaisProximo = ponto;
+        }
+    });
+
+    return pontoMaisProximo;
 }

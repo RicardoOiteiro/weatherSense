@@ -107,7 +107,7 @@ def get_weather_terrestrial(lat: float, lon: float):
         raise HTTPException(status_code=500, detail=str(e))
     
 @app.get("/data/observations")
-def get_stored_observations(limit: int = 100):
+def get_stored_observations(limit: int = 50000):
     conn = get_connection()
 
     try:
@@ -128,7 +128,8 @@ def get_stored_observations(limit: int = 100):
                     ld.name AS location_name,
                     ld.latitude,
                     ld.longitude,
-                    mf.distance_km
+                    mf.distance_km,
+                    mf.raw_json
                 FROM measurement_facts mf
                 JOIN source_dimension sd 
                     ON mf.id_source = sd.id_source
@@ -166,7 +167,11 @@ def get_stored_observations(limit: int = 100):
                         "latitude": row[11],
                         "longitude": row[12],
                         "distanceKm": row[13],
-                    }
+                    },
+                    "requestedLocation": (
+                        row[14].get("requestedLocation")
+                        if row[14] else None
+                    )
                 }
                 for row in rows
             ]

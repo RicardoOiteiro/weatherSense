@@ -26,7 +26,30 @@ LOCATIONS = [
         "name": "Peniche",
         "lat": 39.361378,
         "lon": -9.387817
-    }
+    },
+    {
+        "name": "Bidoeira de Cima",
+        "lat": 39.9033,
+        "lon": -8.7527
+    },
+    {
+        "name": "Pinhal de Leiria",
+        "lat": 39.8225,
+        "lon": -8.9450
+    },
+    {
+        "name": "Óbidos",
+        "lat": 39.360421,
+        "lon": -9.157214
+    },
+    {
+        "name": "ESTG Leiria",
+        "lat": 39.7345,
+        "lon": -8.8209
+    },
+
+    
+
 ]
 
 

@@ -87,6 +87,9 @@ def get_location_id(cursor, station):
 
     if latitude is None or longitude is None:
         raise ValueError("Latitude e longitude são obrigatórias.")
+    
+    latitude = round(float(latitude), 2)
+    longitude = round(float(longitude), 2)
 
     cursor.execute(
         """
@@ -240,45 +243,98 @@ def save_observation(conn, normalized_data, request_id, context_type):
 
             cursor.execute(
                 """
-                INSERT INTO measurement_facts (
-                    request_id,
-                    value,
-                    value_text,
-                    raw_json,
-                    distance_km,
-                    data_status,
-                    id_date_request,
-                    id_hour_request,
-                    id_date_data,
-                    id_hour_data,
-                    id_location,
-                    id_source,
-                    id_variable,
-                    id_context
-                )
-                VALUES (
-                    %s, %s, %s, %s::jsonb, %s, %s,
-                    %s, %s, %s, %s,
-                    %s, %s, %s, %s
-                )
+                SELECT id_measurement
+                FROM measurement_facts
+                WHERE
+                    id_date_data = %s
+                    AND id_hour_data = %s
+                    AND id_location = %s
+                    AND id_source = %s
+                    AND id_variable = %s
+                    AND id_context = %s
+                    AND data_status = %s
                 """,
                 (
-                    request_id,
-                    value_numeric,
-                    value_text,
-                    raw_json,
-                    distance_km,
-                    "observation",
-                    id_date_request,
-                    id_hour_request,
                     id_date_data,
                     id_hour_data,
                     id_location,
                     id_source,
                     id_variable,
                     id_context,
+                    "observation",
                 )
             )
+
+            existing = cursor.fetchone()
+
+            if existing:
+                cursor.execute(
+                    """
+                    UPDATE measurement_facts
+                    SET
+                        request_id = %s,
+                        value = %s,
+                        value_text = %s,
+                        raw_json = %s::jsonb,
+                        distance_km = %s,
+                        id_date_request = %s,
+                        id_hour_request = %s
+                    WHERE id_measurement = %s
+                    """,
+                    (
+                        request_id,
+                        value_numeric,
+                        value_text,
+                        raw_json,
+                        distance_km,
+                        id_date_request,
+                        id_hour_request,
+                        existing[0],
+                    )
+                )
+
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO measurement_facts (
+                        request_id,
+                        value,
+                        value_text,
+                        raw_json,
+                        distance_km,
+                        data_status,
+                        id_date_request,
+                        id_hour_request,
+                        id_date_data,
+                        id_hour_data,
+                        id_location,
+                        id_source,
+                        id_variable,
+                        id_context
+                    )
+                    VALUES (
+                        %s, %s, %s, %s::jsonb, %s, %s,
+                        %s, %s, %s, %s,
+                        %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        request_id,
+                        value_numeric,
+                        value_text,
+                        raw_json,
+                        distance_km,
+                        "observation",
+                        id_date_request,
+                        id_hour_request,
+                        id_date_data,
+                        id_hour_data,
+                        id_location,
+                        id_source,
+                        id_variable,
+                        id_context,
+                    )
+                )
 
             inserted_count += 1
 
