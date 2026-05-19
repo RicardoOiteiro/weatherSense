@@ -112,8 +112,10 @@ def get_ipma_observation(lat: float, lon: float):
 
     normalized["requestedLocation"] = {
         "latitude": lat,
-        "longitude": lon
-}
+        "longitude": lon    
+} 
+    print("REQUESTED LOCATION:", lat, lon)
+    print("NORMALIZED REQUESTED:", normalized["requestedLocation"])
 
     print("ANTES DE GRAVAR IPMA NA BD")
 

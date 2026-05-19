@@ -178,6 +178,82 @@ def get_stored_observations(limit: int = 50000):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/data/forecast/marine")
+def get_stored_marine_forecasts(limit: int = 50000):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 
+                    mf.id_measurement,
+                    mf.request_id,
+                    sd.name AS source,
+                    vd.field_name,
+                    vd.description,
+                    vd.unit,
+                    mf.value,
+                    mf.value_text,
+                    cd.date,
+                    hd.full_time,
+                    ld.name AS location_name,
+                    ld.latitude,
+                    ld.longitude,
+                    mf.distance_km,
+                    mf.raw_json
+                FROM measurement_facts mf
+                JOIN source_dimension sd 
+                    ON mf.id_source = sd.id_source
+                JOIN variable_dimension vd 
+                    ON mf.id_variable = vd.id_variable
+                JOIN calendar_dimension cd 
+                    ON mf.id_date_data = cd.id_date
+                JOIN hour_dimension hd 
+                    ON mf.id_hour_data = hd.id_hour
+                JOIN location_dimension ld 
+                    ON mf.id_location = ld.id_location
+                WHERE mf.data_status = 'forecast'
+                  AND LOWER(sd.data_type) = 'marine'
+                ORDER BY mf.request_id DESC, mf.id_measurement DESC
+                LIMIT %s
+                """,
+                (limit,)
+            )
+
+            rows = cursor.fetchall()
+
+            return [
+                {
+                    "idMeasurement": row[0],
+                    "requestId": row[1],
+                    "source": row[2],
+                    "variable": {
+                        "fieldName": row[3],
+                        "description": row[4],
+                        "unit": row[5],
+                    },
+                    "value": row[6] if row[6] is not None else row[7],
+                    "date": str(row[8]),
+                    "time": str(row[9]),
+                    "location": {
+                        "name": row[10],
+                        "latitude": row[11],
+                        "longitude": row[12],
+                        "distanceKm": row[13],
+                    },
+                    "requestedLocation": (
+                        row[14].get("requestedLocation")
+                        if row[14] else None
+                    )
+                }
+                for row in rows
+            ]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     finally:
         conn.close()
+

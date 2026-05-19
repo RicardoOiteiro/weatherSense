@@ -7,7 +7,7 @@ let selectedLon = null;
 
 let selectedPoint = null;
 
-const DISTANCIA_MAX_KM = 5;
+
 
 function distanciaKm(lat1, lon1, lat2, lon2) {
 
@@ -28,11 +28,6 @@ function distanciaKm(lat1, lon1, lat2, lon2) {
 }
 
 const pontosObservacao = [
-    {
-        name: "Leiria (Aeródromo)",
-        lat: 39.780553,
-        lon: -8.818166,
-    },
     {
         name: "São Pedro de Moel",
         lat: 39.766853,
@@ -60,19 +55,34 @@ const pontosObservacao = [
     },
     {
         name: "Bidoeira de Cima",
-        lat: 39.9033,
-        lon: -8.7527
+        lat: 39.842572,
+        lon: -8.743315
     },
     {
         name: "ESTG Leiria",
-        lat: 39.7345,
-        lon: -8.8209
+        lat: 39.735122,
+        lon: -8.821217
     },
     {
         name: "Pinhal de Leiria",
         lat: 39.8225,
         lon: -8.9450
-    }
+    },
+    {
+        name: "Pedrógão Grande",
+        lat: 39.919392,
+        lon: -8.133316
+    },
+    {
+        name: "Ansião",
+        lat: 39.910834,
+        lon: -8.434238
+    },
+    {
+        name: "Castanheira de Pêra",
+        lat: 40.002723,
+        lon: -8.205671
+    },
 
 ];
 
@@ -101,10 +111,12 @@ function adicionarPontosObservacao() {
         `);
 
         obsMarker.on('click', async function () {
+            console.log("PONTO CLICADO", ponto);
+
             selectedPoint = ponto;
 
-            selectedLat = ponto.lat.toFixed(6);
-            selectedLon = ponto.lon.toFixed(6);
+            selectedLat = Number(ponto.lat);
+            selectedLon = Number(ponto.lon);
 
             guardarLocalizacao(selectedLat, selectedLon);
             atualizarTextoLocalizacao();
@@ -118,16 +130,10 @@ function adicionarPontosObservacao() {
 }
 
 map.on('click', function (e) {
-    if (leiriaBounds && !leiriaBounds.contains(e.latlng)) {
-        document.getElementById('historico').innerHTML =
-            'Só são permitidas localizações dentro da área definida para o projecto.';
-        return;
-    }
-
     selectedPoint = null;
 
-    selectedLat = e.latlng.lat.toFixed(6);
-    selectedLon = e.latlng.lng.toFixed(6);
+    selectedLat = Number(e.latlng.lat.toFixed(6));
+    selectedLon = Number(e.latlng.lng.toFixed(6));
 
     guardarLocalizacao(selectedLat, selectedLon);
     atualizarTextoLocalizacao();
@@ -161,7 +167,6 @@ async function carregarHistorico() {
     const historicoDiv = document.getElementById('historico');
     const startDate = document.getElementById('histStartDate').value;
     const endDate = document.getElementById('histEndDate').value;
-    const type = document.getElementById('histType').value;
     const source = document.getElementById('histSource').value;
 
     historicoDiv.innerHTML = 'A carregar histórico...';
@@ -171,7 +176,6 @@ async function carregarHistorico() {
 
         if (startDate) params.append('start_date', startDate);
         if (endDate) params.append('end_date', endDate);
-        if (type) params.append('type', type);
         if (source) params.append('source', source);
 
         const response = await fetch(
@@ -186,103 +190,51 @@ async function carregarHistorico() {
             return;
         }
 
+        let filtrado = data.filter(item =>
+            item.requestId &&
+            item.requestId.startsWith('OBS-')
+        );
 
+        if (selectedPoint) {
+            filtrado = filtrado.filter(item => {
+                if (!item.requestedLocation) return false;
 
-        let filtrado = data;
+                const distancia = distanciaKm(
+                    Number(item.requestedLocation.latitude),
+                    Number(item.requestedLocation.longitude),
+                    selectedPoint.lat,
+                    selectedPoint.lon
+                );
 
-        // filtro por coordenadas
-        if (selectedLat && selectedLon) {
-
-            const latSelecionada = Number(selectedLat);
-            const lonSelecionada = Number(selectedLon);
-
-            filtrado = filtrado
-                .map(item => {
-
-                    if (!item.requestedLocation) return null;
-
-                    const latItem =
-                        Number(item.requestedLocation.latitude);
-
-                    const lonItem =
-                        Number(item.requestedLocation.longitude);
-
-                    const distancia = distanciaKm(
-                        latSelecionada,
-                        lonSelecionada,
-                        latItem,
-                        lonItem
-                    );
-
-                    const distanciaEstacao = item.location
-                        ? distanciaKm(
-                            latSelecionada,
-                            lonSelecionada,
-                            Number(item.location.latitude),
-                            Number(item.location.longitude)
-                        )
-                        : null;
-
-                    return {
-                        ...item,
-                        distanciaCalculada: distancia,
-                        distanciaEstacao
-                    };
-                })
-                .filter(item => item !== null);
-
-            filtrado.sort(
-                (a, b) =>
-                    a.distanciaCalculada - b.distanciaCalculada
-            );
-
-            filtrado = filtrado.filter(
-                item => item.distanciaCalculada <= DISTANCIA_MAX_KM
-            );
-
-            if (selectedPoint) {
-
-                filtrado = filtrado.filter(item => {
-
-                    const pontoMaisProximo =
-                        pontoMaisProximoDaEstacao(item);
-
-                    return (
-                        pontoMaisProximo &&
-                        pontoMaisProximo.name === selectedPoint.name
-                    );
-                });
-            }
+                return distancia <= 3;
+            });
         }
 
-        // filtro tipo
-        if (type === 'observation') {
-            filtrado = filtrado.filter(item =>
-                item.requestId &&
-                item.requestId.startsWith('OBS-')
-            );
-        }
-        else if (type === 'terrestrial') {
-            filtrado = filtrado.filter(item =>
-                item.requestId &&
-                item.requestId.startsWith('FOR_T-')
-            );
-        }
-        else if (type === 'marine') {
-            filtrado = filtrado.filter(item =>
-                item.requestId &&
-                item.requestId.startsWith('FOR_M-')
-            );
-        }
+        filtrado = filtrado.map(item => {
+            const baseLat = selectedPoint ? selectedPoint.lat : Number(selectedLat);
+            const baseLon = selectedPoint ? selectedPoint.lon : Number(selectedLon);
 
-        // filtro fonte
+            const distanciaEstacao = item.location
+                ? distanciaKm(
+                    baseLat,
+                    baseLon,
+                    Number(item.location.latitude),
+                    Number(item.location.longitude)
+                )
+                : null;
+
+            return {
+                ...item,
+                distanciaEstacao
+            };
+        });
+
         if (source) {
             filtrado = filtrado.filter(item =>
                 item.source === source
             );
         }
 
-        // filtro datas
         if (startDate) {
             filtrado = filtrado.filter(item =>
                 item.date >= startDate
@@ -307,69 +259,60 @@ async function carregarHistorico() {
 
             return dataB.localeCompare(dataA);
         });
+
         const agrupado = agruparPorRequestIdEFonte(filtrado);
 
         historicoDiv.innerHTML = '';
 
         for (const chave in agrupado) {
-
             const grupo = agrupado[chave];
             const primeira = grupo[0];
 
             const card = document.createElement('div');
-
             card.className = 'card';
 
             card.innerHTML = `
-    <div class="card-header">
+                <div class="card-header">
+                    <div>
+                        <h3>
+                            ${primeira.source.toUpperCase()}
+                            ·
+                            ${primeira.date} ${primeira.time}
+                        </h3>
 
-        <div>
-            <h3>
-                ${primeira.source.toUpperCase()}
-                ·
-                ${primeira.date} ${primeira.time}
-            </h3>
+                        <p class="request-id">
+                            Pedido: ${primeira.requestId}
+                        </p>
+                    </div>
 
-            <p class="request-id">
-                Pedido: ${primeira.requestId}
-            </p>
-        </div>
+                    <span class="badge">
+                        ${primeira.source}
+                    </span>
+                </div>
 
-        <span class="badge">
-            ${primeira.source}
-        </span>
+                <p class="location">
+                    <strong>Estação:</strong>
+                    ${primeira.location.name || 'Desconhecida'}
 
-    </div>
+                    <br>
 
-   <p class="location">
-    <strong>Estação:</strong>
-    ${primeira.location.name || 'Desconhecida'}
+                    <strong>Localização:</strong>
+                    ${primeira.location.latitude},
+                    ${primeira.location.longitude}
 
-    <br>
+                    <br>
 
-    <strong>Localização:</strong>
-    ${primeira.location.latitude},
-    ${primeira.location.longitude}
-
-    <br>
-    <strong>Distancia Estação KM:</strong>
-    ${primeira.distanciaEstacao?.toFixed(1) ?? '-'} km
-    <br>
-    <!--
-    <strong>Distância:</strong>
-    ${primeira.distanciaCalculada?.toFixed(1) ?? '-'} km 
-    -->
-</p>
-`;
+                    <strong>Distância Estação KM:</strong>
+                    ${primeira.distanciaEstacao?.toFixed(1) ?? '-'} km
+                </p>
+            `;
 
             const details = document.createElement('details');
-
             const summary = document.createElement('summary');
 
-            summary.textContent =
-                `Ver ${grupo.length} medições`;
-
+            summary.textContent = `Ver ${grupo.length} medições`;
             details.appendChild(summary);
+
             const ordemVariaveis = [
                 'Air temperature',
                 'Wind speed',
@@ -383,12 +326,8 @@ async function carregarHistorico() {
             ];
 
             grupo.sort((a, b) => {
-
-                const nomeA =
-                    a.variable.description || a.variable.fieldName;
-
-                const nomeB =
-                    b.variable.description || b.variable.fieldName;
+                const nomeA = a.variable.description || a.variable.fieldName;
+                const nomeB = b.variable.description || b.variable.fieldName;
 
                 const indexA = ordemVariaveis.indexOf(nomeA);
                 const indexB = ordemVariaveis.indexOf(nomeB);
@@ -397,110 +336,79 @@ async function carregarHistorico() {
             });
 
             grupo.forEach(item => {
-
                 const linha = document.createElement('div');
-
                 linha.className = 'measurement';
 
                 linha.innerHTML = `
-        <span>
-            ${formatarNomeVariavel(
-                    item.variable.description ||
-                    item.variable.fieldName
-                )}
-        </span>
+                    <span>
+                        ${formatarNomeVariavel(
+                            item.variable.description ||
+                            item.variable.fieldName
+                        )}
+                    </span>
 
-        <strong>
-            ${item.value ?? item.valueText ?? '-'}
-            ${formatarUnidade(item.variable.unit)}
-        </strong>
-    `;
+                    <strong>
+                        ${item.value ?? item.valueText ?? '-'}
+                        ${formatarUnidade(item.variable.unit)}
+                    </strong>
+                `;
 
                 details.appendChild(linha);
             });
 
-
-
             card.appendChild(details);
-
             historicoDiv.appendChild(card);
         }
 
-    }
-    catch (error) {
-
+    } catch (error) {
         historicoDiv.innerHTML =
             'Erro ao obter histórico: ' + error;
     }
 }
 
 function agruparPorRequestIdEFonte(data) {
-    return data.reduce((acc, item) => {
-        const chave = `${item.requestId}-${item.source}`;
+        return data.reduce((acc, item) => {
+            const chave = `${item.requestId}-${item.source}`;
 
-        if (!acc[chave]) {
-            acc[chave] = [];
-        }
+            if (!acc[chave]) {
+                acc[chave] = [];
+            }
 
-        acc[chave].push(item);
+            acc[chave].push(item);
 
-        return acc;
-    }, {});
-}
+            return acc;
+        }, {});
+    }
 
-function formatarNomeVariavel(nome) {
-    const nomes = {
-        'Air temperature': '🌡️ Temperatura',
-        'Wind speed': '💨 Vento',
-        'Wind direction (cardinal)': '🧭 Direção do vento',
-        'Wind direction (degrees)': '🧭 Direção em graus',
-        'Precipitation': '🌧️ Precipitação',
-        'Precipitation period': '⏱️ Período da precipitação',
-        'Relative humidity': '💧 Humidade',
-        'Atmospheric pressure': '📈 Pressão atmosférica',
-        'Visibility': '👁️ Visibilidade'
-    };
+    function formatarNomeVariavel(nome) {
+        const nomes = {
+            'Air temperature': '🌡️ Temperatura',
+            'Wind speed': '💨 Vento',
+            'Wind direction (cardinal)': '🧭 Direção do vento',
+            'Wind direction (degrees)': '🧭 Direção em graus',
+            'Precipitation': '🌧️ Precipitação',
+            'Precipitation period': '⏱️ Período da precipitação',
+            'Relative humidity': '💧 Humidade',
+            'Atmospheric pressure': '📈 Pressão atmosférica',
+            'Visibility': '👁️ Visibilidade'
+        };
 
-    return nomes[nome] || nome;
-}
+        return nomes[nome] || nome;
+    }
 
-function formatarUnidade(unidade) {
-    const unidades = {
-        'C': 'ºC',
-        'degrees': 'º',
-        'cardinal': '',
-        'hPa': 'hPa',
-        'km/h': 'km/h',
-        'mm': 'mm',
-        '%': '%',
-        'h': 'h'
-    };
+    function formatarUnidade(unidade) {
+        const unidades = {
+            'C': 'ºC',
+            'degrees': 'º',
+            'cardinal': '',
+            'hPa': 'hPa',
+            'km/h': 'km/h',
+            'mm': 'mm',
+            '%': '%',
+            'h': 'h'
+        };
 
-    return unidades[unidade] ?? unidade ?? '';
-}
+        return unidades[unidade] ?? unidade ?? '';
+    }
 
-function pontoMaisProximoDaEstacao(item) {
-    if (!item.requestedLocation) return null;
 
-    const latItem = Number(item.requestedLocation?.latitude);
-    const lonItem = Number(item.requestedLocation?.longitude);
-
-    let pontoMaisProximo = null;
-    let menorDistancia = Infinity;
-
-    pontosObservacao.forEach(ponto => {
-        const distancia = distanciaKm(
-            latItem,
-            lonItem,
-            ponto.lat,
-            ponto.lon
-        );
-
-        if (distancia < menorDistancia) {
-            menorDistancia = distancia;
-            pontoMaisProximo = ponto;
-        }
-    });
-
-    return pontoMaisProximo;
-}

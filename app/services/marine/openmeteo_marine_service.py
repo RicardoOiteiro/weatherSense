@@ -82,6 +82,10 @@ def get_openmeteo_marine(lat: float, lon: float):
         index=index,
        
     )
+    resultado["requestedLocation"] = {
+    "latitude": lat,
+    "longitude": lon
+}
     print("ANTES DE GRAVAR OPENMETEO MARINE NA BD")
 
     conn = get_connection()

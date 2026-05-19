@@ -103,6 +103,11 @@ def get_wwo_marine(lat: float, lon: float):
     date=primeiro_dia.get("date"),
     hourly=bloco_mais_proximo
 )
+    
+    resultado["requestedLocation"] = {
+    "latitude": lat,
+    "longitude": lon
+    }
     #print("WWO NORMALIZED:", resultado)
     #print("WWO META:", resultado.get("meta"))
     print("ANTES DE GRAVAR WWO MARINE NA BD")

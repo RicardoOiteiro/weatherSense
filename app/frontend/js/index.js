@@ -87,12 +87,6 @@ map.on('click', async function (e) {
     const output = document.getElementById('output');
     const fontesContainer = document.getElementById('fontesContainer');
 
-    if (leiriaBounds && !leiriaBounds.contains(e.latlng)) {
-        output.textContent =
-            'Só são permitidas localizações dentro da área definida para o projecto.';
-        return;
-    }
-
     const lat = e.latlng.lat.toFixed(6);
     const lon = e.latlng.lng.toFixed(6);
     const modo = obterModoSelecionado();

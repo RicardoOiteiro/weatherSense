@@ -171,6 +171,9 @@ def normalize_ipma_marine(requested_lat, requested_lon, location, forecast, dail
             #"globalIdLocal": location.get("globalIdLocal"),
             "distanceKm": location.get("distanceKm"),
             "distanceNm": location.get("distanceNm"),
+            "name": location.get("local"),
+            
+
         },
         "time": {
             "date": forecast.get("forecastDate"),
@@ -206,5 +209,9 @@ def normalize_ipma_marine(requested_lat, requested_lon, location, forecast, dail
         "current": {
             "currentSpeedMs": None,
             "currentDirectionDegrees": None,
+        },
+        "requestedLocation": {
+            "latitude": requested_lat,
+            "longitude": requested_lon,
         },
     }

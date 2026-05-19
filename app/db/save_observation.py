@@ -197,6 +197,11 @@ def save_observation(conn, normalized_data, request_id, context_type):
     observation = normalized_data.get("observation", {})
     time_data = normalized_data.get("time", {})
 
+    requested_location = normalized_data.get("requestedLocation", {})
+
+    requested_lat = str(requested_location.get("latitude"))
+    requested_lon = str(requested_location.get("longitude"))
+
     data_date = time_data.get("date")
     data_hour = time_data.get("hour")
 
@@ -222,14 +227,18 @@ def save_observation(conn, normalized_data, request_id, context_type):
         distance_km = station.get("distanceKm")
 
         for field_name, value in observation.items():
+
             if value is None:
                 continue
 
             if field_name in NUMERIC_VARIABLES:
+
                 if field_name == "precipitationPeriod":
                     value_numeric = float(str(value).replace("h", ""))
+
                 else:
                     value_numeric = value
+
                 value_text = None
 
             elif field_name in TEXT_VARIABLES:
@@ -253,6 +262,8 @@ def save_observation(conn, normalized_data, request_id, context_type):
                     AND id_variable = %s
                     AND id_context = %s
                     AND data_status = %s
+                    AND raw_json->'requestedLocation'->>'latitude' = %s
+                    AND raw_json->'requestedLocation'->>'longitude' = %s
                 """,
                 (
                     id_date_data,
@@ -262,12 +273,15 @@ def save_observation(conn, normalized_data, request_id, context_type):
                     id_variable,
                     id_context,
                     "observation",
+                    requested_lat,
+                    requested_lon,
                 )
             )
 
             existing = cursor.fetchone()
 
             if existing:
+
                 cursor.execute(
                     """
                     UPDATE measurement_facts
@@ -294,6 +308,7 @@ def save_observation(conn, normalized_data, request_id, context_type):
                 )
 
             else:
+
                 cursor.execute(
                     """
                     INSERT INTO measurement_facts (
