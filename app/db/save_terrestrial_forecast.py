@@ -219,6 +219,10 @@ def get_context_id(cursor, context_type):
 # =====================================================
 
 def save_terrestrial_forecast(conn, normalized_data, request_id, context_type="drone"):
+    requested_location = normalized_data.get("requestedLocation", {})
+    requested_lat = str(requested_location.get("latitude"))
+    requested_lon = str(requested_location.get("longitude"))
+
     location = normalized_data.get("location", {})
     time_data = normalized_data.get("time", {})
     weather = normalized_data.get("weather", {})
@@ -282,45 +286,103 @@ def save_terrestrial_forecast(conn, normalized_data, request_id, context_type="d
 
             cursor.execute(
                 """
-                INSERT INTO measurement_facts (
-                    request_id,
-                    value,
-                    value_text,
-                    raw_json,
-                    distance_km,
-                    data_status,
-                    id_date_request,
-                    id_hour_request,
-                    id_date_data,
-                    id_hour_data,
-                    id_location,
-                    id_source,
-                    id_variable,
-                    id_context
-                )
-                VALUES (
-                    %s, %s, %s, %s::jsonb, %s, %s,
-                    %s, %s, %s, %s,
-                    %s, %s, %s, %s
-                )
+                SELECT id_measurement
+                FROM measurement_facts
+                WHERE
+                    id_date_data = %s
+                    AND id_hour_data = %s
+                    AND id_location = %s
+                    AND id_source = %s
+                    AND id_variable = %s
+                    AND id_context = %s
+                    AND data_status = %s
+                    AND raw_json->'requestedLocation'->>'latitude' = %s
+                    AND raw_json->'requestedLocation'->>'longitude' = %s
+                LIMIT 1
                 """,
                 (
-                    request_id,
-                    value_numeric,
-                    value_text,
-                    raw_json,
-                    distance_km,
-                    "forecast",
-                    id_date_request,
-                    id_hour_request,
                     id_date_data,
                     id_hour_data,
                     id_location,
                     id_source,
                     id_variable,
                     id_context,
+                    "forecast",
+                    requested_lat,
+                    requested_lon,
                 )
             )
+
+            existing = cursor.fetchone()
+
+            if existing:
+                cursor.execute(
+                    """
+                    UPDATE measurement_facts
+                    SET
+                        request_id = %s,
+                        value = %s,
+                        value_text = %s,
+                        raw_json = %s::jsonb,
+                        distance_km = %s,
+                        id_date_request = %s,
+                        id_hour_request = %s
+                    WHERE id_measurement = %s
+                    """,
+                    (
+                        request_id,
+                        value_numeric,
+                        value_text,
+                        raw_json,
+                        distance_km,
+                        id_date_request,
+                        id_hour_request,
+                        existing[0],
+                    )
+                )
+
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO measurement_facts (
+                        request_id,
+                        value,
+                        value_text,
+                        raw_json,
+                        distance_km,
+                        data_status,
+                        id_date_request,
+                        id_hour_request,
+                        id_date_data,
+                        id_hour_data,
+                        id_location,
+                        id_source,
+                        id_variable,
+                        id_context
+                    )
+                    VALUES (
+                        %s, %s, %s, %s::jsonb, %s, %s,
+                        %s, %s, %s, %s,
+                        %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        request_id,
+                        value_numeric,
+                        value_text,
+                        raw_json,
+                        distance_km,
+                        "forecast",
+                        id_date_request,
+                        id_hour_request,
+                        id_date_data,
+                        id_hour_data,
+                        id_location,
+                        id_source,
+                        id_variable,
+                        id_context,
+                    )
+                )
 
             inserted_count += 1
 

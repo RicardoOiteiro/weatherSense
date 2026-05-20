@@ -140,6 +140,11 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
         global_id=data.get("globalIdLocal", global_id),
     )
 
+    resultado["requestedLocation"] = {
+    "latitude": lat,
+    "longitude": lon
+}
+
     print("ANTES DE GRAVAR IPMA TERRESTRIAL NA BD")
 
     conn = get_connection()

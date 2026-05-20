@@ -16,9 +16,18 @@ from app.db.save_terrestrial_forecast import save_terrestrial_forecast
 OPENMETEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 
 OPENMETEO_MODELS = [
-    "ecmwf_ifs",
-    "icon_eu",
-    "meteofrance_arpege_europe",
+    {
+        "api_model": "ecmwf_ifs",
+        "db_model": "ECMWF"
+    },
+    {
+        "api_model": "icon_eu",
+        "db_model": "ICON"
+    },
+    {
+        "api_model": "meteofrance_arpege_europe",
+        "db_model": "ARPEGE & AROME"
+    },
 ]
 
 # =====================================================
@@ -40,11 +49,11 @@ def get_nearest_hour_index(times: list[str]) -> int:
 # SERVICES
 # =====================================================
 
-def get_openmeteo_terrestrial(lat: float, lon: float, model: str):
+def get_openmeteo_terrestrial(lat: float, lon: float, model: dict):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "models": model,
+       "models": model["api_model"],
         "hourly": ",".join([
             "temperature_2m",
             "relative_humidity_2m",
@@ -90,15 +99,24 @@ def get_openmeteo_terrestrial(lat: float, lon: float, model: str):
     api_lon = data.get("longitude", lon)
     distance_km = round(haversine_km(lat, lon, api_lat, api_lon), 2)
 
-    return normalize_openmeteo_terrestrial(
-        lat=api_lat,
-        lon=api_lon,
-        distance_km=distance_km,
-        hourly=hourly,
-        daily=daily,
-        index=index,
-        model=model,
+    resultado = normalize_openmeteo_terrestrial(
+    lat=api_lat,
+    lon=api_lon,
+    distance_km=distance_km,
+    hourly=hourly,
+    daily=daily,
+    index=index,
+    model=model["db_model"],
     )
+
+    resultado["requestedLocation"] = {
+        "latitude": lat,
+        "longitude": lon
+    }
+
+    return resultado
+     
+     
 
 
 def get_openmeteo_terrestrial_all_models(lat: float, lon: float):
@@ -107,7 +125,7 @@ def get_openmeteo_terrestrial_all_models(lat: float, lon: float):
     for model in OPENMETEO_MODELS:
         resultado = get_openmeteo_terrestrial(lat, lon, model)
 
-        print(f"ANTES DE GRAVAR OPENMETEO {model} NA BD")
+        print(f"ANTES DE GRAVAR OPENMETEO {model['db_model']} NA BD")
 
         conn = get_connection()
 
@@ -120,13 +138,13 @@ def get_openmeteo_terrestrial_all_models(lat: float, lon: float):
             )
 
             print(
-                f"OPENMETEO {model} GRAVADO: "
+                f"OPENMETEO {model['db_model']} GRAVADO: "
                 f"{inserted_count} medições"
             )
 
         finally:
             conn.close()
 
-        resultados[model] = resultado
+        resultados[model["db_model"]] = resultado
 
     return resultados

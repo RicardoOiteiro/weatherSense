@@ -1,21 +1,20 @@
 <!DOCTYPE html>
 <html lang="pt">
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Previsão atual / historico maritimo</title>
+    <title>Previsão atual / histórico terrestre</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="css/style.css" />
 </head>
 
 <body>
-    <h1>Histórico da Previsão Marítima</h1>
+    <h1>Evolução das Previsões Terrestres</h1>
 
     <div class="top-menu">
         <a href="index.html">Mapa aberto</a>
-        <a class="active" href="history.html">Observação atual / Histórico</a>
+        <a href="history.html">Observação atual / Histórico</a>
         <a href="marine-history.html">Previsão atual / Histórico Maritimo</a>
         <a class="active" href="terrestrial-history.html">Previsão atual / histórico terrestre</a>
     </div>
@@ -23,42 +22,33 @@
     <div id="map"></div>
 
     <div class="container">
-        <h2>Histórico da Base de Dados</h2>
-
-        <div class="selected-location" id="historyLocation">
+        <div class="coords" id="historyLocation">
             Nenhuma localização selecionada no mapa.
         </div>
 
-        <div class="history-filters">
-            <input id="histStartDate" type="date">
-            <input id="histEndDate" type="date">
-
-            <select id="histType">
-                <option value="observation" selected>Observações</option>
-                <option value="terrestrial">Previsão terrestre</option>
-                <option value="marine">Previsão marítima</option>
-            </select>
+        <div class="controls">
+            <input type="date" id="histStartDate" />
+            <input type="date" id="histEndDate" />
 
             <select id="histSource">
                 <option value="">Todas as fontes</option>
-                <option value="ipma">IPMA</option>
-                <option value="foreca">Foreca</option>
                 <option value="openweather">OpenWeather</option>
                 <option value="open-meteo">Open-Meteo</option>
-                <option value="worldweatheronline">WorldWeatherOnline</option>
+                <option value="ipma">IPMA</option>
             </select>
 
             <button onclick="carregarHistorico()">Pesquisar</button>
         </div>
 
-        <div id="historico"></div>
+        <div id="historico">
+            Seleciona um ponto azul para ver a evolução das previsões terrestres.
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <script src="js/config.js"></script>
     <script src="js/map-common.js"></script>
-    <script src="js/marine-history.js?v=1"></script>
+    <script src="js/terrestrial-history.js"></script>
 </body>
-
 </html>

@@ -3,6 +3,9 @@ from app.services.observation.ipma_observation_service import get_ipma_observati
 from app.services.marine.openmeteo_marine_service import get_openmeteo_marine
 from app.services.marine.ipma_marine_service import get_ipma_marine_daily
 from app.services.marine.worldweather_service import get_wwo_marine
+from app.services.terrestrial.openweather_terrestrial_service import get_openweather_terrestrial
+from app.services.terrestrial.openmeteo_terrestrial_service import get_openmeteo_terrestrial_all_models
+from app.services.terrestrial.ipma_terrestrial_service import get_ipma_terrestrial
 
 LOCATIONS = [
     {
@@ -135,6 +138,30 @@ def run_collection():
 
         except Exception as e:
             print(f"ERRO IPMA ({name}): {e}")
+        
+        try:
+            get_openweather_terrestrial(lat, lon)
+            print("OPENWEATHER TERRESTRIAL OK")
+
+        except Exception as e:
+            print(f"ERRO OPENWEATHER TERRESTRIAL ({name}): {e}")
+        
+            # OPENMETEO TERRESTRIAL
+        try:
+            get_openmeteo_terrestrial_all_models(lat, lon)
+            print("OPENMETEO TERRESTRIAL OK")
+        
+        except Exception as e:
+            print(f"ERRO OPENMETEO TERRESTRIAL ({name}): {e}")
+        
+        try:
+            get_ipma_terrestrial(lat, lon)
+            print("IPMA TERRESTRIAL OK")
+            
+        except Exception as e:
+            print(f"ERRO IPMA TERRESTRIAL ({name}): {e}")
+
+
     print("\n=== INÍCIO DA RECOLHA MARÍTIMA ===")
 
     for location in MARINE_LOCATIONS:
@@ -167,6 +194,8 @@ def run_collection():
 
         except Exception as e:
             print(f"ERRO WWO MARINE ({name}): {e}")
+        
+    
 
         
 

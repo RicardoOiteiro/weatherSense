@@ -82,6 +82,8 @@ def get_openweather_terrestrial(lat: float, lon: float):
     # 🔹 BLOCO MAIS PRÓXIMO
     bloco = get_nearest_openweather_block(lista)
 
+    
+
     # 🔹 NORMALIZAR
     resultado = normalize_openweather_terrestrial(
         lat=lat,
@@ -91,6 +93,10 @@ def get_openweather_terrestrial(lat: float, lon: float):
             "city": data.get("city")
         }
     )
+    resultado["requestedLocation"] = {
+    "latitude": lat,
+    "longitude": lon
+    }
 
     print("ANTES DE GRAVAR OPENWEATHER TERRESTRIAL NA BD")
 
