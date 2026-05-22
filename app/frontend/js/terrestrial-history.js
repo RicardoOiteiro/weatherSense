@@ -186,9 +186,7 @@ async function carregarHistorico() {
                     <div>
                         <h3>
                             ${primeira.source.toUpperCase()}
-${primeira.model ? ` · ${primeira.model}` : ''}
-                            ·
-                            ${primeira.date} ${primeira.time}
+                            ${primeira.model ? ` · ${primeira.model}` : ''}
                         </h3>
 
                         <p class="request-id">
@@ -232,25 +230,67 @@ ${primeira.model ? ` · ${primeira.model}` : ''}
                     normalizarIndice(ordemVariaveis.indexOf(nomeB));
             });
 
+            grupo.sort((a, b) => {
+                const dataA = `${a.date} ${a.time}`;
+                const dataB = `${b.date} ${b.time}`;
+
+                return dataA.localeCompare(dataB);
+            });
+
+            const porHora = {};
+
             grupo.forEach(item => {
-                const linha = document.createElement('div');
-                linha.className = 'measurement';
 
-                linha.innerHTML = `
-                    <span>
-                        ${formatarNomeVariavel(
-                    item.variable.fieldName ||
-                    item.variable.description
-                )}
-                    </span>
+                const chaveHora = `${item.date} ${item.time}`;
 
-                    <strong>
-                        ${item.value ?? item.valueText ?? '-'}
-                        ${formatarUnidade(item.variable.unit)}
-                    </strong>
-                `;
+                if (!porHora[chaveHora]) {
+                    porHora[chaveHora] = [];
+                }
 
-                details.appendChild(linha);
+                porHora[chaveHora].push(item);
+            });
+
+            Object.entries(porHora).forEach(([hora, itemsHora]) => {
+
+                const blocoHora = document.createElement('div');
+                blocoHora.className = 'forecast-hour-block';
+
+                const tituloHora = document.createElement('h4');
+                tituloHora.textContent = hora;
+
+                blocoHora.appendChild(tituloHora);
+
+                itemsHora.sort((a, b) => {
+                    const nomeA = a.variable.fieldName || a.variable.description;
+                    const nomeB = b.variable.fieldName || b.variable.description;
+
+                    return normalizarIndice(ordemVariaveis.indexOf(nomeA)) -
+                        normalizarIndice(ordemVariaveis.indexOf(nomeB));
+                });
+
+                itemsHora.forEach(item => {
+
+                    const linha = document.createElement('div');
+                    linha.className = 'measurement';
+
+                    linha.innerHTML = `
+                        <span>
+                            ${formatarNomeVariavel(
+                                item.variable.fieldName ||
+                                item.variable.description
+                            )}
+                        </span>
+
+                        <strong>
+                            ${item.value ?? item.valueText ?? '-'}
+                            ${formatarUnidade(item.variable.unit)}
+                        </strong>
+                    `;
+
+                    blocoHora.appendChild(linha);
+                });
+
+                details.appendChild(blocoHora);
             });
 
             card.appendChild(details);
@@ -294,8 +334,6 @@ function agruparPorRequestIdFonteDataPonto(data) {
         const chave = [
             item.requestId,
             item.source,
-            item.date,
-            item.time,
             item.model || '',
             reqLat,
             reqLon

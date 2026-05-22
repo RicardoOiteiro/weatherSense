@@ -23,27 +23,6 @@ ENV_PATH = BASE_DIR / ".env"
 
 load_dotenv(dotenv_path=ENV_PATH)
 
-
-# =====================================================
-# HELPERS
-# =====================================================
-
-def get_nearest_openweather_block(lista: list[dict]) -> dict:
-    now = datetime.now()
-
-    def block_datetime(block):
-        dt_txt = block.get("dt_txt")
-        if not dt_txt:
-            return now
-
-        return datetime.fromisoformat(dt_txt)
-
-    return min(
-        lista,
-        key=lambda block: abs(block_datetime(block) - now)
-    )
-
-
 # =====================================================
 # SERVICES
 # =====================================================
@@ -79,44 +58,55 @@ def get_openweather_terrestrial(lat: float, lon: float):
             detail="Sem dados OpenWeather"
         )
 
-    # 🔹 BLOCO MAIS PRÓXIMO
-    bloco = get_nearest_openweather_block(lista)
+    # BLOCO MAIS PRÓXIMO
+    #bloco = get_nearest_openweather_block(lista)
 
-    
+    resultados = []
 
-    # 🔹 NORMALIZAR
-    resultado = normalize_openweather_terrestrial(
-        lat=lat,
-        lon=lon,
-        data={
-            "list": [bloco],  # passas só o bloco que interessa
-            "city": data.get("city")
+    for bloco in lista[:24]:
+
+        resultado = normalize_openweather_terrestrial(
+            lat=lat,
+            lon=lon,
+            data={
+                "list": [bloco],
+                "city": data.get("city")
+            }
+        )
+        resultado["requestedLocation"] = {
+            "latitude": lat,
+            "longitude": lon
         }
-    )
-    resultado["requestedLocation"] = {
-    "latitude": lat,
-    "longitude": lon
-    }
+
+        resultados.append(resultado)
 
     print("ANTES DE GRAVAR OPENWEATHER TERRESTRIAL NA BD")
 
     conn = get_connection()
 
     try:
-        inserted_count = save_terrestrial_forecast(
-            conn=conn,
-            normalized_data=resultado,
-            request_id=datetime.now().strftime("FOR_T-%y%m%d-%H%M"),
-            context_type="drone"
-        )
+
+        request_id = datetime.now().strftime("FOR_T-%y%m%d-%H%M")
+
+        total_inserted = 0
+
+        for resultado in resultados:
+
+            inserted_count = save_terrestrial_forecast(
+                conn=conn,
+                normalized_data=resultado,
+                request_id=request_id,
+                context_type="drone"
+            )
+
+            total_inserted += inserted_count
 
         print(
             f"OPENWEATHER TERRESTRIAL GRAVADO: "
-            f"{inserted_count} medições"
+            f"{total_inserted} medições"
         )
 
     finally:
         conn.close()
 
-
-    return resultado
+    return resultados

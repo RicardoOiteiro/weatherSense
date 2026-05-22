@@ -122,44 +122,60 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
             detail="Sem previsão terrestre devolvida pelo IPMA."
         )
 
-    if day_index >= len(forecasts):
-        day_index = 0
-
-    forecast = forecasts[day_index]
+    resultados = []
 
     aggregate_data = get_ipma_aggregate(global_id)
-    aggregate_current = get_nearest_aggregate_forecast(aggregate_data)
 
-    resultado = normalize_ipma_terrestrial(
-        requested_lat=lat,
-        requested_lon=lon,
-        location=location,
-        forecast=forecast,
-        aggregate_current=aggregate_current,
-        data_update=data.get("dataUpdate"),
-        global_id=data.get("globalIdLocal", global_id),
-    )
+    for forecast in forecasts[:24]:
 
-    resultado["requestedLocation"] = {
-    "latitude": lat,
-    "longitude": lon
-}
+        aggregate_current = get_nearest_aggregate_forecast(aggregate_data)
+
+        resultado = normalize_ipma_terrestrial(
+            requested_lat=lat,
+            requested_lon=lon,
+            location=location,
+            forecast=forecast,
+            aggregate_current=aggregate_current,
+            data_update=data.get("dataUpdate"),
+            global_id=data.get("globalIdLocal", global_id),
+        )
+
+        resultado["requestedLocation"] = {
+            "latitude": lat,
+            "longitude": lon
+        }
+
+        resultados.append(resultado)
+        
+    
 
     print("ANTES DE GRAVAR IPMA TERRESTRIAL NA BD")
 
     conn = get_connection()
 
     try:
-        inserted_count = save_terrestrial_forecast(
-            conn=conn,
-            normalized_data=resultado,
-            request_id=datetime.now().strftime("FOR_T-%y%m%d-%H%M"),
-            context_type="drone"
-        )
 
-        print(f"IPMA TERRESTRIAL GRAVADO: {inserted_count} medições")
+        request_id = datetime.now().strftime("FOR_T-%y%m%d-%H%M")
+
+        total_inserted = 0
+
+        for resultado in resultados:
+
+            inserted_count = save_terrestrial_forecast(
+                conn=conn,
+                normalized_data=resultado,
+                request_id=request_id,
+                context_type="drone"
+            )
+
+            total_inserted += inserted_count
+
+        print(
+            f"IPMA TERRESTRIAL GRAVADO: "
+            f"{total_inserted} medições"
+        )
 
     finally:
         conn.close()
 
-    return resultado
+    return resultados

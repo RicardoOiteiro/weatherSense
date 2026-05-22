@@ -93,28 +93,37 @@ def get_openmeteo_terrestrial(lat: float, lon: float, model: dict):
             detail=f"Sem dados terrestres devolvidos pelo Open-Meteo para o modelo {model}."
         )
 
-    index = get_nearest_hour_index(hourly["time"])
+    current_index = get_nearest_hour_index(hourly["time"])
 
     api_lat = data.get("latitude", lat)
     api_lon = data.get("longitude", lon)
     distance_km = round(haversine_km(lat, lon, api_lat, api_lon), 2)
 
-    resultado = normalize_openmeteo_terrestrial(
-    lat=api_lat,
-    lon=api_lon,
-    distance_km=distance_km,
-    hourly=hourly,
-    daily=daily,
-    index=index,
-    model=model["db_model"],
-    )
+    resultados = []
 
-    resultado["requestedLocation"] = {
-        "latitude": lat,
-        "longitude": lon
-    }
+    for index in range(
+        current_index,
+        min(current_index + 24, len(hourly["time"]))
+    ):
 
-    return resultado
+        resultado = normalize_openmeteo_terrestrial(
+            lat=api_lat,
+            lon=api_lon,
+            distance_km=distance_km,
+            hourly=hourly,
+            daily=daily,
+            index=index,
+            model=model["db_model"],
+        )
+
+        resultado["requestedLocation"] = {
+            "latitude": lat,
+            "longitude": lon
+        }
+
+        resultados.append(resultado)
+
+    return resultados
      
      
 
@@ -130,16 +139,24 @@ def get_openmeteo_terrestrial_all_models(lat: float, lon: float):
         conn = get_connection()
 
         try:
-            inserted_count = save_terrestrial_forecast(
-                conn=conn,
-                normalized_data=resultado,
-                request_id=datetime.now().strftime("FOR_T-%y%m%d-%H%M"),
-                context_type="drone"
-            )
+            request_id = datetime.now().strftime("FOR_T-%y%m%d-%H%M")
+
+            total_inserted = 0
+
+            for previsao in resultado:
+
+                inserted_count = save_terrestrial_forecast(
+                    conn=conn,
+                    normalized_data=previsao,
+                    request_id=request_id,
+                    context_type="drone"
+                )
+
+                total_inserted += inserted_count
 
             print(
                 f"OPENMETEO {model['db_model']} GRAVADO: "
-                f"{inserted_count} medições"
+                f"{total_inserted} medições"
             )
 
         finally:

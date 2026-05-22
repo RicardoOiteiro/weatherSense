@@ -172,3 +172,16 @@ summary {
     width: 100%;
 }
 
+.forecast-hour-block {
+    margin-top: 16px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fafafa;
+}
+
+.forecast-hour-block h4 {
+    margin-bottom: 10px;
+    color: #2563eb;
+}
+
