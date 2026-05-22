@@ -76,7 +76,7 @@ const pontosObservacao = [
     {
         name: "Ansião",
         lat: 39.910834,
-        lon: -8.434238
+        lon: -8.434238,
     },
     {
         name: "Castanheira de Pêra",
