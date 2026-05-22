@@ -1666,17 +1666,9 @@ body::before {
     color: var(--text-primary);
 }
 
-.operational-note {
-    padding: 14px 18px 6px;
-    font-size: 0.85rem;
-    color: var(--text-primary);
-}
-
-.operational-source {
-    padding: 0 18px 16px;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
+/* ================================
+   Operational Analysis Cards
+   ================================ */
 
 .obs-value.safe {
     color: var(--primary-green);
@@ -1690,126 +1682,36 @@ body::before {
     color: #ef4444;
 }
 
-
-.status-card {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 220px;
-    padding: 20px;
-}
-
-.status-card-content {
-    text-align: center;
-}
-
-.status-card-content i {
-    font-size: 2rem;
-    margin-bottom: 18px;
-}
-
-.status-card-content h4 {
-    font-size: 1rem;
-    line-height: 1.5;
-    font-weight: 600;
-}
-
-.drone-status-card i {
-    color: var(--primary-green);
-}
-
-.drone-status-card h4 {
-    color: var(--primary-green);
-}
-
-.fire-status-card i {
-    color: #ffa500;
-}
-
-.fire-status-card h4 {
-    color: #ffa500;
-}
-
-.status-card {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 220px;
-    padding: 24px;
-}
-
-.status-card-content {
-    text-align: center;
-}
-
-.status-card-content i {
-    font-size: 2.2rem;
-    margin-bottom: 18px;
-}
-
-.status-card-content h4 {
-    font-size: 1rem;
-    line-height: 1.5;
-    font-weight: 600;
-}
-
-.status-card.safe {
-    border: 1px solid rgba(0, 255, 136, 0.35);
-}
-
-.status-card.safe i,
-.status-card.safe h4 {
-    color: var(--primary-green);
-}
-
-.status-card.warning {
-    border: 1px solid rgba(255, 165, 0, 0.35);
-}
-
-.status-card.warning i,
-.status-card.warning h4 {
-    color: #ffa500;
-}
-
-.status-card.danger {
-    border: 1px solid rgba(255, 80, 80, 0.35);
-}
-
-.status-card.danger i,
-.status-card.danger h4 {
-    color: #ff5050;
-}
-
-
 .status-card {
     padding: 0;
     overflow: hidden;
-    min-height: 240px;
-}
-
-.status-card {
-    min-height: 240px;
+    min-height: 320px;
 }
 
 .status-split {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    min-height: 240px;
+    min-height: 320px;
+    height: 100%;
+    align-items: stretch;
 }
 
 .status-side {
+    min-height: 320px;
+    height: 100%;
+
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 28px;
+
+    padding: 36px 28px;
+    box-sizing: border-box;
     text-align: center;
-    min-height: 240px;
-    
 }
 
 .status-side i {
-    font-size: 2rem;
+    font-size: 2.2rem;
     margin-bottom: 18px;
 }
 
@@ -1860,25 +1762,4 @@ body::before {
 
 .fire-side.fire-danger {
     background: rgba(255, 80, 80, 0.08);
-}
-
-.status-split {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-
-    height: 100%;
-    align-items: stretch;
-}
-
-.status-side {
-    min-height: 320px;
-    height: 100%;
-
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-
-    padding: 36px 28px;
-    box-sizing: border-box;
 }
