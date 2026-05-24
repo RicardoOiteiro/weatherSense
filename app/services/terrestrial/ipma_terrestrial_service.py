@@ -126,16 +126,33 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
 
     aggregate_data = get_ipma_aggregate(global_id)
 
-    for forecast in forecasts[:24]:
+    agora = datetime.now()
 
-        aggregate_current = get_nearest_aggregate_forecast(aggregate_data)
+    forecasts_futuros = []
+
+    for item in aggregate_data:
+
+        data_prev = item.get("dataPrev")
+
+        if not data_prev:
+            continue
+
+        try:
+            data_prev_dt = datetime.fromisoformat(data_prev)
+
+            if data_prev_dt >= agora:
+                forecasts_futuros.append(item)
+
+        except ValueError:
+            continue
+
+    for aggregate_forecast in forecasts_futuros[:24]:
 
         resultado = normalize_ipma_terrestrial(
             requested_lat=lat,
             requested_lon=lon,
             location=location,
-            forecast=forecast,
-            aggregate_current=aggregate_current,
+            aggregate_current=aggregate_forecast,
             data_update=data.get("dataUpdate"),
             global_id=data.get("globalIdLocal", global_id),
         )

@@ -150,12 +150,12 @@ def normalize_ipma_terrestrial(
     requested_lat: float,
     requested_lon: float,
     location: dict,
-    forecast: dict,
     aggregate_current: dict,
     data_update: str,
     global_id
 ):
-    data_hora = aggregate_current.get("dataPrev") or forecast.get("dataPrev")
+    
+    data_hora = aggregate_current.get("dataPrev")
     date, hour = split_date_hour(data_hora)
 
     return {
@@ -182,10 +182,10 @@ def normalize_ipma_terrestrial(
         },
         "weather": {
             "temperatureC": para_float(aggregate_current.get("tMed")),
-            "temperatureMinC": para_float(forecast.get("tMin")),
-            "temperatureMaxC": para_float(forecast.get("tMax")),
+            "temperatureMinC": None,
+            "temperatureMaxC": None,    
             "feelsLikeTemperatureC": para_float(aggregate_current.get("utci")),
-            "pressureHpa": para_float(aggregate_current.get("hR")),
+            "humidityPercent": para_float(aggregate_current.get("hR")),
             "pressureHpa": None,
             "cloudCoverPercent": None,
             "visibilityKm": None,
@@ -197,16 +197,12 @@ def normalize_ipma_terrestrial(
             "windDirectionDegrees": None,
             "windDirectionCardinal": (
                 aggregate_current.get("ddVento")
-                or forecast.get("ddVento")
-                or forecast.get("predWindDir")
             ),
         },
         "precipitation": {
             "precipitationMm": None,
             "precipitationProbabilityPercent": para_float(
                 aggregate_current.get("probabilidadePrecipita")
-                or forecast.get("probabilidadePrecipita")
-                or forecast.get("precipitaProb")
             ),
             #"intensidadePrecipitacao": (
             #    aggregate_current.get("idIntensidadePrecipita")
@@ -247,7 +243,8 @@ def normalize_openweather_terrestrial(lat, lon, data):
         return None
 
     # 🔹 escolher bloco mais próximo (igual à tua lógica WWO)
-    bloco = get_nearest_openweather_block(lista) #Assim já escolhe automaticamente o bloco de 3h mais próximo da hora atual.
+    # get_nearest_openweather_block(lista) #Assim já escolhe automaticamente o bloco de 3h mais próximo da hora atual.
+    bloco = lista[0]
 
     data_hora = bloco.get("dt_txt")
     date, hour = split_date_hour(data_hora)
