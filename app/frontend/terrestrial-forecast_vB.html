@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeatherSense — Previsão Terrestre | Leiria</title>
+    <link rel="stylesheet" href="css/terrestrial-forecast_vB.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <!-- Top Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <i class="fas fa-cloud-sun-rain"></i>
+            <span class="brand-text">WeatherSense</span>
+            <span class="brand-badge">LEIRIA</span>
+        </div>
+        <div class="navbar-menu">
+            <a href="#" class="nav-item">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>Mapa / APIs</span>
+            </a>
+            <a href="observations_vB.html" class="nav-item">
+                <i class="fas fa-eye"></i>
+                <span>Observações</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-water"></i>
+                <span>Previsão Marítima</span>
+            </a>
+            <a href="terrestrial-forecast_vB.html" class="nav-item active">
+                <i class="fas fa-mountain-sun"></i>
+                <span>Previsão Terrestre</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Dados e Análises</span>
+            </a>
+        </div>
+        <div class="navbar-actions">
+            <button class="btn-icon" title="Notificações">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge">3</span>
+            </button>
+            <button class="btn-icon" title="Definições">
+                <i class="fas fa-cog"></i>
+            </button>
+            <div class="user-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+        </div>
+    </nav>
+
+    <main class="dashboard">
+        <!-- Header / Forecast Context Section -->
+        <!-- Filters Section -->
+        <section class="filters-section">
+            <div class="filters-header">
+                <h2><i class="fas fa-filter"></i> Filtros de Pesquisa</h2>
+                <div class="filters-actions">
+                    <button class="btn btn-secondary" id="clearFilters">
+                        <i class="fas fa-eraser"></i> Limpar
+                    </button>
+                    <button class="btn btn-primary" id="applyFilters">
+                        <i class="fas fa-search"></i> Aplicar
+                    </button>
+                </div>
+            </div>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="startDate">
+                        <i class="fas fa-calendar-alt"></i> Data Inicial
+                    </label>
+                    <input type="date" id="startDate" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <label for="endDate">
+                        <i class="fas fa-calendar-check"></i> Data Final
+                    </label>
+                    <input type="date" id="endDate" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <label for="timeFilter">
+                        <i class="fas fa-clock"></i> Hora
+                    </label>
+                    <select id="timeFilter" class="filter-input">
+                        <option value="">Todas as horas</option>
+                        <option value="00:00">00:00</option>
+                        <option value="03:00">03:00</option>
+                        <option value="06:00">06:00</option>
+                        <option value="09:00">09:00</option>
+                        <option value="12:00">12:00</option>
+                        <option value="15:00">15:00</option>
+                        <option value="18:00">18:00</option>
+                        <option value="21:00">21:00</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="locationFilter">
+                        <i class="fas fa-map-marker-alt"></i> Localização
+                    </label>
+                    <select id="locationFilter" class="filter-input">
+                        <option value="">Todas as localizações</option>
+                        <option value="leiria">Leiria</option>
+                        <option value="marinha-grande">Marinha Grande</option>
+                        <option value="pombal">Pombal</option>
+                        <option value="caldas-rainha">Caldas da Rainha</option>
+                        <option value="peniche">Peniche</option>
+                        <option value="nazare">Nazaré</option>
+                        <option value="alcobaca">Alcobaça</option>
+                        <option value="batalha">Batalha</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="sourceFilter">
+                        <i class="fas fa-database"></i> Fonte
+                    </label>
+                    <select id="sourceFilter" class="filter-input">
+                        <option value="">Todas as fontes</option>
+                        <option value="ipma">IPMA</option>
+                        <option value="foreca">Foreca</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="variableFilter">
+                        <i class="fas fa-thermometer-half"></i> Variável
+                    </label>
+                    <select id="variableFilter" class="filter-input">
+                        <option value="">Todas as variáveis</option>
+                        <option value="temperature">Temperatura</option>
+                        <option value="humidity">Humidade</option>
+                        <option value="wind_speed">Velocidade do Vento</option>
+                        <option value="precipitation">Precipitação</option>
+                        <option value="pressure">Pressão</option>
+                        <option value="visibility">Visibilidade</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Map and Selected Location Section -->
+        <section class="main-content">
+            <div class="map-container glass-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-map"></i> Mapa Interativo — Distrito de Leiria</h3>
+                    <div class="map-controls">
+                        <button class="btn-icon" id="zoomIn" title="Aproximar">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="btn-icon" id="zoomOut" title="Afastar">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button class="btn-icon" id="centerMap" title="Centrar">
+                            <i class="fas fa-crosshairs"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="map"></div>
+                <div class="map-legend">
+                    <div class="legend-title">Modelos de Previsão</div>
+                    <div class="legend-items">
+                        <div class="legend-item">
+                            <span class="legend-marker openmeteo"></span>
+                            <span>Open-Meteo</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-marker ipma"></span>
+                            <span>IPMA</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-marker openweather"></span>
+                            <span>OpenWeather</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-marker selected"></span>
+                            <span>Selecionado</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="location-panel glass-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-location-dot"></i> Localização da Previsão</h3>
+                    <span class="status-badge active">
+                        <i class="fas fa-circle"></i> Activo
+                    </span>
+                </div>
+                <div class="location-details">
+                    <div class="location-main">
+                        <div class="location-icon">
+                            <i class="fas fa-map-pin"></i>
+                        </div>
+                        <div class="location-info">
+                            <h4 id="selectedLocationName">Leiria</h4>
+                            <p id="selectedLocationCoords">39.7436° N, 8.8071° W</p>
+                        </div>
+                    </div>
+                    <div class="location-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Altitude</span>
+                            <span class="stat-value" id="locationAltitude">50 m</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Horizonte</span>
+                            <span class="stat-value">72h</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Modelos</span>
+                            <span class="stat-value">5</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Resolução</span>
+                            <span class="stat-value">3h</span>
+                        </div>
+                    </div>
+                    <div class="available-models">
+                        <span class="model-badge openmeteo">ICON</span>
+                        <span class="model-badge openmeteo">ECMWF</span>
+                        <span class="model-badge openmeteo">ARPEGE</span>
+                        <span class="model-badge ipma-badge">IPMA</span>
+                        <span class="model-badge openweather-badge">OpenWeather</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Forecast Model Overview Cards -->
+        <section class="models-section">
+            <div class="section-header">
+                <h2><i class="fas fa-cubes"></i> Modelos de Previsão</h2>
+                <span class="section-badge">5 modelos ativos</span>
+            </div>
+            <div class="models-grid">
+                <!-- Open-Meteo Provider Card -->
+                <div class="provider-card glass-card openmeteo-provider">
+                    <div class="provider-header">
+                        <div class="provider-info">
+                            <span class="provider-icon openmeteo"><i class="fas fa-globe"></i></span>
+                            <div>
+                                <h4>Open-Meteo</h4>
+                                <span class="provider-subtitle">3 modelos</span>
+                            </div>
+                        </div>
+                        <span class="status-indicator active"></span>
+                    </div>
+                    <div class="provider-models">
+                        <!-- ICON Model -->
+                        <div class="model-card">
+                            <div class="model-header">
+                                <span class="model-name">ICON</span>
+                                <span class="model-quality high"><i class="fas fa-star"></i> 92%</span>
+                            </div>
+                            <div class="model-data">
+                                <div class="model-metric">
+                                    <i class="fas fa-temperature-half"></i>
+                                    <span id="iconTemp">23.5°C</span>
+                                </div>
+                                <div class="model-metric">
+                                    <i class="fas fa-wind"></i>
+                                    <span id="iconWind">18 km/h</span>
+                                </div>
+                                <div class="model-metric">
+                                    <i class="fas fa-droplet"></i>
+                                    <span id="iconPrecip">15%</span>
+                                </div>
+                                <div class="model-metric">
+                                    <i class="fas fa-cloud"></i>
+                                    <span id="iconCloud">40%</span>
+                                </div>
+                            </div>
+                            <div class="model-footer">
+                                <span class="model-time"><i class="fas fa-clock"></i> 14:00</span>
+                            </div>
+                        </div>
+                        <!-- ECMWF Model -->
+                        <div class="model-card">
+                            <div class="model-header">
+                                <span class="model-name">ECMWF</span>
+                                <span class="model-quality high"><i class="fas fa-star"></i> 95%</span>
+                            </div>
+                            <div class="model-data">
+                                <div class="model-metric">
+                                    <i class="fas fa-temperature-half"></i>
+                                    <span id="ecmwfTemp">24.1°C</span>
+                                </div>
+                                <div class="model-metric">
+                                    <i class="fas fa-wind"></i>
+                                    <span id="ecmwfWind">16 km/h</span>
+                                </div>
+                                <div class="model-metric">
+                                    <i class="fas fa-droplet"></i>
+                                    <span id="ecmwfPrecip">12%</span>
+                                </div>
+                                <div class="model-metric">
+                                    <i class="fas fa-cloud"></i>
+                                    <span id="ecmwfCloud">35%</span>
+                                </div>
+                            </div>
+                            <div class="model-footer">
+                                <span class="model-time"><i class="fas fa-clock"></i> 14:00</span>
+                            </div>
+                        </div>
+                        <!-- ARPEGE Model -->
+                        <div class="model-card">
+                            <div class="model-header">
+                                <span class="model-name">ARPEGE</span>
+                                <span class="model-quality medium"><i class="fas fa-star"></i> 88%</span>
+                            </div>
+                            <div class="model-data">
+                                <div class="model-metric">
+                                    <i class="fas fa-temperature-half"></i>
+                                    <span id="arpegeTemp">23.8°C</span>
+                                </div>
+                                <div class="model-metric">
+                                    <i class="fas fa-wind"></i>
+                                    <span id="arpegeWind">20 km/h</span>
+                                </div>
+                                <div class="model-metric">
+                                    <i class="fas fa-droplet"></i>
+                                    <span id="arpegePrecip">18%</span>
+                                </div>
+                                <div class="model-metric">
+                                    <i class="fas fa-cloud"></i>
+                                    <span id="arpegeCloud">45%</span>
+                                </div>
+                            </div>
+                            <div class="model-footer">
+                                <span class="model-time"><i class="fas fa-clock"></i> 14:00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IPMA Model Card -->
+                <div class="model-standalone glass-card ipma-standalone">
+                    <div class="model-standalone-header">
+                        <div class="model-standalone-info">
+                            <span class="provider-icon ipma"><i class="fas fa-landmark"></i></span>
+                            <div>
+                                <h4>IPMA</h4>
+                                <span class="provider-subtitle">Instituto Português</span>
+                            </div>
+                        </div>
+                        <div class="model-standalone-quality">
+                            <span class="model-quality high"><i class="fas fa-star"></i> 94%</span>
+                            <span class="status-indicator active"></span>
+                        </div>
+                    </div>
+                    <div class="model-standalone-data">
+                        <div class="model-metric-large">
+                            <i class="fas fa-temperature-half"></i>
+                            <div class="metric-content">
+                                <span class="metric-value" id="ipmaTemp">24.2°C</span>
+                                <span class="metric-label">Temperatura</span>
+                            </div>
+                        </div>
+                        <div class="model-metric-large">
+                            <i class="fas fa-wind"></i>
+                            <div class="metric-content">
+                                <span class="metric-value" id="ipmaWind">17 km/h</span>
+                                <span class="metric-label">Vento</span>
+                            </div>
+                        </div>
+                        <div class="model-metric-large">
+                            <i class="fas fa-burst"></i>
+                            <div class="metric-content">
+                                <span class="metric-value" id="ipmaGust">28 km/h</span>
+                                <span class="metric-label">Rajada</span>
+                            </div>
+                        </div>
+                        <div class="model-metric-large">
+                            <i class="fas fa-droplet"></i>
+                            <div class="metric-content">
+                                <span class="metric-value" id="ipmaPrecip">10%</span>
+                                <span class="metric-label">Precipitação</span>
+                            </div>
+                        </div>
+                        <div class="model-metric-large">
+                            <i class="fas fa-cloud"></i>
+                            <div class="metric-content">
+                                <span class="metric-value" id="ipmaCloud">30%</span>
+                                <span class="metric-label">Nebulosidade</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="model-standalone-footer">
+                        <span class="model-time"><i class="fas fa-clock"></i> Previsão: 14:00</span>
+                    </div>
+                </div>
+
+                <!-- OpenWeather Model Card -->
+                <div class="model-standalone glass-card openweather-standalone">
+                    <div class="model-standalone-header">
+                        <div class="model-standalone-info">
+                            <span class="provider-icon openweather"><i class="fas fa-cloud-sun"></i></span>
+                            <div>
+                                <h4>OpenWeather</h4>
+                                <span class="provider-subtitle">API Global</span>
+                            </div>
+                        </div>
+                        <div class="model-standalone-quality">
+                            <span class="model-quality medium"><i class="fas fa-star"></i> 87%</span>
+                            <span class="status-indicator active"></span>
+                        </div>
+                    </div>
+                    <div class="model-standalone-data">
+                        <div class="model-metric-large">
+                            <i class="fas fa-temperature-half"></i>
+                            <div class="metric-content">
+                                <span class="metric-value" id="owTemp">23.9°C</span>
+                                <span class="metric-label">Temperatura</span>
+                            </div>
+                        </div>
+                        <div class="model-metric-large">
+                            <i class="fas fa-wind"></i>
+                            <div class="metric-content">
+                                <span class="metric-value" id="owWind">19 km/h</span>
+                                <span class="metric-label">Vento</span>
+                            </div>
+                        </div>
+                        <div class="model-metric-large">
+                            <i class="fas fa-burst"></i>
+                            <div class="metric-content">
+                                <span class="metric-value" id="owGust">32 km/h</span>
+                                <span class="metric-label">Rajada</span>
+                            </div>
+                        </div>
+                        <div class="model-metric-large">
+                            <i class="fas fa-droplet"></i>
+                            <div class="metric-content">
+                                <span class="metric-value" id="owPrecip">20%</span>
+                                <span class="metric-label">Precipitação</span>
+                            </div>
+                        </div>
+                        <div class="model-metric-large">
+                            <i class="fas fa-cloud"></i>
+                            <div class="metric-content">
+                                <span class="metric-value" id="owCloud">42%</span>
+                                <span class="metric-label">Nebulosidade</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="model-standalone-footer">
+                        <span class="model-time"><i class="fas fa-clock"></i> Previsão: 14:00</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Current Forecast Block -->
+        <section class="current-forecast-section">
+            <div class="section-header">
+                <h2><i class="fas fa-cloud-sun"></i> Previsão Atual</h2>
+                <span class="forecast-label">Próximas 3 horas</span>
+            </div>
+            <div class="current-forecast-card glass-card">
+                <div class="forecast-main">
+                    <div class="forecast-primary">
+                        <div class="forecast-icon">
+                            <i class="fas fa-sun"></i>
+                        </div>
+                        <div class="forecast-temp">
+                            <span class="temp-value" id="currentTemp">24</span>
+                            <span class="temp-unit">°C</span>
+                        </div>
+                        <div class="forecast-minmax">
+                            <span class="temp-min"><i class="fas fa-arrow-down"></i> <span
+                                    id="currentMin">18°C</span></span>
+                            <span class="temp-max"><i class="fas fa-arrow-up"></i> <span
+                                    id="currentMax">26°C</span></span>
+                        </div>
+                    </div>
+                    <div class="forecast-details">
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <span class="detail-icon"><i class="fas fa-droplet"></i></span>
+                                <div class="detail-content">
+                                    <span class="detail-label">Humidade</span>
+                                    <span class="detail-value" id="currentHumidity">62%</span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-icon"><i class="fas fa-gauge-high"></i></span>
+                                <div class="detail-content">
+                                    <span class="detail-label">Pressão</span>
+                                    <span class="detail-value" id="currentPressure">1015 hPa</span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-icon"><i class="fas fa-cloud"></i></span>
+                                <div class="detail-content">
+                                    <span class="detail-label">Nebulosidade</span>
+                                    <span class="detail-value" id="currentCloud">35%</span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-icon"><i class="fas fa-eye"></i></span>
+                                <div class="detail-content">
+                                    <span class="detail-label">Visibilidade</span>
+                                    <span class="detail-value" id="currentVisibility">18 km</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <span class="detail-icon"><i class="fas fa-wind"></i></span>
+                                <div class="detail-content">
+                                    <span class="detail-label">Vento</span>
+                                    <span class="detail-value" id="currentWind">18 km/h NW</span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-icon"><i class="fas fa-burst"></i></span>
+                                <div class="detail-content">
+                                    <span class="detail-label">Rajada</span>
+                                    <span class="detail-value" id="currentGust">28 km/h</span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-icon"><i class="fas fa-compass"></i></span>
+                                <div class="detail-content">
+                                    <span class="detail-label">Direção</span>
+                                    <span class="detail-value" id="currentWindDir">315° NW</span>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-icon"><i class="fas fa-cloud-rain"></i></span>
+                                <div class="detail-content">
+                                    <span class="detail-label">Prob. Precipitação</span>
+                                    <span class="detail-value" id="currentPrecipProb">15%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="forecast-time-badge">
+                    <i class="fas fa-calendar-day"></i>
+                    <span id="currentForecastTime">Hoje, 14:00 - 17:00</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Future Forecast Evolution Section -->
+        <section class="evolution-section">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-line"></i> Evolução Multi-Modelo</h2>
+                <div class="chart-controls">
+                    <div class="variable-selector">
+                        <button class="var-btn active" data-variable="temperature">Temperatura</button>
+                        <button class="var-btn" data-variable="humidity">Humidade</button>
+                        <button class="var-btn" data-variable="windSpeed">Vento</button>
+                        <button class="var-btn" data-variable="windGust">Rajada</button>
+                        <button class="var-btn" data-variable="precipitation">Precipitação</button>
+                        <button class="var-btn" data-variable="cloudCover">Nebulosidade</button>
+                        <button class="var-btn" data-variable="pressure">Pressão</button>
+                    </div>
+                    <div class="time-range-buttons">
+                        <button class="range-btn active" data-range="24">24h</button>
+                        <button class="range-btn" data-range="48">48h</button>
+                        <button class="range-btn" data-range="72">72h</button>
+                        <button class="range-btn" data-range="120">5 dias</button>
+                    </div>
+                </div>
+            </div>
+            <div class="evolution-chart-container glass-card">
+                <canvas id="evolutionChart"></canvas>
+                <div class="chart-legend">
+                    <div class="legend-item"><span class="legend-color icon"></span> ICON</div>
+                    <div class="legend-item"><span class="legend-color ecmwf"></span> ECMWF</div>
+                    <div class="legend-item"><span class="legend-color arpege"></span> ARPEGE</div>
+                    <div class="legend-item"><span class="legend-color ipma"></span> IPMA</div>
+                    <div class="legend-item"><span class="legend-color openweather"></span> OpenWeather</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Multi-Model Comparison Analytics -->
+        <section class="analytics-section">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-bar"></i> Análise Multi-Modelo</h2>
+            </div>
+            <div class="analytics-grid">
+                <div class="analytics-summary">
+                    <div class="summary-card glass-card">
+                        <div class="summary-icon avg"><i class="fas fa-calculator"></i></div>
+                        <div class="summary-content">
+                            <span class="summary-value" id="avgValue">23.9°C</span>
+                            <span class="summary-label">Média dos Modelos</span>
+                        </div>
+                    </div>
+                    <div class="summary-card glass-card">
+                        <div class="summary-icon min"><i class="fas fa-arrow-down"></i></div>
+                        <div class="summary-content">
+                            <span class="summary-value" id="minValue">23.5°C</span>
+                            <span class="summary-label">Mínimo Previsto</span>
+                        </div>
+                    </div>
+                    <div class="summary-card glass-card">
+                        <div class="summary-icon max"><i class="fas fa-arrow-up"></i></div>
+                        <div class="summary-content">
+                            <span class="summary-value" id="maxValue">24.2°C</span>
+                            <span class="summary-label">Máximo Previsto</span>
+                        </div>
+                    </div>
+                    <div class="summary-card glass-card">
+                        <div class="summary-icon spread"><i class="fas fa-arrows-left-right"></i></div>
+                        <div class="summary-content">
+                            <span class="summary-value" id="spreadValue">0.7°C</span>
+                            <span class="summary-label">Dispersão</span>
+                        </div>
+                    </div>
+                    <div class="summary-card glass-card">
+                        <div class="summary-icon agreement"><i class="fas fa-handshake"></i></div>
+                        <div class="summary-content">
+                            <span class="summary-value" id="agreementValue">87%</span>
+                            <span class="summary-label">Concordância</span>
+                        </div>
+                    </div>
+                    <div class="summary-card glass-card">
+                        <div class="summary-icon records"><i class="fas fa-database"></i></div>
+                        <div class="summary-content">
+                            <span class="summary-value" id="recordsValue">240</span>
+                            <span class="summary-label">Registos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="comparison-panel glass-card">
+                    <div class="panel-header">
+                        <h4><i class="fas fa-balance-scale"></i> Comparação de Modelos</h4>
+                    </div>
+                    <div class="comparison-content">
+                        <div class="comparison-item">
+                            <span class="comparison-label">Modelo com previsão mais alta</span>
+                            <span class="comparison-value high" id="highestModel">IPMA (24.2°C)</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">Modelo com previsão mais baixa</span>
+                            <span class="comparison-value low" id="lowestModel">ICON (23.5°C)</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">Diferença máxima entre modelos</span>
+                            <span class="comparison-value" id="maxDifference">0.7°C</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">Modelos em concordância</span>
+                            <span class="comparison-value agreement" id="modelsAgreeing">4 de 5</span>
+                        </div>
+                    </div>
+                    <div class="disagreement-alert" id="disagreementAlert">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Atenção: ARPEGE prevê precipitação mais elevada que os restantes modelos</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Future Timeline Section -->
+        <section class="timeline-section">
+            <div class="section-header">
+                <h2><i class="fas fa-timeline"></i> Linha Temporal (3h)</h2>
+                <div class="timeline-nav">
+                    <button class="btn-icon" id="timelinePrev"><i class="fas fa-chevron-left"></i></button>
+                    <button class="btn-icon" id="timelineNext"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="timeline-container glass-card">
+                <div class="timeline-scroll" id="timelineScroll">
+                    <!-- Timeline blocks will be generated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Operational Future Analysis -->
+        <section class="operational-section">
+            <div class="section-header">
+                <h2><i class="fas fa-shield-halved"></i> Análise Operacional</h2>
+            </div>
+            <div class="operational-grid">
+                <!-- Future Drone Conditions -->
+                <div class="operational-card glass-card drone-card">
+                    <div class="operational-header">
+                        <div class="operational-title">
+                            <i class="fas fa-helicopter"></i>
+                            <h4>Condições para Drones</h4>
+                        </div>
+                        <span class="operational-status favorable" id="droneStatus">
+                            <i class="fas fa-circle-check"></i> Favorável
+                        </span>
+                    </div>
+                    <div class="operational-gauge">
+                        <div class="gauge-circle">
+                            <svg viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="45" class="gauge-bg"></circle>
+                                <circle cx="50" cy="50" r="45" class="gauge-fill drone" id="droneGauge"
+                                    stroke-dasharray="226 283"></circle>
+                            </svg>
+                            <span class="gauge-value" id="dronePercentage">80%</span>
+                        </div>
+                        <span class="gauge-label">Operacionalidade</span>
+                    </div>
+                    <div class="operational-details">
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-clock"></i> Melhor janela</span>
+                            <span class="detail-value" id="droneBestWindow">14:00 - 18:00</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-ban"></i> Pior janela</span>
+                            <span class="detail-value" id="droneWorstWindow">06:00 - 08:00</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-exclamation-triangle"></i> Fator
+                                limitante</span>
+                            <span class="detail-value warning" id="droneLimitingFactor">Rajadas de vento</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Future Fire Risk -->
+                <div class="operational-card glass-card fire-card">
+                    <div class="operational-header">
+                        <div class="operational-title">
+                            <i class="fas fa-fire"></i>
+                            <h4>Risco de Incêndio</h4>
+                        </div>
+                        <span class="operational-status moderate" id="fireStatus">
+                            <i class="fas fa-triangle-exclamation"></i> Moderado
+                        </span>
+                    </div>
+                    <div class="operational-gauge">
+                        <div class="gauge-circle">
+                            <svg viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="45" class="gauge-bg"></circle>
+                                <circle cx="50" cy="50" r="45" class="gauge-fill fire" id="fireGauge"
+                                    stroke-dasharray="141 283"></circle>
+                            </svg>
+                            <span class="gauge-value" id="firePercentage">50%</span>
+                        </div>
+                        <span class="gauge-label">Índice de Risco</span>
+                    </div>
+                    <div class="operational-details">
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-clock"></i> Pico de risco</span>
+                            <span class="detail-value danger" id="fireRiskPeak">14:00 - 17:00</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-fire-flame-curved"></i> Fatores de risco</span>
+                            <span class="detail-value" id="fireRiskFactors">Temp. elevada, baixa humidade</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-cloud-rain"></i> Precipitação prevista</span>
+                            <span class="detail-value" id="firePrecipitation">Nenhuma nas próximas 48h</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Forecast Records Section -->
+        <section class="records-section">
+            <div class="section-header">
+                <h2><i class="fas fa-table"></i> Registos de Previsão</h2>
+                <div class="table-actions">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="tableSearch" placeholder="Pesquisar registos...">
+                    </div>
+                    <button class="btn btn-secondary" id="exportCsv">
+                        <i class="fas fa-download"></i> Exportar CSV
+                    </button>
+                </div>
+            </div>
+            <div class="records-table-container glass-card">
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Hora</th>
+                            <th>Fonte/Modelo</th>
+                            <th>Variável</th>
+                            <th>Valor</th>
+                            <th>Unidade</th>
+                            <th>Latitude</th>
+                            <th>Longitude</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsTableBody">
+                        <!-- Table rows will be generated by JavaScript -->
+                    </tbody>
+                </table>
+                <div class="table-pagination">
+                    <span class="pagination-info" id="paginationInfo">Mostrando 1-10 de 240 registos</span>
+                    <div class="pagination-controls">
+                        <button class="btn-icon" id="prevPage" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span class="page-numbers" id="pageNumbers"></span>
+                        <button class="btn-icon" id="nextPage">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+        <div class="footer-content">
+            <span>&copy; 2024 WeatherSense — Monitorização Meteorológica Inteligente</span>
+            <span class="footer-version">v2.1.0 | Leiria, Portugal</span>
+        </div>
+    </footer>
+
+    <script src="js/terrestrial-forecast_vB.js"></script>
+</body>
+
+</html>

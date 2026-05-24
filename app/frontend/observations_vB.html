@@ -25,15 +25,15 @@
                 <i class="fas fa-map-marked-alt"></i>
                 <span>Mapa / APIs</span>
             </a>
-            <a href="#" class="nav-item active">
-                <i class="fas fa-eye"></i>
+             <a href="observations_vB.html" class="nav-item active">
+                <i class="fas fa-mountain-sun"></i>
                 <span>Observações</span>
             </a>
             <a href="#" class="nav-item">
                 <i class="fas fa-water"></i>
                 <span>Previsão Marítima</span>
             </a>
-            <a href="#" class="nav-item">
+            <a href="terrestrial-forecast_vB.html" class="nav-item">
                 <i class="fas fa-mountain-sun"></i>
                 <span>Previsão Terrestre</span>
             </a>
@@ -180,7 +180,6 @@
                 <div class="card-header">
                     <h3><i class="fas fa-location-dot"></i> Localização Selecionada</h3>
                     <span class="status-badge online">
-                        <i class="fas fa-circle"></i> Online
                     </span>
                 </div>
                 <div class="location-details">
@@ -637,6 +636,7 @@
         <section class="historical-section">
             <div class="section-header">
                 <h2><i class="fas fa-clock-rotate-left"></i> Observações Históricas</h2>
+
                 <div class="chart-controls">
                     <select id="historyVariable" class="filter-input">
                         <option value="temperature">Temperatura</option>
@@ -754,13 +754,7 @@
                         <button class="btn-icon" id="prevPage" disabled>
                             <i class="fas fa-chevron-left"></i>
                         </button>
-                        <span class="page-numbers" id="pageNumbers">
-                            <button class="page-btn active">1</button>
-                            <button class="page-btn">2</button>
-                            <button class="page-btn">3</button>
-                            <span class="page-dots">...</span>
-                            <button class="page-btn">125</button>
-                        </span>
+                        <span class="page-numbers" id="pageNumbers"></span>
                         <button class="btn-icon" id="nextPage">
                             <i class="fas fa-chevron-right"></i>
                         </button>
@@ -780,7 +774,6 @@
                 Plataforma de Monitorização Meteorológica — Distrito de Leiria
             </span>
             <span class="footer-status">
-                <i class="fas fa-circle status-online"></i> Sistema Operacional
             </span>
         </div>
     </footer>

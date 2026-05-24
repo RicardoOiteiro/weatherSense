@@ -478,7 +478,7 @@ body::before {
     font-size: 0.75rem;
     color: var(--text-secondary);
 }
-
+/* MAP */
 .legend-marker {
     width: 12px;
     height: 12px;
@@ -712,7 +712,7 @@ body::before {
 /* Observation Cards */
 .observation-card {
     overflow: hidden;
-    min-height: unset;
+    height: fit-content;
 }
 
 .observation-card .card-header {
@@ -830,20 +830,25 @@ body::before {
 }
 
 .observation-card .card-footer {
-    padding: 12px 20px;
-    background: rgba(0, 0, 0, 0.2);
+    padding: 14px 20px;
+    background: rgba(168, 85, 247, 0.06);
+    border-top: 1px solid rgba(168, 85, 247, 0.12);
 }
 
 .distance-info {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
-    color: var(--text-muted);
+    gap: 10px;
+
+    font-size: 0.82rem;
+    font-weight: 600;
+
+    color: var(--primary-cyan);
 }
 
 .distance-info i {
-    color: var(--primary-purple);
+    font-size: 0.9rem;
+    color: var(--primary-cyan);
 }
 
 /* Comparison Card */
@@ -1698,7 +1703,7 @@ body::before {
 
 .status-side {
     min-height: 320px;
-    height: 100%;
+
 
     display: flex;
     flex-direction: column;
@@ -1730,36 +1735,66 @@ body::before {
     border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.drone-side i,
-.drone-side h4 {
+.drone-side.drone-safe i,
+.drone-side.drone-safe h4 {
     color: var(--primary-green);
 }
 
-.fire-side i,
-.fire-side h4 {
-    color: #ffa500;
+.drone-side.drone-warning i,
+.drone-side.drone-warning h4 {
+    color: #facc15;
+}
+
+.drone-side.drone-danger i,
+.drone-side.drone-danger h4 {
+    color: #ef4444;
+}
+
+.fire-side.fire-safe i,
+.fire-side.fire-safe h4 {
+    color: var(--primary-green);
+}
+
+.fire-side.fire-warning i,
+.fire-side.fire-warning h4 {
+    color: #facc15;
+}
+
+.fire-side.fire-danger i,
+.fire-side.fire-danger h4 {
+    color: #ef4444;
+}
+
+.status-side {
+    transition: background-color 0.3s ease;
 }
 
 .drone-side.drone-safe {
-    background: rgba(0, 255, 136, 0.08);
+    background-color: rgba(0, 255, 136, 0.18) !important;
 }
 
 .drone-side.drone-warning {
-    background: rgba(255, 193, 7, 0.08);
+    background-color: rgba(255, 193, 7, 0.18) !important;
 }
 
 .drone-side.drone-danger {
-    background: rgba(255, 80, 80, 0.08);
+    background-color: rgba(255, 80, 80, 0.18) !important;
 }
 
 .fire-side.fire-safe {
-    background: rgba(0, 255, 136, 0.08);
+    background: linear-gradient(135deg,
+            rgba(0, 255, 136, 0.22),
+            rgba(0, 255, 136, 0.08)) !important;
 }
 
 .fire-side.fire-warning {
-    background: rgba(255, 193, 7, 0.08);
+    background: linear-gradient(135deg,
+            rgba(255, 193, 7, 0.22),
+            rgba(255, 193, 7, 0.08)) !important;
 }
 
 .fire-side.fire-danger {
-    background: rgba(255, 80, 80, 0.08);
+    background: linear-gradient(135deg,
+            rgba(255, 80, 80, 0.22),
+            rgba(255, 80, 80, 0.08)) !important;
 }
