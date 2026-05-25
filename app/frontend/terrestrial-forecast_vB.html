@@ -162,20 +162,14 @@
                 </div>
                 <div id="map"></div>
                 <div class="map-legend">
-                    <div class="legend-title">Modelos de Previsão</div>
+                    <div class="legend-title">Mapa de Localizações</div>
+
                     <div class="legend-items">
                         <div class="legend-item">
                             <span class="legend-marker openmeteo"></span>
-                            <span>Open-Meteo</span>
+                            <span>Localizações</span>
                         </div>
-                        <div class="legend-item">
-                            <span class="legend-marker ipma"></span>
-                            <span>IPMA</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-marker openweather"></span>
-                            <span>OpenWeather</span>
-                        </div>
+
                         <div class="legend-item">
                             <span class="legend-marker selected"></span>
                             <span>Selecionado</span>
@@ -196,29 +190,35 @@
                         <div class="location-icon">
                             <i class="fas fa-map-pin"></i>
                         </div>
+
                         <div class="location-info">
                             <h4 id="selectedLocationName">Leiria</h4>
                             <p id="selectedLocationCoords">39.7436° N, 8.8071° W</p>
                         </div>
                     </div>
+
                     <div class="location-stats">
                         <div class="stat-item">
                             <span class="stat-label">Altitude</span>
                             <span class="stat-value" id="locationAltitude">50 m</span>
                         </div>
+
                         <div class="stat-item">
-                            <span class="stat-label">Horizonte</span>
-                            <span class="stat-value">72h</span>
+                            <span class="stat-label">Distrito</span>
+                            <span class="stat-value">Leiria</span>
                         </div>
+
+                        <div class="stat-item">
+                            <span class="stat-label">Atualização</span>
+                            <span class="stat-value">Live</span>
+                        </div>
+
                         <div class="stat-item">
                             <span class="stat-label">Modelos</span>
-                            <span class="stat-value">5</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Resolução</span>
-                            <span class="stat-value">3h</span>
+                            <span class="stat-value">5 ativos</span>
                         </div>
                     </div>
+
                     <div class="available-models">
                         <span class="model-badge openmeteo">ICON</span>
                         <span class="model-badge openmeteo">ECMWF</span>
@@ -348,8 +348,10 @@
                             </div>
                         </div>
                         <div class="model-standalone-quality">
-                            <span class="model-quality high"><i class="fas fa-star"></i> 94%</span>
-                            <span class="status-indicator active"></span>
+                            <span class="observation-time">
+                                Previsão das:
+                                <span id="ipmaForecastTime">—</span>
+                            </span>
                         </div>
                     </div>
                     <div class="model-standalone-data">
@@ -398,56 +400,130 @@
                 <div class="model-standalone glass-card openweather-standalone">
                     <div class="model-standalone-header">
                         <div class="model-standalone-info">
-                            <span class="provider-icon openweather"><i class="fas fa-cloud-sun"></i></span>
+                            <span class="provider-icon openweather">
+                                <i class="fas fa-cloud-sun"></i>
+                            </span>
+
                             <div>
                                 <h4>OpenWeather</h4>
-                                <span class="provider-subtitle">API Global</span>
+                                <span class="provider-subtitle">Modelo Proprietario</span>
                             </div>
                         </div>
+
                         <div class="model-standalone-quality">
-                            <span class="model-quality medium"><i class="fas fa-star"></i> 87%</span>
-                            <span class="status-indicator active"></span>
+                            <span class="observation-time">
+                                <i class="fas fa-clock"></i>
+                                Previsão das:
+                                <span id="owForecastTime">—</span>
+                            </span>
+
+
+
+
                         </div>
                     </div>
-                    <div class="model-standalone-data">
+
+                    <div class="model-standalone-data openweather-data">
+
                         <div class="model-metric-large">
                             <i class="fas fa-temperature-half"></i>
+
                             <div class="metric-content">
-                                <span class="metric-value" id="owTemp">23.9°C</span>
+                                <span class="metric-value" id="owTemp">—</span>
                                 <span class="metric-label">Temperatura</span>
                             </div>
                         </div>
+
                         <div class="model-metric-large">
-                            <i class="fas fa-wind"></i>
+                            <i class="fas fa-temperature-low"></i>
+
                             <div class="metric-content">
-                                <span class="metric-value" id="owWind">19 km/h</span>
-                                <span class="metric-label">Vento</span>
+                                <span class="metric-value" id="owMinTemp">—</span>
+                                <span class="metric-label">Temp. mínima</span>
                             </div>
                         </div>
+
                         <div class="model-metric-large">
-                            <i class="fas fa-burst"></i>
+                            <i class="fas fa-temperature-high"></i>
+
                             <div class="metric-content">
-                                <span class="metric-value" id="owGust">32 km/h</span>
-                                <span class="metric-label">Rajada</span>
+                                <span class="metric-value" id="owMaxTemp">—</span>
+                                <span class="metric-label">Temp. máxima</span>
                             </div>
                         </div>
+
                         <div class="model-metric-large">
                             <i class="fas fa-droplet"></i>
+
                             <div class="metric-content">
-                                <span class="metric-value" id="owPrecip">20%</span>
-                                <span class="metric-label">Precipitação</span>
+                                <span class="metric-value" id="owHumidity">—</span>
+                                <span class="metric-label">Humidade</span>
                             </div>
                         </div>
+
+                        <div class="model-metric-large">
+                            <i class="fas fa-gauge-high"></i>
+
+                            <div class="metric-content">
+                                <span class="metric-value" id="owPressure">—</span>
+                                <span class="metric-label">Pressão</span>
+                            </div>
+                        </div>
+
                         <div class="model-metric-large">
                             <i class="fas fa-cloud"></i>
+
                             <div class="metric-content">
-                                <span class="metric-value" id="owCloud">42%</span>
+                                <span class="metric-value" id="owCloud">—</span>
                                 <span class="metric-label">Nebulosidade</span>
                             </div>
                         </div>
-                    </div>
-                    <div class="model-standalone-footer">
-                        <span class="model-time"><i class="fas fa-clock"></i> Previsão: 14:00</span>
+
+                        <div class="model-metric-large">
+                            <i class="fas fa-eye"></i>
+
+                            <div class="metric-content">
+                                <span class="metric-value" id="owVisibility">—</span>
+                                <span class="metric-label">Visibilidade</span>
+                            </div>
+                        </div>
+
+                        <div class="model-metric-large">
+                            <i class="fas fa-wind"></i>
+
+                            <div class="metric-content">
+                                <span class="metric-value" id="owWind">—</span>
+                                <span class="metric-label">Vento</span>
+                            </div>
+                        </div>
+
+                        <div class="model-metric-large">
+                            <i class="fas fa-burst"></i>
+
+                            <div class="metric-content">
+                                <span class="metric-value" id="owGust">—</span>
+                                <span class="metric-label">Rajada</span>
+                            </div>
+                        </div>
+
+                        <div class="model-metric-large">
+                            <i class="fas fa-compass"></i>
+
+                            <div class="metric-content">
+                                <span class="metric-value" id="owWindDir">—</span>
+                                <span class="metric-label">Direção</span>
+                            </div>
+                        </div>
+
+                        <div class="model-metric-large">
+                            <i class="fas fa-cloud-rain"></i>
+
+                            <div class="metric-content">
+                                <span class="metric-value" id="owPrecip">—</span>
+                                <span class="metric-label">Precipitação</span>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>

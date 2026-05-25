@@ -231,28 +231,23 @@ function addDistrictBoundary() {
 
 function addForecastMarkers() {
     const forecastPoints = [
-        { name: "São Pedro de Moel", lat: 39.766853, lng: -9.019775 },
-        { name: "Figueira da Foz", lat: 40.1508, lng: -8.8618 },
-        { name: "Nazaré / Alcobaça", lat: 39.601, lng: -9.07 },
-        { name: "Peniche / Cabo Carvoeiro", lat: 39.361378, lng: -9.387817 },
-        { name: "Óbidos", lat: 39.360421, lng: -9.157214 },
-        { name: "Bidoeira de Cima", lat: 39.842572, lng: -8.743315 },
-        { name: "ESTG Leiria", lat: 39.735122, lng: -8.821217 },
-        { name: "Pinhal de Leiria", lat: 39.8225, lng: -8.9450 },
-        { name: "Pedrógão Grande", lat: 39.919392, lng: -8.133316 },
-        { name: "Ansião", lat: 39.910834, lng: -8.434238 },
-        { name: "Castanheira de Pêra", lat: 40.002723, lng: -8.205671 },
-        { name: "Caranguejeira", lat: 39.744706, lng: -8.691161 }
+        { name: "São Pedro de Moel", lat: 39.766853, lng: -9.019775, provider: "openmeteo" },
+        { name: "Figueira da Foz", lat: 40.1508, lng: -8.8618, provider: "openmeteo" },
+        { name: "Nazaré / Alcobaça", lat: 39.601, lng: -9.07, provider: "ipma" },
+        { name: "Peniche / Cabo Carvoeiro", lat: 39.361378, lng: -9.387817, provider: "openweather" },
+        { name: "Óbidos", lat: 39.360421, lng: -9.157214, provider: "ipma" },
+        { name: "Bidoeira de Cima", lat: 39.842572, lng: -8.743315, provider: "openmeteo" },
+        { name: "ESTG Leiria", lat: 39.735122, lng: -8.821217, provider: "ipma" },
+        { name: "Pinhal de Leiria", lat: 39.8225, lng: -8.9450, provider: "openmeteo" },
+        { name: "Pedrógão Grande", lat: 39.919392, lng: -8.133316, provider: "openweather" },
+        { name: "Ansião", lat: 39.910834, lng: -8.434238, provider: "ipma" },
+        { name: "Castanheira de Pêra", lat: 40.002723, lng: -8.205671, provider: "openmeteo" },
+        { name: "Caranguejeira", lat: 39.744706, lng: -8.691161, provider: "ipma" }
     ];
 
-    const providerColors = {
-        openmeteo: '#0ea5e9',
-        ipma: '#00ff88',
-        openweather: '#a855f7'
-    };
 
     forecastPoints.forEach(point => {
-        const color = providerColors[point.provider];
+        const color = '#00d4ff';
 
         const customIcon = L.divIcon({
             className: 'custom-div-icon',
@@ -270,7 +265,19 @@ function addForecastMarkers() {
 
         const marker = L.marker([point.lat, point.lng], { icon: customIcon })
             .addTo(map)
-            .bindPopup(createPopupContent(point));
+            .bindPopup(`
+                <div style="color: #f8fafc; padding: 8px;">
+                    <h4 style="margin: 0 0 8px 0; color: #00d4ff;">
+                        ${point.name}
+                    </h4>
+                    <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                        Ponto de observação
+                    </p>
+                    <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">
+                        ${point.lat.toFixed(4)}°N, ${Math.abs(point.lng).toFixed(4)}°W
+                    </p>
+                </div>
+            `);
 
         marker.on('click', () => {
             selectLocation(point.lat, point.lng, point.name);
@@ -692,31 +699,361 @@ function loadInitialData() {
 }
 
 function refreshForecastData() {
-    loadInitialData();
+    fetchCurrentForecast();
     updateLastUpdateTime();
 }
 
 // Prepared for FastAPI integration
 async function fetchCurrentForecast() {
     try {
-        const response = await fetch(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.currentForecast}?lat=${appState.selectedLocation.lat}&lng=${appState.selectedLocation.lng}`);
-        const data = await response.json();
-        appState.currentData = data;
-        updateModelCards();
-        updateCurrentForecast();
+        const response = await fetch('/data/forecast/terrestrial?limit=50000');
+        const records = await response.json();
+
+        const lat = appState.selectedLocation.lat;
+        const lng = appState.selectedLocation.lng;
+
+        const openWeatherRecords = records.filter(item =>
+            item.source?.toLowerCase() === 'openweather' &&
+            item.requestedLocation &&
+            Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
+            Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
+        );
+
+        const latestRequestId = openWeatherRecords[0]?.requestId;
+
+        const latestRequestRecords = openWeatherRecords.filter(item =>
+            item.requestId === latestRequestId
+        );
+
+        const nearestForecastKey = getNearestForecastKey(latestRequestRecords);
+
+        const latestRecords = latestRequestRecords.filter(item =>
+            `${item.date} ${item.time}` === nearestForecastKey
+        );
+
+        const openweather = mapOpenWeatherForecast(latestRecords);
+
+        appState.currentData.openweather = openweather;
+
+        updateOpenWeatherCard(openweather);
+
     } catch (error) {
-        console.error('Error fetching current forecast:', error);
+        console.error('Erro ao carregar OpenWeather da BD:', error);
+    }
+
+    const ipmaRecords = records.filter(item =>
+        item.source?.toLowerCase() === 'ipma' &&
+        item.requestedLocation &&
+        Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
+        Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
+    );
+
+    const latestIpmaRequestId = ipmaRecords[0]?.requestId;
+
+    const latestIpmaRequestRecords = ipmaRecords.filter(item =>
+        item.requestId === latestIpmaRequestId
+    );
+
+    const nearestIpmaForecastKey = getNearestForecastKey(latestIpmaRequestRecords);
+
+    const latestIpmaRecords = latestIpmaRequestRecords.filter(item =>
+        `${item.date} ${item.time}` === nearestIpmaForecastKey
+    );
+
+    const ipma = mapIpmaForecast(latestIpmaRecords);
+
+    appState.currentData.ipma = ipma;
+
+    updateIpmaCard(ipma);
+}
+
+function getNearestForecastKey(records) {
+    const now = new Date();
+
+    let nearestKey = null;
+    let nearestDiff = Infinity;
+
+    const keys = [...new Set(
+        records.map(item => `${item.date} ${item.time}`)
+    )];
+
+    keys.forEach(key => {
+        const forecastDate = new Date(key.replace(' ', 'T'));
+        const diff = Math.abs(forecastDate - now);
+
+        if (diff < nearestDiff) {
+            nearestDiff = diff;
+            nearestKey = key;
+        }
+    });
+
+    return nearestKey;
+}
+
+function mapOpenWeatherForecast(records) {
+
+    function getValue(fieldNames) {
+        if (!Array.isArray(fieldNames)) {
+            fieldNames = [fieldNames];
+        }
+
+        const record = records.find(item =>
+            fieldNames.includes(item.variable?.fieldName)
+        );
+
+        return record ? Number(record.value) : null;
+    }
+
+    return {
+        temperature: getValue('temperatureC'),
+        minTemp: getValue('temperatureMinC'),
+        maxTemp: getValue('temperatureMaxC'),
+
+        humidity: getValue([
+            'humidityPercent',
+            'relativeHumidityPercent'
+        ]),
+
+        pressure: getValue([
+            'pressureHpa',
+            'atmosphericPressureHpa'
+        ]),
+
+        cloudCover: getValue('cloudCoverPercent'),
+
+        visibility: getValue('visibilityKm'),
+
+        windSpeed: getValue('windSpeedKmh'),
+        windGust: getValue('windGustKmh'),
+        windDirectionDegrees: getValue('windDirectionDegrees'),
+
+        precipitation: getValue('precipitationProbabilityPercent'),
+
+        forecastTime: records[0]?.time ?? '—',
+        forecastDate: records[0]?.date ?? '—'
+    };
+}
+
+function updateOpenWeatherCard(data) {
+
+    setText(
+        'owTemp',
+        data.temperature !== null
+            ? `${data.temperature.toFixed(1)}°C`
+            : '—'
+    );
+
+    setText(
+        'owMinTemp',
+        data.minTemp !== null
+            ? `${data.minTemp.toFixed(1)}°C`
+            : '—'
+    );
+
+    setText(
+        'owMaxTemp',
+        data.maxTemp !== null
+            ? `${data.maxTemp.toFixed(1)}°C`
+            : '—'
+    );
+
+    setText(
+        'owHumidity',
+        data.humidity !== null
+            ? `${data.humidity}%`
+            : '—'
+    );
+
+    setText(
+        'owPressure',
+        data.pressure !== null
+            ? `${data.pressure} hPa`
+            : '—'
+    );
+
+    setText(
+        'owCloud',
+        data.cloudCover !== null
+            ? `${data.cloudCover}%`
+            : '—'
+    );
+
+    setText(
+        'owVisibility',
+        data.visibility !== null
+            ? `${data.visibility} km`
+            : '—'
+    );
+
+    setText(
+        'owWind',
+        data.windSpeed !== null
+            ? `${data.windSpeed.toFixed(1)} km/h`
+            : '—'
+    );
+
+    setText(
+        'owGust',
+        data.windGust !== null
+            ? `${data.windGust.toFixed(1)} km/h`
+            : '—'
+    );
+
+    setText(
+        'owWindDir',
+        data.windDirectionDegrees !== null
+            ? `${Math.round(data.windDirectionDegrees)}°`
+            : '—'
+    );
+
+    setText(
+        'owPrecip',
+        data.precipitation !== null
+            ? `${data.precipitation}%`
+            : '—'
+    );
+
+    setText(
+        'owForecastTime',
+        data.forecastTime !== '—'
+            ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
+            : '—'
+    );
+}
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+
+    if (el) {
+        el.textContent = value;
     }
 }
 
-async function fetchForecastHistory() {
+function mapIpmaForecast(records) {
+
+    function getValue(fieldName) {
+        const record = records.find(item =>
+            item.variable?.fieldName === fieldName
+        );
+
+        return record ? Number(record.value) : null;
+    }
+
+    function getText(fieldName) {
+        const record = records.find(item =>
+            item.variable?.fieldName === fieldName
+        );
+
+        return record ? record.value : null;
+    }
+
+    return {
+        temperature: getValue('temperatureC'),
+        feelsLike: getValue('feelsLikeTemperatureC'),
+        humidity: getValue('humidityPercent'),
+
+        windSpeed: getValue('windSpeedKmh'),
+        windGust: getValue('windGustKmh'),
+        windDirectionDegrees: getValue('windDirectionDegrees'),
+        windDirectionCardinal: getText('windDirectionCardinal'),
+
+        precipitation: getValue('precipitationProbabilityPercent'),
+
+        pressure: getValue('pressureHpa'),
+        cloudCover: getValue('cloudCoverPercent'),
+        visibility: getValue('visibilityKm'),
+
+        forecastTime: records[0]?.time ?? '—',
+        forecastDate: records[0]?.date ?? '—',
+        distance: records[0]?.location?.distanceKm ?? null
+    };
+}
+
+function updateIpmaCard(data) {
+
+    setText('ipmaTemp', data.temperature !== null ? `${data.temperature.toFixed(1)}°C` : '—');
+    setText('ipmaWind', data.windSpeed !== null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
+    setText('ipmaGust', data.windGust !== null ? `${data.windGust.toFixed(1)} km/h` : '—');
+    setText('ipmaPrecip', data.precipitation !== null ? `${data.precipitation}%` : '—');
+    setText('ipmaCloud', data.cloudCover !== null ? `${data.cloudCover}%` : '—');
+
+    setText('ipmaForecastTime', data.forecastTime !== '—' ? data.forecastTime : '—');
+}
+
+
+async function fetchCurrentForecast() {
+
     try {
-        const response = await fetch(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.historyForecast}?lat=${appState.selectedLocation.lat}&lng=${appState.selectedLocation.lng}&hours=${appState.selectedTimeRange}`);
-        const data = await response.json();
-        appState.forecastData = data;
-        updateEvolutionChart();
+
+        const response = await fetch('/data/forecast/terrestrial?limit=50000');
+
+        const records = await response.json();
+
+        const lat = appState.selectedLocation.lat;
+        const lng = appState.selectedLocation.lng;
+
+        // =========================
+        // OPENWEATHER
+        // =========================
+
+        const openWeatherRecords = records.filter(item =>
+            item.source?.toLowerCase() === 'openweather' &&
+            item.requestedLocation &&
+            Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
+            Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
+        );
+
+        const latestOWRequestId = openWeatherRecords[0]?.requestId;
+
+        const latestOWRequestRecords = openWeatherRecords.filter(item =>
+            item.requestId === latestOWRequestId
+        );
+
+        const nearestOWForecastKey = getNearestForecastKey(latestOWRequestRecords);
+
+        const latestOWRecords = latestOWRequestRecords.filter(item =>
+            `${item.date} ${item.time}` === nearestOWForecastKey
+        );
+
+        const openweather = mapOpenWeatherForecast(latestOWRecords);
+
+        appState.currentData.openweather = openweather;
+
+        updateOpenWeatherCard(openweather);
+
+        // =========================
+        // IPMA
+        // =========================
+
+        const ipmaRecords = records.filter(item =>
+            item.source?.toLowerCase() === 'ipma' &&
+            item.requestedLocation &&
+            Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
+            Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
+        );
+
+        const latestIpmaRequestId = ipmaRecords[0]?.requestId;
+
+        const latestIpmaRequestRecords = ipmaRecords.filter(item =>
+            item.requestId === latestIpmaRequestId
+        );
+
+        const nearestIpmaForecastKey = getNearestForecastKey(latestIpmaRequestRecords);
+
+        const latestIpmaRecords = latestIpmaRequestRecords.filter(item =>
+            `${item.date} ${item.time}` === nearestIpmaForecastKey
+        );
+
+        const ipma = mapIpmaForecast(latestIpmaRecords);
+
+        appState.currentData.ipma = ipma;
+
+        updateIpmaCard(ipma);
+
     } catch (error) {
-        console.error('Error fetching forecast history:', error);
+
+        console.error('Erro previsão terrestre:', error);
+
     }
 }
 
