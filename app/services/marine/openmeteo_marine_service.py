@@ -74,33 +74,49 @@ def get_openmeteo_marine(lat: float, lon: float):
     distance_km = round(haversine_km(lat, lon, api_lat, api_lon), 2)
 
 
-    resultado = normalize_openmeteo_marine(
-        lat=api_lat,
-        lon=api_lon,
-        distance_km=distance_km,
-        hourly=hourly,
-        index=index,
-       
-    )
-    resultado["requestedLocation"] = {
-    "latitude": lat,
-    "longitude": lon
-}
+    resultados = []
+
+    for i in range(index, min(index + 24, len(hourly["time"]))):
+
+        resultado = normalize_openmeteo_marine(
+            lat=api_lat,
+            lon=api_lon,
+            distance_km=distance_km,
+            hourly=hourly,
+            index=i,
+        )
+
+        resultado["requestedLocation"] = {
+            "latitude": lat,
+            "longitude": lon
+        }
+
+        resultados.append(resultado)
     print("ANTES DE GRAVAR OPENMETEO MARINE NA BD")
 
     conn = get_connection()
 
     try:
-        inserted_count = save_marine_forecast(
-            conn=conn,
-            normalized_data=resultado,
-            request_id = datetime.now(ZoneInfo("Europe/Lisbon")).strftime("FOR_M-%y%m%d-%H%M"),
-            context_type="coastal"
-        )
+        request_id = datetime.now(
+            ZoneInfo("Europe/Lisbon")
+        ).strftime("FOR_M-%y%m%d-%H%M")
+
+        total_inserted = 0
+
+        for resultado in resultados:
+
+            inserted_count = save_marine_forecast(
+                conn=conn,
+                normalized_data=resultado,
+                request_id=request_id,
+                context_type="coastal"
+            )
+
+            total_inserted += inserted_count
 
         print(f"OPENMETEO MARINE GRAVADO: {inserted_count} medições")
 
     finally:
         conn.close()
 
-    return resultado
+    return resultados

@@ -90,19 +90,30 @@ def get_wwo_marine(lat: float, lon: float):
             detail="Sem dados horários WWO"
         )
 
-    bloco_mais_proximo = get_nearest_wwo_hour_block(hourly)
+    
 
     api_lat = lat
     api_lon = lon
     distance_km = round(haversine_km(lat, lon, api_lat, api_lon), 2)
 
-    resultado = normalize_wwo_marine(
-    lat=lat,
-    lon=lon,
-    distance_km=0,
-    date=primeiro_dia.get("date"),
-    hourly=bloco_mais_proximo
-)
+    resultados = []
+
+    for bloco in hourly[:24]:
+
+        resultado = normalize_wwo_marine(
+            lat=lat,
+            lon=lon,
+            distance_km=0,
+            date=primeiro_dia.get("date"),
+            hourly=bloco
+        )
+
+        resultado["requestedLocation"] = {
+            "latitude": lat,
+            "longitude": lon
+        }
+
+        resultados.append(resultado)
     
     resultado["requestedLocation"] = {
     "latitude": lat,
@@ -115,12 +126,22 @@ def get_wwo_marine(lat: float, lon: float):
     conn = get_connection()
 
     try:
-        inserted_count = save_marine_forecast(
-            conn=conn,
-            normalized_data=resultado,
-            request_id = datetime.now(ZoneInfo("Europe/Lisbon")).strftime("FOR_M-%y%m%d-%H%M"),
-            context_type="coastal"
-        )
+        request_id = datetime.now(
+            ZoneInfo("Europe/Lisbon")
+        ).strftime("FOR_M-%y%m%d-%H%M")
+
+        total_inserted = 0
+
+        for resultado in resultados:
+
+            inserted_count = save_marine_forecast(
+                conn=conn,
+                normalized_data=resultado,
+                request_id=request_id,
+                context_type="coastal"
+            )
+
+            total_inserted += inserted_count
 
         print(f"WWO MARINE GRAVADO: {inserted_count} medições")
 
@@ -128,4 +149,4 @@ def get_wwo_marine(lat: float, lon: float):
         conn.close()
         
 
-    return resultado
+    return resultados

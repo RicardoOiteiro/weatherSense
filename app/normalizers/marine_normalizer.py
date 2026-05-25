@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 # =====================================================
 # HELPERS
 # =====================================================
@@ -152,8 +154,11 @@ def normalize_openmeteo_marine(lat: float, lon: float, distance_km: float, hourl
         },
     }
 
-def normalize_ipma_marine(requested_lat, requested_lon, location, forecast, daily):
+def normalize_ipma_marine(requested_lat, requested_lon, location, forecast, daily, id_day):
     update_date, update_hour = split_date_hour(forecast.get("dataUpdate"))
+    forecast_date = (
+        datetime.now() + timedelta(days=id_day)
+    ).strftime("%Y-%m-%d")
     return {
         "source": "ipma",
         "meta":{
@@ -176,7 +181,7 @@ def normalize_ipma_marine(requested_lat, requested_lon, location, forecast, dail
 
         },
         "time": {
-            "date": forecast.get("forecastDate"),
+            "date": forecast_date,
             "hour": update_hour,
             "dataUpdate": forecast.get("dataUpdate"),
         },

@@ -162,7 +162,7 @@ async function carregarHistorico() {
 
         if (source) {
             filtrado = filtrado.filter(item =>
-                item.source === source
+                item.source?.toLowerCase() === source.toLowerCase()
             );
         }
 
@@ -188,7 +188,7 @@ async function carregarHistorico() {
             const dataA = `${a.date} ${a.time}`;
             const dataB = `${b.date} ${b.time}`;
 
-            return dataB.localeCompare(dataA);
+            return dataA.localeCompare(dataB);
         });
 
         const agrupado = agruparPorRequestIdEFonte(filtrado);
@@ -203,7 +203,7 @@ async function carregarHistorico() {
             card.className = 'card';
 
 
-            const distanciaIpma = primeira.source === 'ipma'
+            const distanciaIpma = primeira.source?.toLowerCase() === 'ipma'
                 ? distanciaKm(
                     selectedPoint.lat,
                     selectedPoint.lon,
@@ -217,8 +217,6 @@ async function carregarHistorico() {
         <div>
             <h3>
                 ${primeira.source.toUpperCase()}
-                ·
-                ${primeira.date} ${primeira.time}
             </h3>
 
             <p class="request-id">
@@ -244,7 +242,7 @@ async function carregarHistorico() {
 
         <br>
 
-        ${primeira.source === 'ipma'
+        ${primeira.source?.toLowerCase() === 'ipma'
                     ? `
                     <strong>Tipo:</strong>
                     Previsão costeira regional
@@ -267,7 +265,7 @@ async function carregarHistorico() {
             const details = document.createElement('details');
             const summary = document.createElement('summary');
 
-            summary.textContent = `Ver ${grupo.length} medições`;
+            summary.textContent = primeira.source?.toLowerCase() === 'ipma' ? 'Ver previsão próximos 3 dias' : 'Ver previsão próximas 24 horas';
             details.appendChild(summary);
 
             const ordemVariaveis = [
@@ -307,16 +305,78 @@ async function carregarHistorico() {
                 return normalizarIndice(indexA) - normalizarIndice(indexB);
             });
 
-            grupo.forEach(item => {
+            const isIpma = primeira.source?.toLowerCase() === 'ipma';
+
+if (isIpma) {
+
+    const porDia = {};
+
+    grupo.forEach(item => {
+
+        const chaveDia = item.date;
+
+        if (!porDia[chaveDia]) {
+            porDia[chaveDia] = [];
+        }
+
+        porDia[chaveDia].push(item);
+    });
+
+    Object.entries(porDia)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .forEach(([dia, itemsDia], index) => {
+
+            const blocoDia = document.createElement('div');
+            blocoDia.className = 'forecast-hour-block';
+
+            const tituloDia = document.createElement('h4');
+
+            const dataObj = new Date(dia);
+
+            const hoje = new Date();
+
+            const amanha = new Date();
+            amanha.setDate(hoje.getDate() + 1);
+
+            const depois = new Date();
+            depois.setDate(hoje.getDate() + 2);
+
+            let descricaoDia = '';
+
+            if (dataObj.toDateString() === hoje.toDateString()) {
+                descricaoDia = 'Hoje';
+            }
+            else if (dataObj.toDateString() === amanha.toDateString()) {
+                descricaoDia = 'Amanhã';
+            }
+            else if (dataObj.toDateString() === depois.toDateString()) {
+                descricaoDia = 'Depois de amanhã';
+            }
+
+            tituloDia.textContent =
+                `${dataObj.toLocaleDateString('pt-PT')} — ${descricaoDia}`;
+
+            blocoDia.appendChild(tituloDia);
+
+            itemsDia.sort((a, b) => {
+                const nomeA = a.variable.fieldName || a.variable.description;
+                const nomeB = b.variable.fieldName || b.variable.description;
+
+                return normalizarIndice(ordemVariaveis.indexOf(nomeA)) -
+                    normalizarIndice(ordemVariaveis.indexOf(nomeB));
+            });
+
+            itemsDia.forEach(item => {
+
                 const linha = document.createElement('div');
                 linha.className = 'measurement';
 
                 linha.innerHTML = `
                     <span>
                         ${formatarNomeVariavel(
-                    item.variable.fieldName ||
-                    item.variable.description
-                )}
+                            item.variable.fieldName ||
+                            item.variable.description
+                        )}
                     </span>
 
                     <strong>
@@ -325,8 +385,72 @@ async function carregarHistorico() {
                     </strong>
                 `;
 
-                details.appendChild(linha);
+                blocoDia.appendChild(linha);
             });
+
+            details.appendChild(blocoDia);
+        });
+
+        } else {
+
+            const porHora = {};
+
+            grupo.forEach(item => {
+
+                const chaveHora = `${item.date} ${item.time}`;
+
+                if (!porHora[chaveHora]) {
+                    porHora[chaveHora] = [];
+                }
+
+                porHora[chaveHora].push(item);
+            });
+
+            Object.entries(porHora)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .forEach(([hora, itemsHora]) => {
+
+                    const blocoHora = document.createElement('div');
+                    blocoHora.className = 'forecast-hour-block';
+
+                    const tituloHora = document.createElement('h4');
+                    tituloHora.textContent = hora;
+
+                    blocoHora.appendChild(tituloHora);
+
+                    itemsHora.sort((a, b) => {
+                        const nomeA = a.variable.fieldName || a.variable.description;
+                        const nomeB = b.variable.fieldName || b.variable.description;
+
+                        return normalizarIndice(ordemVariaveis.indexOf(nomeA)) -
+                            normalizarIndice(ordemVariaveis.indexOf(nomeB));
+                    });
+
+                    itemsHora.forEach(item => {
+
+                        const linha = document.createElement('div');
+                        linha.className = 'measurement';
+
+                        linha.innerHTML = `
+                            <span>
+                                ${formatarNomeVariavel(
+                                    item.variable.fieldName ||
+                                    item.variable.description
+                                )}
+                            </span>
+
+                            <strong>
+                                ${item.value ?? item.valueText ?? '-'}
+                                ${formatarUnidade(item.variable.unit)}
+                            </strong>
+                            `;
+
+                        blocoHora.appendChild(linha);
+                    });
+
+                    details.appendChild(blocoHora);
+                });
+        }
 
             card.appendChild(details);
             historicoDiv.appendChild(card);
@@ -346,8 +470,6 @@ function agruparPorRequestIdEFonte(data) {
         const chave = [
             item.requestId,
             item.source,
-            item.date,
-            item.time,
             reqLat,
             reqLon
         ].join('-');

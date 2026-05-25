@@ -82,10 +82,53 @@ def get_nearest_ipma_sea_location(lat: float, lon: float) -> dict:
     return nearest_location
 
 def get_ipma_marine_3_days(lat: float, lon: float) -> list[dict]:
-    return [
-        get_ipma_marine_daily(lat, lon, id_day)
-        for id_day in [0, 1, 2]
-    ]
+    resultados = []
+
+    for id_day in [0, 1, 2]:
+
+        resultado = get_ipma_marine_daily(
+            lat,
+            lon,
+            id_day
+        )
+
+        resultado["forecastDay"] = id_day
+
+        resultados.append(resultado)
+
+
+    print("ANTES DE GRAVAR IPMA MARINE NA BD")
+
+    conn = get_connection()
+
+    try:
+
+        request_id = datetime.now(
+            ZoneInfo("Europe/Lisbon")
+        ).strftime("FOR_M-%y%m%d-%H%M")
+
+        total_inserted = 0
+
+        for resultado in resultados:
+
+            inserted_count = save_marine_forecast(
+                conn=conn,
+                normalized_data=resultado,
+                request_id=request_id,
+                context_type="coastal"
+            )
+
+            total_inserted += inserted_count
+
+        print(
+            f"IPMA MARINE GRAVADO: "
+            f"{total_inserted} medições"
+        )
+
+    finally:
+        conn.close()
+
+    return resultados
 
 def get_ipma_marine_daily(lat: float, lon: float, id_day: int = 0) -> dict:
     if id_day not in [0, 1, 2]:
@@ -131,24 +174,10 @@ def get_ipma_marine_daily(lat: float, lon: float, id_day: int = 0) -> dict:
         requested_lon=lon,
         location=nearest_location,
         forecast=forecast,
-        daily=forecast_for_location
+        daily=forecast_for_location,
+        id_day=id_day
     )
-    print("ANTES DE GRAVAR IPMA MARINE NA BD")
-
-    conn = get_connection()
-
-    try:
-        inserted_count = save_marine_forecast(
-            conn=conn,
-            normalized_data=resultado,
-            request_id = datetime.now(ZoneInfo("Europe/Lisbon")).strftime("FOR_M-%y%m%d-%H%M"),
-            context_type="coastal"
-        )
-
-        print(f"IPMA MARINE GRAVADO: {inserted_count} medições")
-
-    finally:
-        conn.close()
+    
 
     return resultado
 

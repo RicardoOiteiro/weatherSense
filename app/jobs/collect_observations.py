@@ -1,7 +1,7 @@
 from app.services.observation.foreca_observation_service import get_foreca_observation
 from app.services.observation.ipma_observation_service import get_ipma_observation
 from app.services.marine.openmeteo_marine_service import get_openmeteo_marine
-from app.services.marine.ipma_marine_service import get_ipma_marine_daily
+from app.services.marine.ipma_marine_service import get_ipma_marine_3_days
 from app.services.marine.worldweather_service import get_wwo_marine
 from app.services.terrestrial.openweather_terrestrial_service import get_openweather_terrestrial
 from app.services.terrestrial.openmeteo_terrestrial_service import get_openmeteo_terrestrial_all_models
@@ -181,7 +181,7 @@ def run_collection():
         
         # IPMA MARINE
         try:
-            get_ipma_marine_daily(lat, lon, 0)
+            get_ipma_marine_3_days(lat, lon)
             print("IPMA MARINE OK")
 
         except Exception as e:
