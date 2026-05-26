@@ -65,14 +65,17 @@ def get_openweather_terrestrial(lat: float, lon: float):
 
     for bloco in lista[:24]:
 
+        data_for_normalizer = {
+            **data,
+            "current_block": bloco
+        }
+
         resultado = normalize_openweather_terrestrial(
             lat=lat,
             lon=lon,
-            data={
-                "list": [bloco],
-                "city": data.get("city")
-            }
+            data=data_for_normalizer
         )
+
         resultado["requestedLocation"] = {
             "latitude": lat,
             "longitude": lon

@@ -182,8 +182,8 @@ def normalize_ipma_terrestrial(
         },
         "weather": {
             "temperatureC": para_float(aggregate_current.get("tMed")),
-            "temperatureMinC": None,
-            "temperatureMaxC": None,    
+            "temperatureMinC": para_float(aggregate_current.get("tMin")),
+            "temperatureMaxC": para_float(aggregate_current.get("tMax")),    
             "feelsLikeTemperatureC": para_float(aggregate_current.get("utci")),
             "humidityPercent": para_float(aggregate_current.get("hR")),
             "pressureHpa": None,
@@ -242,9 +242,11 @@ def normalize_openweather_terrestrial(lat, lon, data):
     if not lista:
         return None
 
-    # 🔹 escolher bloco mais próximo (igual à tua lógica WWO)
-    # get_nearest_openweather_block(lista) #Assim já escolhe automaticamente o bloco de 3h mais próximo da hora atual.
-    bloco = lista[0]
+    # Bloco atual / mais próximo
+    # Mais tarde podes trocar por:
+    # bloco = get_nearest_openweather_block(lista)
+
+    bloco = data.get("current_block") or lista[0]
 
     data_hora = bloco.get("dt_txt")
     date, hour = split_date_hour(data_hora)
@@ -254,50 +256,143 @@ def normalize_openweather_terrestrial(lat, lon, data):
     main = bloco.get("main", {})
     clouds = bloco.get("clouds", {})
 
+    # =====================================
+    # TEMPERATURA ATUAL
+    # =====================================
+
+    temp = para_float(main.get("temp"))
+
+    # =====================================
+    # MIN/MAX DO DIA
+    # =====================================
+
+    temperaturas_dia = []
+
+    for item in lista:
+
+        item_data_hora = item.get("dt_txt")
+
+        if not item_data_hora:
+            continue
+
+        item_date, _ = split_date_hour(item_data_hora)
+
+        # Apenas previsões do mesmo dia
+        if item_date == date:
+
+            item_temp = para_float(
+                item.get("main", {}).get("temp")
+            )
+
+            if item_temp is not None:
+                temperaturas_dia.append(item_temp)
+
+    temp_min = (
+        min(temperaturas_dia)
+        if temperaturas_dia else None
+    )
+
+    temp_max = (
+        max(temperaturas_dia)
+        if temperaturas_dia else None
+    )
+
+    # =====================================
+    # VENTO
+    # =====================================
+
+    wind_speed = para_float(wind.get("speed"))
+    wind_gust = para_float(wind.get("gust"))
+    #print("OPENWEATHER len(lista):", len(lista))
+    #print("OPENWEATHER temperaturas_dia:", temperaturas_dia)
+    #print("OPENWEATHER temp_min/temp_max:", temp_min, temp_max)
     return {
         "source": "openweather",
+
         "meta": {
             "model": "Modelo Proprietário - OpenWeather",
             "dataNature": "forecast",
             "temporalResolution": "horaria/diaria",
             "updateIntervalHours": "A cada 3 horas;"
         },
+
         "location": {
             "latitude": city.get("coord", {}).get("lat"),
             "longitude": city.get("coord", {}).get("lon"),
-            "distanceKm": 0  # OpenWeather é direto
+            "distanceKm": 0
         },
+
         "time": {
             "date": date,
             "hour": hour,
         },
+
         "weather": {
-            "temperatureC": para_float(main.get("temp")),
-            "temperatureMinC": para_float(main.get("temp_min")),
-            "temperatureMaxC": para_float(main.get("temp_max")),
+
+            "temperatureC": temp,
+
+            "temperatureMinC": temp_min,
+
+            "temperatureMaxC": temp_max,
+
             "feelsLikeTemperatureC": None,
-            "humidityPercent": para_float(main.get("humidity")),
-            "pressureHpa": para_float(main.get("pressure")),
-            "cloudCoverPercent": para_float(clouds.get("all")),
+
+            "humidityPercent": para_float(
+                main.get("humidity")
+            ),
+
+            "pressureHpa": para_float(
+                main.get("pressure")
+            ),
+
+            "cloudCoverPercent": para_float(
+                clouds.get("all")
+            ),
+
             "visibilityKm": (
                 para_float(bloco.get("visibility")) / 1000
-                if bloco.get("visibility") else None
+                if bloco.get("visibility") is not None
+                else None
             ),
         },
+
         "wind": {
-            "windSpeedKmh": round(para_float(wind.get("speed")) * 3.6, 2),
+
+            "windSpeedKmh": (
+                round(wind_speed * 3.6, 2)
+                if wind_speed is not None
+                else None
+            ),
+
             "windSpeedMaxKmh": None,
-            "windGustKmh": round(para_float(wind.get("gust")) * 3.6,2),
-            "windDirectionDegrees": para_float(wind.get("deg")),
+
+            "windGustKmh": (
+                round(wind_gust * 3.6, 2)
+                if wind_gust is not None
+                else None
+            ),
+
+            "windDirectionDegrees": para_float(
+                wind.get("deg")
+            ),
+
             "windDirectionCardinal": None,
         },
+
         "precipitation": {
-            "precipitationMm": para_float(rain.get("1h")) if rain else None,
+
+            "precipitationMm": (
+                para_float(rain.get("1h"))
+                if rain else None
+            ),
+
             "precipitationProbabilityPercent": (
                 para_float(bloco.get("pop")) * 100
-                if bloco.get("pop") is not None else None
+                if bloco.get("pop") is not None
+                else None
             ),
         },
+
         "sun": {
             "sunriseH": None,
             "sunsetH": None,

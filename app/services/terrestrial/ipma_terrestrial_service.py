@@ -145,8 +145,37 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
 
         except ValueError:
             continue
+    
+    daily_temperature_summary = {}
+
+    for item in aggregate_data:
+
+        date_prev = item.get("dataPrev")
+
+        if not date_prev:
+            continue
+
+        date_key = date_prev[:10]
+
+        tmin = item.get("tMin")
+        tmax = item.get("tMax")
+
+        if tmin is not None or tmax is not None:
+
+            daily_temperature_summary[date_key] = {
+                "tMin": tmin,
+                "tMax": tmax
+            }
 
     for aggregate_forecast in forecasts_futuros[:24]:
+
+        date_key = aggregate_forecast.get("dataPrev", "")[:10]
+
+        daily_summary = daily_temperature_summary.get(date_key, {})
+
+        aggregate_forecast["tMin"] = daily_summary.get("tMin")
+
+        aggregate_forecast["tMax"] = daily_summary.get("tMax")
 
         resultado = normalize_ipma_terrestrial(
             requested_lat=lat,

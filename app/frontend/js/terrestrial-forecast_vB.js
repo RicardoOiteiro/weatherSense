@@ -56,87 +56,11 @@ const MODEL_COLORS = {
     openweather: '#a855f7'
 };
 
+let currentForecastProvider = 'openmeteo';
+
 // ================================
 // Mock Data for Development
 // ================================
-const mockCurrentForecast = {
-    icon: {
-        temperature: 23.5,
-        minTemp: 18,
-        maxTemp: 26,
-        humidity: 62,
-        windSpeed: 18,
-        windGust: 28,
-        windDirection: 'NW',
-        precipitation: 15,
-        pressure: 1015,
-        cloudCover: 40,
-        visibility: 18,
-        forecastTime: '14:00',
-        quality: 92
-    },
-    ecmwf: {
-        temperature: 24.1,
-        minTemp: 18,
-        maxTemp: 27,
-        humidity: 60,
-        windSpeed: 16,
-        windGust: 26,
-        windDirection: 'NW',
-        precipitation: 12,
-        pressure: 1016,
-        cloudCover: 35,
-        visibility: 20,
-        forecastTime: '14:00',
-        quality: 95
-    },
-    arpege: {
-        temperature: 23.8,
-        minTemp: 17,
-        maxTemp: 26,
-        humidity: 64,
-        windSpeed: 20,
-        windGust: 32,
-        windDirection: 'NW',
-        precipitation: 18,
-        pressure: 1014,
-        cloudCover: 45,
-        visibility: 16,
-        forecastTime: '14:00',
-        quality: 88
-    },
-    ipma: {
-        temperature: 24.2,
-        minTemp: 18,
-        maxTemp: 27,
-        humidity: 61,
-        windSpeed: 17,
-        windGust: 28,
-        windDirection: 'NW',
-        precipitation: 10,
-        pressure: 1015,
-        cloudCover: 30,
-        visibility: 19,
-        forecastTime: '14:00',
-        quality: 94
-    },
-    openweather: {
-        temperature: 23.9,
-        minTemp: 17,
-        maxTemp: 26,
-        humidity: 63,
-        windSpeed: 19,
-        windGust: 32,
-        windDirection: 'NW',
-        precipitation: 20,
-        pressure: 1014,
-        cloudCover: 42,
-        visibility: 17,
-        forecastTime: '14:00',
-        quality: 87
-    }
-};
-
 // ================================
 // Initialization
 // ================================
@@ -148,6 +72,10 @@ document.addEventListener('DOMContentLoaded', function () {
     loadInitialData();
     initializeTable();
     updateLastUpdateTime();
+    initializeForecastTabs();
+    initializeForecastHistoryChart();
+    loadHistoricalForecasts();
+    initializeForecastHistoryListeners();
 
     // Auto-refresh every 10 minutes
     //setInterval(refreshForecastData, 600000);
@@ -580,45 +508,775 @@ function updateEvolutionChart() {
 // ================================
 // Timeline Initialization
 // ================================
-function initializeTimeline() {
+
+function initializeForecastTabs() {
+    document.querySelectorAll('.forecast-model-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document
+                .querySelectorAll('.forecast-model-tab')
+                .forEach(t => t.classList.remove('active'));
+
+            tab.classList.add('active');
+
+            currentForecastProvider = tab.dataset.provider;
+
+            initializeTimeline();
+        });
+    });
+}
+async function initializeTimeline() {
     const timelineScroll = document.getElementById('timelineScroll');
-    const now = new Date();
 
-    let html = '';
-    for (let i = 0; i < 16; i++) {
-        const time = new Date(now.getTime() + (i * 3 * 60 * 60 * 1000));
-        const isCurrentBlock = i === 0;
+    if (!timelineScroll) return;
 
-        const weatherIcons = ['fa-sun', 'fa-cloud-sun', 'fa-cloud', 'fa-cloud-rain'];
-        const iconIndex = Math.floor(Math.random() * weatherIcons.length);
+    try {
+        const response = await fetch('/data/forecast/terrestrial?limit=50000');
+        const records = await response.json();
 
-        const temp = Math.round(22 + Math.random() * 6);
-        const wind = Math.round(15 + Math.random() * 10);
-        const gust = Math.round(wind + 10 + Math.random() * 5);
-        const precip = Math.round(Math.random() * 30);
-        const cloud = Math.round(30 + Math.random() * 40);
+        let html = '';
 
-        html += `
-            <div class="timeline-block ${isCurrentBlock ? 'current' : ''}">
-                <div class="timeline-datetime">
-                    <span class="timeline-date">${time.toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric' })}</span>
-                    <span class="timeline-hour">${time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-                <i class="fas ${weatherIcons[iconIndex]} timeline-icon"></i>
-                <span class="timeline-temp">${temp}°C</span>
-                <div class="timeline-details">
-                    <span><i class="fas fa-wind"></i> ${wind} km/h</span>
-                    <span><i class="fas fa-burst"></i> ${gust} km/h</span>
-                    <span><i class="fas fa-droplet"></i> ${precip}%</span>
-                    <span><i class="fas fa-cloud"></i> ${cloud}%</span>
-                </div>
-            </div>
-        `;
+        if (currentForecastProvider === 'openmeteo') {
+            const openMeteoModels = ['ICON', 'ECMWF', 'ARPEGE'];
+
+            html = openMeteoModels
+                .map(modelName => {
+                    const timelineData = buildOpenMeteoTimeline(records, modelName);
+
+                    if (!timelineData.length) return '';
+
+                    return renderTimelineModelRow({
+                        provider: 'Open-Meteo',
+                        model: modelName,
+                        frequency: '1H',
+                        data: timelineData
+                    });
+                })
+                .join('');
+        }
+
+        if (currentForecastProvider === 'ipma') {
+
+            const timelineData =
+                buildIpmaTimeline(records);
+
+            html = renderTimelineModelRow({
+                provider: 'IPMA',
+                model: 'ECMWF + AROME',
+                frequency: '1H',
+                data: timelineData
+            });
+        }
+
+        if (currentForecastProvider === 'openweather') {
+
+            const timelineData =
+                buildOpenWeatherTimeline(records);
+
+            html = renderTimelineModelRow({
+                provider: 'OpenWeather',
+                model: 'OWM',
+                frequency: '3H',
+                data: timelineData
+            });
+        }
+
+        timelineScroll.innerHTML =
+            html || '<p class="empty-state">Sem dados futuros disponíveis.</p>';
+
+        initializeTimelineArrows();
+
+    } catch (error) {
+        console.error('Erro ao carregar previsões futuras:', error);
     }
-
-    timelineScroll.innerHTML = html;
 }
 
+function initializeTimelineArrows() {
+    document
+        .querySelectorAll('.timeline-arrow')
+        .forEach(button => {
+            button.addEventListener('click', () => {
+                const model = button.dataset.model;
+                const timeline = document.getElementById(`timeline-${model}`);
+
+                if (!timeline) return;
+
+                const direction = button.classList.contains('next') ? 1 : -1;
+
+                timeline.scrollBy({
+                    left: direction * 600,
+                    behavior: 'smooth'
+                });
+            });
+        });
+}
+function buildOpenMeteoTimeline(records, modelName) {
+    const lat = appState.selectedLocation.lat;
+    const lng = appState.selectedLocation.lng;
+
+    const modelRecords = records.filter(item =>
+        item.source?.toLowerCase() === 'open-meteo' &&
+        item.model?.toUpperCase().includes(modelName) &&
+        item.requestedLocation &&
+        Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
+        Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
+    );
+
+    const latestRequestId = modelRecords[0]?.requestId;
+
+    const latestRecords = modelRecords.filter(item =>
+        item.requestId === latestRequestId
+    );
+
+    const grouped = {};
+
+    latestRecords.forEach(record => {
+        const key = `${record.date} ${record.time}`;
+
+        if (!grouped[key]) {
+            grouped[key] = {
+                dateRaw: record.date,
+                timeRaw: record.time,
+                date: formatTimelineDate(record.date),
+                time: record.time.slice(0, 5),
+
+                temperature: null,
+                minTemp: null,
+                maxTemp: null,
+                humidity: null,
+                pressure: null,
+                cloudCover: null,
+                visibility: null,
+                windSpeed: null,
+                windSpeedMax: null,
+                windGust: null,
+                windDirectionDegrees: null,
+                windDirection: null,
+                precipitation: null,
+                sunrise: null,
+                sunset: null,
+
+                icon: 'fa-cloud-sun'
+            };
+        }
+
+        const field = record.variable?.fieldName;
+        const value = record.value;
+
+        switch (field) {
+            case 'temperatureC':
+                grouped[key].temperature = Number(value);
+                break;
+
+            case 'temperatureMinC':
+                grouped[key].minTemp = Number(value);
+                break;
+
+            case 'temperatureMaxC':
+                grouped[key].maxTemp = Number(value);
+                break;
+
+            case 'humidityPercent':
+                grouped[key].humidity = Number(value);
+                break;
+
+            case 'pressureHpa':
+                grouped[key].pressure = Number(value);
+                break;
+
+            case 'cloudCoverPercent':
+                grouped[key].cloudCover = Number(value);
+                break;
+
+            case 'visibilityKm':
+                grouped[key].visibility = Number(value);
+                break;
+
+            case 'windSpeedKmh':
+                grouped[key].windSpeed = Number(value);
+                break;
+
+            case 'windSpeedMaxKmh':
+                grouped[key].windSpeedMax = Number(value);
+                break;
+
+            case 'windGustKmh':
+                grouped[key].windGust = Number(value);
+                break;
+
+            case 'windDirectionDegrees':
+                grouped[key].windDirectionDegrees = Number(value);
+                grouped[key].windDirection =
+                    `${Math.round(Number(value))}° ${degreesToCardinal(Number(value))}`;
+                break;
+
+            case 'precipitationMm':
+                grouped[key].precipitation = Number(value);
+                break;
+
+            case 'sunriseH':
+                grouped[key].sunrise = value;
+                break;
+
+            case 'sunsetH':
+                grouped[key].sunset = value;
+                break;
+        }
+    });
+
+    const sorted = Object.values(grouped)
+        .sort((a, b) =>
+            new Date(`${a.dateRaw}T${a.timeRaw}`) -
+            new Date(`${b.dateRaw}T${b.timeRaw}`)
+        );
+
+    console.log(
+        modelName,
+        sorted.map(item => `${item.dateRaw} ${item.timeRaw}`)
+    );
+
+    return sorted.slice(0, 24);
+}
+
+function buildOpenWeatherTimeline(records) {
+
+    const lat = appState.selectedLocation.lat;
+    const lng = appState.selectedLocation.lng;
+
+    const filtered = records.filter(item =>
+        item.source?.toLowerCase() === 'openweather' &&
+        item.requestedLocation &&
+        Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
+        Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
+    );
+
+    const latestRequestId = filtered[0]?.requestId;
+
+    const latestRequestRecords = filtered.filter(
+        item => item.requestId === latestRequestId
+    );
+
+    const grouped = {};
+
+    latestRequestRecords.forEach(item => {
+
+        const key = `${item.date} ${item.time}`;
+
+        if (!grouped[key]) {
+            grouped[key] = {
+                datetime: key,
+                dateRaw: item.date,
+                date: formatTimelineDate(item.date),
+                time: item.time.slice(0, 5),
+                icon: 'fa-cloud-sun'
+            };
+        }
+
+        const field = item.variable?.fieldName;
+        const value = item.value;
+
+        switch (field) {
+
+            case 'temperatureC':
+                grouped[key].temperature = value;
+                break;
+
+            case 'temperatureMinC':
+                grouped[key].minTemp = value;
+                break;
+
+            case 'temperatureMaxC':
+                grouped[key].maxTemp = value;
+                break;
+
+            case 'humidityPercent':
+                grouped[key].humidity = value;
+                break;
+
+            case 'pressureHpa':
+                grouped[key].pressure = value;
+                break;
+
+            case 'cloudCoverPercent':
+                grouped[key].cloudCover = value;
+                break;
+
+            case 'windSpeedKmh':
+                grouped[key].windSpeed = value;
+                break;
+
+            case 'windGustKmh':
+                grouped[key].windGust = value;
+                break;
+
+            case 'windDirectionDegrees':
+                grouped[key].windDirection =
+                    `${value}° ${degreesToCardinal(value)}`;
+                break;
+
+            case 'precipitationMm':
+                grouped[key].precipitation = value;
+                break;
+
+            case 'precipitationProbabilityPercent':
+                grouped[key].precipitationProbability = value;
+                break;
+        }
+    });
+
+    return Object.values(grouped)
+        .sort((a, b) =>
+            new Date(a.datetime) - new Date(b.datetime)
+        )
+        .slice(0, 8);
+}
+
+function renderTimelineModelRow(modelData) {
+
+    return `
+        <div class="timeline-model-row">
+
+            <div class="timeline-model-left">
+
+                ${renderTimelineModelSummary(
+        modelData.data,
+        modelData.model
+    )}
+
+                <div class="timeline-model-controls">
+
+                    <button
+                        class="timeline-arrow prev"
+                        data-model="${modelData.model}">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+
+                    <button
+                        class="timeline-arrow next"
+                        data-model="${modelData.model}">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div
+                class="timeline-model-hours"
+                id="timeline-${modelData.model}">
+
+                ${renderTimelineBlocks(modelData.data, modelData.provider)}
+            </div>
+
+        </div>
+    `;
+}
+function buildIconTimeline(records) {
+    const lat = appState.selectedLocation.lat;
+    const lng = appState.selectedLocation.lng;
+
+    const iconRecords = records.filter(item =>
+        item.source?.toLowerCase() === 'open-meteo' &&
+        item.model?.toUpperCase() === 'ICON' &&
+        item.requestedLocation &&
+        Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
+        Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
+    );
+
+    const latestRequestId = iconRecords[0]?.requestId;
+
+    const latestRecords = iconRecords.filter(item =>
+        item.requestId === latestRequestId
+    );
+
+    const grouped = {};
+
+    latestRecords.forEach(record => {
+        const key = `${record.date} ${record.time}`;
+
+        if (!grouped[key]) {
+            grouped[key] = {
+                dateRaw: record.date,
+                timeRaw: record.time,
+                date: formatTimelineDate(record.date),
+                time: record.time.slice(0, 5),
+                temperature: null,
+                minTemp: null,
+                maxTemp: null,
+                humidity: null,
+                pressure: null,
+                cloudCover: null,
+                visibility: null,
+                windSpeed: null,
+                windSpeedMax: null,
+                windGust: null,
+                windDirectionDegrees: null,
+                windDirection: null,
+                precipitation: null,
+                sunrise: null,
+                sunset: null,
+                icon: 'fa-cloud-sun'
+            };
+        }
+
+        const field = record.variable?.fieldName;
+        const value = record.value;
+
+        switch (field) {
+            case 'temperatureC':
+                grouped[key].temperature = Number(value);
+                break;
+
+            case 'temperatureMinC':
+                grouped[key].minTemp = Number(value);
+                break;
+
+            case 'temperatureMaxC':
+                grouped[key].maxTemp = Number(value);
+                break;
+
+            case 'humidityPercent':
+                grouped[key].humidity = Number(value);
+                break;
+
+            case 'pressureHpa':
+                grouped[key].pressure = Number(value);
+                break;
+
+            case 'cloudCoverPercent':
+                grouped[key].cloudCover = Number(value);
+                break;
+
+            case 'visibilityKm':
+                grouped[key].visibility = Number(value);
+                break;
+
+            case 'windSpeedKmh':
+                grouped[key].windSpeed = Number(value);
+                break;
+
+            case 'windSpeedMaxKmh':
+                grouped[key].windSpeedMax = Number(value);
+                break;
+
+            case 'windGustKmh':
+                grouped[key].windGust = Number(value);
+                break;
+
+            case 'windDirectionDegrees':
+                grouped[key].windDirectionDegrees = Number(value);
+                grouped[key].windDirection =
+                    `${Math.round(Number(value))}° ${degreesToCardinal(Number(value))}`;
+                break;
+
+            case 'precipitationMm':
+                grouped[key].precipitation = Number(value);
+                break;
+
+            case 'sunriseH':
+                grouped[key].sunrise = value;
+                break;
+
+            case 'sunsetH':
+                grouped[key].sunset = value;
+                break;
+        }
+    });
+
+    return Object.values(grouped)
+        .sort((a, b) =>
+            new Date(`${a.dateRaw}T${a.timeRaw}`) -
+            new Date(`${b.dateRaw}T${b.timeRaw}`)
+        )
+        .slice(0, 24);
+}
+
+function buildIpmaTimeline(records) {
+
+    const lat = appState.selectedLocation.lat;
+    const lng = appState.selectedLocation.lng;
+
+    const filtered = records.filter(item =>
+        item.source?.toLowerCase() === 'ipma' &&
+        item.requestedLocation &&
+        Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
+        Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
+    );
+
+    const latestRequestId = filtered[0]?.requestId;
+
+    const latestRequestRecords = filtered.filter(
+        item => item.requestId === latestRequestId
+    );
+
+    const grouped = {};
+
+    latestRequestRecords.forEach(item => {
+
+        const key = `${item.date} ${item.time}`;
+
+        if (!grouped[key]) {
+            grouped[key] = {
+                datetime: key,
+                dateRaw: item.date,
+                timeRaw: item.time,
+                date: formatTimelineDate(item.date),
+                time: item.time.slice(0, 5),
+
+                temperature: null,
+                minTemp: null,
+                maxTemp: null,
+                humidity: null,
+                pressure: null,
+                cloudCover: null,
+                visibility: null,
+                windSpeed: null,
+                windGust: null,
+                windDirection: null,
+                precipitation: null,
+                precipitationProbability: null,
+                sunrise: null,
+                sunset: null,
+
+                icon: 'fa-cloud-sun'
+            };
+        }
+
+        const field = item.variable?.fieldName;
+        const rawValue = item.value;
+        const value = rawValue !== null && rawValue !== undefined
+            ? Number(rawValue)
+            : null;
+
+        switch (field) {
+
+            case 'temperatureC':
+                grouped[key].temperature = value;
+                break;
+
+            case 'temperatureMinC':
+                grouped[key].minTemp = value;
+                break;
+
+            case 'temperatureMaxC':
+                grouped[key].maxTemp = value;
+                break;
+
+            case 'humidityPercent':
+                grouped[key].humidity = value;
+                break;
+
+            case 'windSpeedKmh':
+                grouped[key].windSpeed = value;
+                break;
+
+            case 'windGustKmh':
+                grouped[key].windGust = value;
+                break;
+
+            case 'windDirectionCardinal':
+                grouped[key].windDirection = rawValue;
+                break;
+
+            case 'windDirectionDegrees':
+                grouped[key].windDirection =
+                    `${Math.round(value)}° ${degreesToCardinal(value)}`;
+                break;
+
+            case 'precipitationProbabilityPercent':
+                grouped[key].precipitationProbability =
+                    value !== -99 ? value : null;
+                break;
+        }
+    });
+
+    return Object.values(grouped)
+        .sort((a, b) =>
+            new Date(a.datetime.replace(' ', 'T')) -
+            new Date(b.datetime.replace(' ', 'T'))
+        )
+        .slice(0, 24);
+}
+
+function formatTimelineDate(dateString) {
+    const date = new Date(dateString);
+
+    return date.toLocaleDateString('pt-PT', {
+        weekday: 'short',
+        day: '2-digit'
+    });
+}
+function formatTimelineShortDate(dateString) {
+
+    const date = new Date(dateString);
+
+    return date.toLocaleDateString('pt-PT', {
+        day: '2-digit',
+        month: 'short'
+    });
+
+}
+
+function getDailySummaryByDate(forecastData) {
+    const groupedByDate = {};
+
+    forecastData.forEach(item => {
+        if (!groupedByDate[item.dateRaw]) {
+            groupedByDate[item.dateRaw] = {
+                dateRaw: item.dateRaw,
+                minTemp: item.minTemp,
+                maxTemp: item.maxTemp,
+                sunrise: item.sunrise,
+                sunset: item.sunset
+            };
+        }
+    });
+
+    return groupedByDate;
+}
+function renderTimelineModelSummary(forecastData, modelName = 'ICON') {
+    const first = forecastData[0];
+
+    if (!first) return '';
+
+    const days = Object.values(
+        forecastData.reduce((acc, item) => {
+            if (!acc[item.dateRaw]) {
+                acc[item.dateRaw] = {
+                    label: formatTimelineShortDate(item.dateRaw),
+                    minTemp: item.minTemp,
+                    maxTemp: item.maxTemp,
+                    sunrise: item.sunrise,
+                    sunset: item.sunset
+                };
+            }
+
+            return acc;
+        }, {})
+    );
+
+    return `
+        <div class="timeline-model-summary premium-summary">
+
+            <div class="timeline-model-main">
+                <div class="timeline-model-icon">
+                    <i class="fas fa-cloud-sun"></i>
+                </div>
+
+                <div class="timeline-model-info">
+                    <span class="timeline-model-provider">
+    Open-Meteo -
+    <strong>${modelName}</strong>
+</span>
+                   
+                </div>
+            </div>
+
+            <div class="timeline-days-wrapper">
+
+                ${days.map(day => `
+                    <div class="timeline-day-summary">
+
+                        <div class="timeline-day-title">
+                            <i class="fas fa-calendar-days"></i>
+                            <span>${day.label}</span>
+                        </div>
+
+                        <div class="timeline-day-temp-grid">
+
+                            <div>
+                                <span>MÍN</span>
+                                <strong class="temp-min">
+                                    ${day.minTemp !== null && day.minTemp !== undefined
+            ? `${Number(day.minTemp).toFixed(1)}°C`
+            : '—'}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>MÁX</span>
+                                <strong class="temp-max">
+                                    ${day.maxTemp !== null && day.maxTemp !== undefined
+            ? `${Number(day.maxTemp).toFixed(1)}°C`
+            : '—'}
+                                </strong>
+                            </div>
+
+                        </div>
+
+                        <div class="timeline-day-sun premium-sun">
+                            <span>
+                                <i class="fas fa-sun"></i>
+                                ${day.sunrise ?? '—'}
+                            </span>
+
+                            <span>
+                                <i class="fas fa-moon"></i>
+                                ${day.sunset ?? '—'}
+                            </span>
+                        </div>
+
+                    </div>
+                `).join('')}
+
+            </div>
+
+        </div>
+    `;
+}
+
+function renderTimelineBlocks(forecastData, provider = '') {
+
+    return forecastData.map((forecast, index) => {
+
+        const isIpma = provider === 'IPMA';
+
+        return `
+            <div class="timeline-block ${index === 0 ? 'current' : ''}">
+
+                <div class="timeline-datetime">
+                    <span class="timeline-date">${forecast.date}</span>
+                    <span class="timeline-hour">${forecast.time}</span>
+                </div>
+
+                <i class="fas ${forecast.icon} timeline-icon"></i>
+
+                <span class="timeline-temp">
+                    ${forecast.temperature !== null ? `${forecast.temperature.toFixed(1)}°C` : '—'}
+                </span>
+
+                <div class="timeline-details">
+
+                    <span><i class="fas fa-droplet"></i> ${forecast.humidity !== null ? `${forecast.humidity}%` : '—'}</span>
+
+                    ${!isIpma ? `
+                        <span><i class="fas fa-gauge"></i> ${forecast.pressure !== null ? `${forecast.pressure.toFixed(1)} hPa` : '—'}</span>
+                        <span><i class="fas fa-cloud"></i> ${forecast.cloudCover !== null ? `${forecast.cloudCover}%` : '—'}</span>
+                    ` : ''}
+
+                    <span><i class="fas fa-wind"></i> ${forecast.windSpeed !== null ? `${forecast.windSpeed.toFixed(1)} km/h` : '—'}</span>
+
+                    ${!isIpma ? `
+                        <span><i class="fas fa-burst"></i> ${forecast.windGust !== null ? `${forecast.windGust.toFixed(1)} km/h` : '—'}</span>
+                    ` : ''}
+
+                    <span><i class="fas fa-location-arrow"></i> ${forecast.windDirection ?? '—'}</span>
+
+                    <span>
+                        <i class="fas fa-cloud-rain"></i>
+                        ${forecast.precipitation !== null && forecast.precipitation !== undefined
+                ? `${forecast.precipitation} mm`
+                : forecast.precipitationProbability !== null && forecast.precipitationProbability !== undefined
+                    ? `${forecast.precipitationProbability}%`
+                    : '—'
+            }
+                    </span>
+
+                </div>
+
+            </div>
+        `;
+    }).join('');
+}
 // ================================
 // Event Listeners
 // ================================
@@ -643,16 +1301,7 @@ function initializeEventListeners() {
         });
     });
 
-    // Timeline navigation
-    document.getElementById('timelinePrev').addEventListener('click', function () {
-        const scroll = document.getElementById('timelineScroll');
-        scroll.scrollBy({ left: -300, behavior: 'smooth' });
-    });
 
-    document.getElementById('timelineNext').addEventListener('click', function () {
-        const scroll = document.getElementById('timelineScroll');
-        scroll.scrollBy({ left: 300, behavior: 'smooth' });
-    });
 
     // Table search
     document.getElementById('tableSearch').addEventListener('input', function () {
@@ -683,89 +1332,27 @@ function initializeEventListeners() {
 // Data Loading & API Integration
 // ================================
 function loadInitialData() {
-    // Load mock data for development
-    appState.currentData = mockCurrentForecast;
-    appState.tableData = generateMockTableData();
-    appState.pagination.totalItems = appState.tableData.length;
 
-    updateModelCards();
-    updateCurrentForecast();
-    updateOperationalCards();
+    appState.tableData = generateMockTableData();
+
+    appState.pagination.totalItems =
+        appState.tableData.length;
+
     renderTable();
 
-    // For production, uncomment these:
-    // fetchCurrentForecast();
-    // fetchForecastHistory();
+    fetchCurrentForecast();
+
+    updateLastUpdateTime();
 }
 
 function refreshForecastData() {
     fetchCurrentForecast();
     updateLastUpdateTime();
+    //updateForecastOperational();
 }
 
 // Prepared for FastAPI integration
-async function fetchCurrentForecast() {
-    try {
-        const response = await fetch('/data/forecast/terrestrial?limit=50000');
-        const records = await response.json();
 
-        const lat = appState.selectedLocation.lat;
-        const lng = appState.selectedLocation.lng;
-
-        const openWeatherRecords = records.filter(item =>
-            item.source?.toLowerCase() === 'openweather' &&
-            item.requestedLocation &&
-            Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
-            Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
-        );
-
-        const latestRequestId = openWeatherRecords[0]?.requestId;
-
-        const latestRequestRecords = openWeatherRecords.filter(item =>
-            item.requestId === latestRequestId
-        );
-
-        const nearestForecastKey = getNearestForecastKey(latestRequestRecords);
-
-        const latestRecords = latestRequestRecords.filter(item =>
-            `${item.date} ${item.time}` === nearestForecastKey
-        );
-
-        const openweather = mapOpenWeatherForecast(latestRecords);
-
-        appState.currentData.openweather = openweather;
-
-        updateOpenWeatherCard(openweather);
-
-    } catch (error) {
-        console.error('Erro ao carregar OpenWeather da BD:', error);
-    }
-
-    const ipmaRecords = records.filter(item =>
-        item.source?.toLowerCase() === 'ipma' &&
-        item.requestedLocation &&
-        Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
-        Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
-    );
-
-    const latestIpmaRequestId = ipmaRecords[0]?.requestId;
-
-    const latestIpmaRequestRecords = ipmaRecords.filter(item =>
-        item.requestId === latestIpmaRequestId
-    );
-
-    const nearestIpmaForecastKey = getNearestForecastKey(latestIpmaRequestRecords);
-
-    const latestIpmaRecords = latestIpmaRequestRecords.filter(item =>
-        `${item.date} ${item.time}` === nearestIpmaForecastKey
-    );
-
-    const ipma = mapIpmaForecast(latestIpmaRecords);
-
-    appState.currentData.ipma = ipma;
-
-    updateIpmaCard(ipma);
-}
 
 function getNearestForecastKey(records) {
     const now = new Date();
@@ -902,7 +1489,7 @@ function updateOpenWeatherCard(data) {
     setText(
         'owWindDir',
         data.windDirectionDegrees !== null
-            ? `${Math.round(data.windDirectionDegrees)}°`
+            ? `${Math.round(data.windDirectionDegrees)}° ${degreesToCardinal(data.windDirectionDegrees)}`
             : '—'
     );
 
@@ -930,6 +1517,7 @@ function setText(id, value) {
 }
 
 function mapIpmaForecast(records) {
+    console.log(records);
 
     function getValue(fieldName) {
         const record = records.find(item =>
@@ -949,6 +1537,8 @@ function mapIpmaForecast(records) {
 
     return {
         temperature: getValue('temperatureC'),
+        minTemp: getValue('temperatureMinC'),
+        maxTemp: getValue('temperatureMaxC'),
         feelsLike: getValue('feelsLikeTemperatureC'),
         humidity: getValue('humidityPercent'),
 
@@ -971,13 +1561,68 @@ function mapIpmaForecast(records) {
 
 function updateIpmaCard(data) {
 
-    setText('ipmaTemp', data.temperature !== null ? `${data.temperature.toFixed(1)}°C` : '—');
-    setText('ipmaWind', data.windSpeed !== null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
-    setText('ipmaGust', data.windGust !== null ? `${data.windGust.toFixed(1)} km/h` : '—');
-    setText('ipmaPrecip', data.precipitation !== null ? `${data.precipitation}%` : '—');
-    setText('ipmaCloud', data.cloudCover !== null ? `${data.cloudCover}%` : '—');
+    setText(
+        'ipmaTemp',
+        data.temperature !== null
+            ? `${data.temperature.toFixed(1)}°C`
+            : '—'
+    );
+    setText(
+        'ipmaTempMin',
+        data.minTemp !== null &&
+            data.minTemp !== undefined
+            ? `${Number(data.minTemp).toFixed(1)}°C`
+            : '—'
+    );
 
-    setText('ipmaForecastTime', data.forecastTime !== '—' ? data.forecastTime : '—');
+    setText(
+        'ipmaTempMax',
+        data.maxTemp !== null &&
+            data.maxTemp !== undefined
+            ? `${Number(data.maxTemp).toFixed(1)}°C`
+            : '—'
+    );
+
+    setText(
+        'ipmaFeelsLike',
+        data.feelsLike !== null
+            ? `${data.feelsLike.toFixed(1)}°C`
+            : '—'
+    );
+
+    setText(
+        'ipmaHumidity',
+        data.humidity !== null
+            ? `${data.humidity.toFixed(1)}%`
+            : '—'
+    );
+
+    setText(
+        'ipmaWind',
+        data.windSpeed !== null
+            ? `${data.windSpeed.toFixed(1)} km/h`
+            : '—'
+    );
+
+    setText(
+        'ipmaWindDir',
+        data.windDirectionCardinal ?? '—'
+    );
+
+    setText(
+        'ipmaPrecip',
+        data.precipitation !== null &&
+            Number(data.precipitation) !== -99
+            ? `${data.precipitation}%`
+            : '—'
+    );
+
+    setText(
+        'ipmaForecastTime',
+        data.forecastTime !== '—'
+            ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
+            : '—'
+    );
 }
 
 
@@ -1050,10 +1695,156 @@ async function fetchCurrentForecast() {
 
         updateIpmaCard(ipma);
 
+        // =========================
+        // OPEN-METEO
+        // =========================
+
+        const openMeteoRecords = records.filter(item =>
+            item.source?.toLowerCase() === 'open-meteo' &&
+            item.requestedLocation &&
+            Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
+            Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
+        );
+
+        const openMeteoModels = {
+            icon: 'ICON',
+            ecmwf: 'ECMWF',
+            arpege: 'ARPEGE'
+        };
+
+        Object.entries(openMeteoModels).forEach(([key, modelName]) => {
+            const modelRecords = openMeteoRecords.filter(item =>
+                item.model?.toUpperCase().includes(modelName)
+            );
+
+            const latestRequestId = modelRecords[0]?.requestId;
+
+            const latestRequestRecords = modelRecords.filter(item =>
+                item.requestId === latestRequestId
+            );
+
+            const nearestForecastKey = getNearestForecastKey(latestRequestRecords);
+
+            const latestRecords = latestRequestRecords.filter(item =>
+                `${item.date} ${item.time}` === nearestForecastKey
+            );
+
+            const mapped = mapOpenMeteoForecast(latestRecords);
+
+            appState.currentData[key] = mapped;
+
+            updateOpenMeteoCard(key, mapped);
+
+
+
+        });
+        updateForecastAgreement();
+        updateForecastOperational();
+
     } catch (error) {
 
         console.error('Erro previsão terrestre:', error);
 
+    }
+
+}
+
+function mapOpenMeteoForecast(records) {
+    function getValue(fieldName) {
+        const record = records.find(item =>
+            item.variable?.fieldName === fieldName
+        );
+
+        if (!record || record.value === null || record.value === undefined) {
+            return null;
+        }
+
+        const value = Number(record.value);
+
+        return Number.isNaN(value) ? null : value;
+    }
+
+    function getText(fieldName) {
+        const record = records.find(item =>
+            item.variable?.fieldName === fieldName
+        );
+
+        if (!record) {
+            return null;
+        }
+
+        return record.value ?? record.valueText ?? null;
+    }
+
+    return {
+        temperature: getValue('temperatureC'),
+        minTemp: getValue('temperatureMinC'),
+        maxTemp: getValue('temperatureMaxC'),
+
+        humidity: getValue('humidityPercent'),
+        pressure: getValue('pressureHpa'),
+        cloudCover: getValue('cloudCoverPercent'),
+        visibility: getValue('visibilityKm'),
+
+        windSpeed: getValue('windSpeedKmh'),
+        windSpeedMax: getValue('windSpeedMaxKmh'),
+        windGust: getValue('windGustKmh'),
+        windDirectionDegrees: getValue('windDirectionDegrees'),
+
+        precipitation: getValue('precipitationMm'),
+        precipitationProbability: getValue('precipitationProbabilityPercent'),
+
+        sunrise: getText('sunriseH'),
+        sunset: getText('sunsetH'),
+
+        forecastTime: records[0]?.time ?? '—',
+        forecastDate: records[0]?.date ?? '—',
+        model: records[0]?.model ?? '—',
+        requestId: records[0]?.requestId ?? null
+    };
+}
+
+function updateOpenMeteoCard(modelKey, data) {
+    const prefix = {
+        icon: 'icon',
+        ecmwf: 'ecmwf',
+        arpege: 'arpege'
+    }[modelKey];
+
+    setText(`${prefix}Temp`, data.temperature !== null ? `${data.temperature.toFixed(1)}°C` : '—');
+
+    setText(
+        `${prefix}MinMax`,
+        data.minTemp !== null && data.maxTemp !== null
+            ? `${data.minTemp.toFixed(1)}°C / ${data.maxTemp.toFixed(1)}°C`
+            : '— / —'
+    );
+
+    setText(`${prefix}Humidity`, data.humidity !== null ? `${data.humidity}%` : '—');
+    setText(`${prefix}Pressure`, data.pressure !== null ? `${data.pressure} hPa` : '—');
+    setText(`${prefix}Cloud`, data.cloudCover !== null ? `${data.cloudCover}%` : '—');
+    setText(`${prefix}Visibility`, data.visibility !== null ? `${data.visibility.toFixed(2)} km` : '—');
+
+    setText(`${prefix}Wind`, data.windSpeed !== null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
+    setText(`${prefix}Gust`, data.windGust !== null ? `${data.windGust.toFixed(1)} km/h` : '—');
+    setText(
+        `${prefix}WindDir`,
+        data.windDirectionDegrees !== null
+            ? `${Math.round(data.windDirectionDegrees)}° ${degreesToCardinal(data.windDirectionDegrees)}`
+            : '—'
+    );
+
+    setText(`${prefix}Precip`, data.precipitation !== null ? `${data.precipitation} mm` : '—');
+
+    setText(`${prefix}Sunrise`, data.sunrise ?? '—');
+    setText(`${prefix}Sunset`, data.sunset ?? '—');
+    if (modelKey === 'icon') {
+        setText(
+            'openmeteoForecastTime',
+            data.forecastTime !== '—'
+                ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
+                : '—'
+        );
     }
 }
 
@@ -1071,41 +1862,7 @@ async function fetchForecastModels() {
 // ================================
 // UI Update Functions
 // ================================
-function updateModelCards() {
-    const data = appState.currentData;
 
-    // ICON
-    document.getElementById('iconTemp').textContent = `${data.icon.temperature}°C`;
-    document.getElementById('iconWind').textContent = `${data.icon.windSpeed} km/h`;
-    document.getElementById('iconPrecip').textContent = `${data.icon.precipitation}%`;
-    document.getElementById('iconCloud').textContent = `${data.icon.cloudCover}%`;
-
-    // ECMWF
-    document.getElementById('ecmwfTemp').textContent = `${data.ecmwf.temperature}°C`;
-    document.getElementById('ecmwfWind').textContent = `${data.ecmwf.windSpeed} km/h`;
-    document.getElementById('ecmwfPrecip').textContent = `${data.ecmwf.precipitation}%`;
-    document.getElementById('ecmwfCloud').textContent = `${data.ecmwf.cloudCover}%`;
-
-    // ARPEGE
-    document.getElementById('arpegeTemp').textContent = `${data.arpege.temperature}°C`;
-    document.getElementById('arpegeWind').textContent = `${data.arpege.windSpeed} km/h`;
-    document.getElementById('arpegePrecip').textContent = `${data.arpege.precipitation}%`;
-    document.getElementById('arpegeCloud').textContent = `${data.arpege.cloudCover}%`;
-
-    // IPMA
-    document.getElementById('ipmaTemp').textContent = `${data.ipma.temperature}°C`;
-    document.getElementById('ipmaWind').textContent = `${data.ipma.windSpeed} km/h`;
-    document.getElementById('ipmaGust').textContent = `${data.ipma.windGust} km/h`;
-    document.getElementById('ipmaPrecip').textContent = `${data.ipma.precipitation}%`;
-    document.getElementById('ipmaCloud').textContent = `${data.ipma.cloudCover}%`;
-
-    // OpenWeather
-    document.getElementById('owTemp').textContent = `${data.openweather.temperature}°C`;
-    document.getElementById('owWind').textContent = `${data.openweather.windSpeed} km/h`;
-    document.getElementById('owGust').textContent = `${data.openweather.windGust} km/h`;
-    document.getElementById('owPrecip').textContent = `${data.openweather.precipitation}%`;
-    document.getElementById('owCloud').textContent = `${data.openweather.cloudCover}%`;
-}
 
 function updateCurrentForecast() {
     const data = appState.currentData;
@@ -1361,3 +2118,660 @@ function exportToCsv() {
 
 // Make goToPage globally accessible
 window.goToPage = goToPage;
+
+
+function degreesToCardinal(deg) {
+
+    if (deg === null || deg === undefined) {
+        return '—';
+    }
+
+    const directions = [
+        'N', 'NNE', 'NE', 'ENE',
+        'E', 'ESE', 'SE', 'SSE',
+        'S', 'SSW', 'SW', 'WSW',
+        'W', 'WNW', 'NW', 'NNW'
+    ];
+
+    const index = Math.round(deg / 22.5) % 16;
+
+    return directions[index];
+}
+
+function getValidValues(models, field) {
+
+    return models
+        .map(model => model?.[field])
+
+        .filter(value =>
+
+            value !== null &&
+            value !== undefined &&
+
+            Number(value) !== -99 &&
+            Number(value) !== -99.0 &&
+
+            !Number.isNaN(Number(value))
+        )
+
+        .map(Number);
+}
+
+function calculateSpread(values) {
+    if (!values.length) return null;
+
+    return Math.max(...values) - Math.min(...values);
+}
+
+function scoreFromSpread(spread, thresholds) {
+    if (spread === null) return null;
+
+    if (spread <= thresholds.excellent) return 100;
+    if (spread <= thresholds.good) return 85;
+    if (spread <= thresholds.medium) return 65;
+    if (spread <= thresholds.low) return 45;
+
+    return 25;
+}
+
+function updateSpreadRow(valueId, indicatorId, spread, unit, thresholds) {
+    const valueEl = document.getElementById(valueId);
+    const indicatorEl = document.getElementById(indicatorId);
+
+    if (!valueEl || !indicatorEl) return;
+
+    if (spread === null) {
+        valueEl.textContent = '—';
+        indicatorEl.className = 'comp-indicator equal';
+        indicatorEl.innerHTML = '<i class="fas fa-minus"></i>';
+        return;
+    }
+
+    valueEl.textContent = `${spread.toFixed(1)}${unit}`;
+
+    const score = scoreFromSpread(spread, thresholds);
+
+    if (score >= 85) {
+        indicatorEl.className = 'comp-indicator higher';
+        indicatorEl.innerHTML = '<i class="fas fa-check"></i>';
+    } else if (score >= 65) {
+        indicatorEl.className = 'comp-indicator equal';
+        indicatorEl.innerHTML = '<i class="fas fa-equals"></i>';
+    } else {
+        indicatorEl.className = 'comp-indicator lower';
+        indicatorEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i>';
+    }
+
+    return score;
+}
+
+function updateForecastAgreement() {
+    const models = [
+        appState.currentData.icon,
+        appState.currentData.ecmwf,
+        appState.currentData.arpege,
+        appState.currentData.ipma,
+        appState.currentData.openweather
+    ].filter(Boolean);
+
+    if (!models.length) return;
+
+    const rows = [
+        {
+            field: 'temperature',
+            valueId: 'forecastTempSpread',
+            indicatorId: 'forecastTempIndicator',
+            unit: '°C',
+            thresholds: { excellent: 1, good: 2, medium: 4, low: 6 }
+        },
+        {
+            field: 'humidity',
+            valueId: 'forecastHumiditySpread',
+            indicatorId: 'forecastHumidityIndicator',
+            unit: '%',
+            thresholds: { excellent: 5, good: 10, medium: 20, low: 30 }
+        },
+        {
+            field: 'windSpeed',
+            valueId: 'forecastWindSpread',
+            indicatorId: 'forecastWindIndicator',
+            unit: ' km/h',
+            thresholds: { excellent: 3, good: 7, medium: 12, low: 20 }
+        },
+        {
+            field: 'precipitation',
+            valueId: 'forecastPrecipSpread',
+            indicatorId: 'forecastPrecipIndicator',
+            unit: '',
+            thresholds: { excellent: 0.5, good: 2, medium: 5, low: 10 }
+        },
+        {
+            field: 'pressure',
+            valueId: 'forecastPressureSpread',
+            indicatorId: 'forecastPressureIndicator',
+            unit: ' hPa',
+            thresholds: { excellent: 1, good: 3, medium: 6, low: 10 }
+        },
+        {
+            field: 'visibility',
+            valueId: 'forecastVisibilitySpread',
+            indicatorId: 'forecastVisibilityIndicator',
+            unit: ' km',
+            thresholds: { excellent: 2, good: 5, medium: 10, low: 20 }
+        }
+    ];
+
+    const scores = [];
+
+    rows.forEach(row => {
+        const values = getValidValues(models, row.field);
+        const spread = calculateSpread(values);
+
+        const score = updateSpreadRow(
+            row.valueId,
+            row.indicatorId,
+            spread,
+            row.unit,
+            row.thresholds
+        );
+
+        if (score !== null && score !== undefined) {
+            scores.push(score);
+        }
+    });
+
+    const agreement =
+        scores.length
+            ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+            : null;
+
+    const progress = document.getElementById('forecastAgreementProgress');
+    const value = document.getElementById('forecastAgreementValue');
+
+    if (progress && value) {
+        progress.style.width = agreement !== null ? `${agreement}%` : '0%';
+        value.textContent = agreement !== null ? `${agreement}%` : '—';
+    }
+}
+
+function average(values) {
+
+    const valid = values.filter(v =>
+
+        v !== null &&
+        v !== undefined &&
+        Number(v) !== -99 &&
+        !Number.isNaN(Number(v))
+    );
+
+    if (!valid.length) return null;
+
+    return (
+        valid.reduce((a, b) => a + Number(b), 0)
+        / valid.length
+    );
+}
+function getForecastModels() {
+    return [
+        appState.currentData.icon,
+        appState.currentData.ecmwf,
+        appState.currentData.arpege,
+        appState.currentData.ipma,
+        appState.currentData.openweather
+    ].filter(Boolean);
+}
+
+function averageValues(values) {
+    const valid = values
+        .filter(v =>
+            v !== null &&
+            v !== undefined &&
+            Number(v) !== -99 &&
+            Number(v) !== -99.0 &&
+            !Number.isNaN(Number(v))
+        )
+        .map(Number);
+
+    if (valid.length === 0) return null;
+
+    return valid.reduce((a, b) => a + b, 0) / valid.length;
+}
+
+function mostCommonValue(values) {
+    const valid = values.filter(v => v && v !== '—');
+
+    if (!valid.length) return '—';
+
+    const counts = {};
+
+    valid.forEach(value => {
+        counts[value] = (counts[value] || 0) + 1;
+    });
+
+    return Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function updateForecastDroneReadiness() {
+    const models = getForecastModels();
+
+    if (!models.length) return;
+
+    const wind = averageValues(models.map(m => m.windSpeed));
+    const precipitation = averageValues(models.map(m => m.precipitation));
+    const visibility = averageValues(models.map(m => m.visibility));
+
+    const windDirection = mostCommonValue(
+        models.map(m => {
+            if (m.windDirectionCardinal) return m.windDirectionCardinal;
+
+            if (m.windDirectionDegrees !== null && m.windDirectionDegrees !== undefined) {
+                return degreesToCardinal(m.windDirectionDegrees);
+            }
+
+            return null;
+        })
+    );
+
+    let score = 100;
+
+    if (wind !== null && wind > 30) score -= 35;
+    else if (wind !== null && wind > 20) score -= 20;
+
+    if (precipitation !== null && precipitation > 1) score -= 35;
+    else if (precipitation !== null && precipitation > 0) score -= 15;
+
+    if (visibility !== null && visibility < 3) score -= 30;
+    else if (visibility !== null && visibility < 5) score -= 15;
+
+    score = Math.max(0, score);
+
+    let label = 'Operacional';
+    let note = 'Condições favoráveis para voo.';
+    let cssClass = 'safe';
+
+    if (score < 60) {
+        label = 'Não recomendado';
+        note = 'Operação não recomendada pelas condições previstas.';
+        cssClass = 'danger';
+    } else if (score < 80) {
+        label = 'Atenção';
+        note = 'Operação possível, mas com atenção às condições meteorológicas previstas.';
+        cssClass = 'warning';
+    }
+
+    setText('droneScore', `${score}%`);
+    setText('droneStatusText', label);
+
+    setText(
+        'droneWind',
+        wind !== null ? `${wind.toFixed(1)} km/h` : '—'
+    );
+
+    setText(
+        'dronePrecip',
+        precipitation !== null ? `${precipitation.toFixed(1)} mm` : '—'
+    );
+
+    setText(
+        'droneVisibility',
+        visibility !== null ? `${visibility.toFixed(1)} km` : '—'
+    );
+
+    setText('droneWindDir', windDirection);
+
+    const droneScore = document.getElementById('droneScore');
+
+    if (droneScore) {
+        droneScore.className = `obs-value ${cssClass}`;
+    }
+
+    setText('operationalDroneText', note);
+
+    const droneSide = document.querySelector('.drone-side');
+
+    if (droneSide) {
+        droneSide.classList.remove('drone-safe', 'drone-warning', 'drone-danger');
+        droneSide.classList.add(`drone-${cssClass}`);
+    }
+}
+
+function updateForecastFireRisk() {
+    const models = getForecastModels();
+
+    if (!models.length) return;
+
+    const temp = averageValues(models.map(m => m.temperature));
+    const humidity = averageValues(models.map(m => m.humidity));
+    const wind = averageValues(models.map(m => m.windSpeed));
+    const precipitation = averageValues(models.map(m => m.precipitation));
+
+    const windDirection = mostCommonValue(
+        models.map(m => {
+            if (m.windDirectionCardinal) return m.windDirectionCardinal;
+
+            if (m.windDirectionDegrees !== null && m.windDirectionDegrees !== undefined) {
+                return degreesToCardinal(m.windDirectionDegrees);
+            }
+
+            return null;
+        })
+    );
+
+    let score = 0;
+
+    if (temp !== null && temp >= 30) score += 30;
+    else if (temp !== null && temp >= 25) score += 20;
+
+    if (humidity !== null && humidity <= 30) score += 30;
+    else if (humidity !== null && humidity <= 45) score += 15;
+
+    if (wind !== null && wind >= 25) score += 25;
+    else if (wind !== null && wind >= 15) score += 15;
+
+    if (precipitation !== null && precipitation === 0) score += 15;
+
+    score = Math.min(100, score);
+
+    let label = 'Baixo';
+    let note = 'Condições atmosféricas previstas estáveis.';
+    let cssClass = 'safe';
+
+    if (score >= 75) {
+        label = 'Muito elevado';
+        note = 'Condições previstas favoráveis à propagação de incêndios.';
+        cssClass = 'danger';
+    } else if (score >= 50) {
+        label = 'Elevado';
+        note = 'Risco elevado devido às condições meteorológicas previstas.';
+        cssClass = 'warning';
+    } else if (score >= 25) {
+        label = 'Moderado';
+        note = 'Condições previstas moderadas de risco.';
+        cssClass = 'warning';
+    }
+
+    setText('fireScore', `${score}%`);
+    setText('fireStatusText', label);
+
+    setText(
+        'fireTemp',
+        temp !== null ? `${temp.toFixed(1)}°C` : '—'
+    );
+
+    setText(
+        'fireHumidity',
+        humidity !== null ? `${humidity.toFixed(0)}%` : '—'
+    );
+
+    setText(
+        'fireWind',
+        wind !== null ? `${wind.toFixed(1)} km/h` : '—'
+    );
+
+    setText('fireWindDir', windDirection);
+
+    setText(
+        'firePrecip',
+        precipitation !== null ? `${precipitation.toFixed(1)} mm` : '—'
+    );
+
+    const fireScore = document.getElementById('fireScore');
+
+    if (fireScore) {
+        fireScore.className = `obs-value ${cssClass}`;
+    }
+
+    setText('operationalFireText', note);
+
+    const fireSide = document.querySelector('.fire-side');
+
+    if (fireSide) {
+        fireSide.classList.remove('fire-safe', 'fire-warning', 'fire-danger');
+        fireSide.classList.add(`fire-${cssClass}`);
+    }
+}
+
+function updateForecastOperational() {
+    updateForecastDroneReadiness();
+    updateForecastFireRisk();
+}
+
+let forecastHistoryChart;
+
+function initializeForecastHistoryChart() {
+    const canvas = document.getElementById('forecastHistoryChart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    forecastHistoryChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'ICON', data: [], borderColor: MODEL_COLORS.icon, backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 0, spanGaps: true },
+                { label: 'ECMWF', data: [], borderColor: MODEL_COLORS.ecmwf, backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 0, spanGaps: true },
+                { label: 'ARPEGE', data: [], borderColor: MODEL_COLORS.arpege, backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 0, spanGaps: true },
+                { label: 'IPMA', data: [], borderColor: MODEL_COLORS.ipma, backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 0, spanGaps: true },
+                { label: 'OpenWeather', data: [], borderColor: MODEL_COLORS.openweather, backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 0, spanGaps: true }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(148,163,184,0.1)' } },
+                y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(148,163,184,0.1)' } }
+            }
+        }
+    });
+}
+
+async function loadHistoricalForecasts() {
+    try {
+        const response = await fetch('/data/forecast/terrestrial?limit=50000');
+        const records = await response.json();
+
+        const variable = document.getElementById('forecastHistoryVariable')?.value || 'temperature';
+        const range = document.querySelector('.forecast-history-range-buttons .btn.active')?.dataset.range || '24h';
+
+        const data = buildHistoricalForecastChartData(records, variable, range);
+
+        updateHistoricalForecastChart(data);
+
+    } catch (error) {
+        console.error('Erro ao carregar histórico de previsões:', error);
+    }
+}
+
+function buildHistoricalForecastChartData(records, selectedVariable, selectedRange) {
+    const variableMap = {
+        temperature: 'temperatureC',
+        humidity: 'humidityPercent',
+        windSpeed: 'windSpeedKmh',
+        precipitation: 'precipitationMm',
+        pressure: 'pressureHpa',
+        cloudCover: 'cloudCoverPercent'
+    };
+
+    const fieldName = variableMap[selectedVariable] || 'temperatureC';
+
+    let filtered = records.filter(item =>
+        item.requestId &&
+        item.requestId.startsWith('FOR_T-') &&
+        item.variable?.fieldName === fieldName
+    );
+
+    filtered = filtered.filter(item => {
+        if (!item.requestedLocation) return false;
+
+        return (
+            Number(item.requestedLocation.latitude).toFixed(4) === Number(appState.selectedLocation.lat).toFixed(4) &&
+            Number(item.requestedLocation.longitude).toFixed(4) === Number(appState.selectedLocation.lng).toFixed(4)
+        );
+    });
+
+    filtered = filterForecastHistoryByRange(filtered, selectedRange);
+
+    filtered.sort((a, b) =>
+        `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)
+    );
+
+    const grouped = {};
+
+    filtered.forEach(item => {
+        const hour = item.time.slice(0, 2);
+        const key = `${item.date} ${hour}:00`;
+
+        if (!grouped[key]) {
+            grouped[key] = {
+                label: formatForecastHistoryLabel(item.date, `${hour}:00`),
+                icon: null,
+                ecmwf: null,
+                arpege: null,
+                ipma: null,
+                openweather: null
+            };
+        }
+
+        const source = item.source?.toLowerCase();
+        const model = item.model?.toUpperCase() || '';
+        const value = Number(item.value);
+
+        if (Number.isNaN(value) || value === -99) return;
+
+        if (source === 'open-meteo' && model.includes('ICON')) grouped[key].icon = value;
+        if (source === 'open-meteo' && model.includes('ECMWF')) grouped[key].ecmwf = value;
+        if (source === 'open-meteo' && model.includes('ARPEGE')) grouped[key].arpege = value;
+        if (source === 'ipma') grouped[key].ipma = value;
+        if (source === 'openweather') grouped[key].openweather = value;
+    });
+
+    const points = Object.values(grouped);
+
+    return {
+        labels: points.map(p => p.label),
+        icon: points.map(p => p.icon),
+        ecmwf: points.map(p => p.ecmwf),
+        arpege: points.map(p => p.arpege),
+        ipma: points.map(p => p.ipma),
+        openweather: points.map(p => p.openweather),
+        variable: selectedVariable
+    };
+}
+
+function updateHistoricalForecastChart(data) {
+    if (!forecastHistoryChart) return;
+
+    forecastHistoryChart.data.labels = data.labels;
+    forecastHistoryChart.data.datasets[0].data = data.icon;
+    forecastHistoryChart.data.datasets[1].data = data.ecmwf;
+    forecastHistoryChart.data.datasets[2].data = data.arpege;
+    forecastHistoryChart.data.datasets[3].data = data.ipma;
+    forecastHistoryChart.data.datasets[4].data = data.openweather;
+
+    const unit = getForecastHistoryUnit(data.variable);
+
+    forecastHistoryChart.options.scales.y.ticks.callback = function (value) {
+        return `${value}${unit}`;
+    };
+
+    forecastHistoryChart.options.plugins.tooltip.callbacks.label = function (context) {
+        if (context.raw === null || context.raw === undefined) {
+            return `${context.dataset.label}: —`;
+        }
+
+        return `${context.dataset.label}: ${context.raw}${unit}`;
+    };
+
+    forecastHistoryChart.update();
+
+    const allValues = [
+        ...data.icon,
+        ...data.ecmwf,
+        ...data.arpege,
+        ...data.ipma,
+        ...data.openweather
+    ].filter(v => v !== null && v !== undefined && !Number.isNaN(v));
+
+    if (!allValues.length) {
+        setText('forecastHistoryAvg', '—');
+        setText('forecastHistoryMin', '—');
+        setText('forecastHistoryMax', '—');
+        setText('forecastHistoryCount', '0');
+        return;
+    }
+
+    const avg = allValues.reduce((a, b) => a + b, 0) / allValues.length;
+
+    setText('forecastHistoryAvg', `${avg.toFixed(1)}${unit}`);
+    setText('forecastHistoryMin', `${Math.min(...allValues).toFixed(1)}${unit}`);
+    setText('forecastHistoryMax', `${Math.max(...allValues).toFixed(1)}${unit}`);
+    setText('forecastHistoryCount', allValues.length.toLocaleString('pt-PT'));
+}
+
+
+function filterForecastHistoryByRange(records, selectedRange) {
+    const now = new Date();
+
+    let days = 1;
+
+    if (selectedRange === '7d') days = 7;
+    if (selectedRange === '30d') days = 30;
+
+    const minDate = new Date(
+        now.getTime() - days * 24 * 60 * 60 * 1000
+    );
+
+    return records.filter(item => {
+        const itemDate = new Date(`${item.date}T${item.time}`);
+
+        return itemDate >= minDate && itemDate <= now;
+    });
+}
+function formatForecastHistoryLabel(date, time) {
+    const [year, month, day] = date.split('-');
+    return `${day}/${month} ${time.slice(0, 5)}`;
+}
+
+function getForecastHistoryUnit(variable) {
+    const units = {
+        temperature: '°C',
+        humidity: '%',
+        windSpeed: ' km/h',
+        precipitation: ' mm',
+        pressure: ' hPa',
+        cloudCover: '%'
+    };
+
+    return units[variable] || '';
+}
+function initializeForecastHistoryListeners() {
+
+    document
+        .querySelectorAll('.forecast-history-range-buttons .btn')
+        .forEach(button => {
+
+            button.addEventListener('click', function () {
+
+                document
+                    .querySelectorAll('.forecast-history-range-buttons .btn')
+                    .forEach(btn => btn.classList.remove('active'));
+
+                this.classList.add('active');
+
+                loadHistoricalForecasts();
+
+            });
+
+        });
+
+    const variableSelect = document.getElementById('forecastHistoryVariable');
+
+    if (variableSelect) {
+        variableSelect.addEventListener('change', loadHistoricalForecasts);
+    }
+}
