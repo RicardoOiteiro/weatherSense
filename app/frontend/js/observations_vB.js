@@ -87,7 +87,7 @@ const mockTableData = generateMockTableData();
 document.addEventListener('DOMContentLoaded', function () {
     initializeMap();
     initializeCharts();
-    initializeFilters();
+    
     initializeEventListeners();
     loadInitialData();
     updateLastUpdateTime();
@@ -1177,8 +1177,6 @@ function updateLastUpdateTime() {
 // ================================
 function initializeEventListeners() {
     // Filter controls
-    document.getElementById('applyFilters').addEventListener('click', applyFilters);
-    document.getElementById('clearFilters').addEventListener('click', clearFilters);
 
     // Time range buttons
     document.querySelectorAll('.time-range-buttons .btn').forEach(btn => {
@@ -1206,14 +1204,7 @@ function initializeEventListeners() {
     document.getElementById('nextPage').addEventListener('click', () => changePage(1));
 }
 
-function initializeFilters() {
-    // Set default dates
-    const today = new Date();
-    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    document.getElementById('startDate').valueAsDate = lastWeek;
-    document.getElementById('endDate').valueAsDate = today;
-}
 
 // ================================
 // Filter Functions

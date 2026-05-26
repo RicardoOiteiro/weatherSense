@@ -56,6 +56,18 @@ const MODEL_COLORS = {
     openweather: '#a855f7'
 };
 
+let cachedForecastRecords = null;
+
+async function getForecastRecords() {
+    if (cachedForecastRecords) {
+        return cachedForecastRecords;
+    }
+
+    const response = await fetch('/data/forecast/terrestrial?limit=50000');
+    cachedForecastRecords = await response.json();
+
+    return cachedForecastRecords;
+}
 let currentForecastProvider = 'openmeteo';
 
 // ================================
@@ -273,9 +285,14 @@ function selectLocation(lat, lng, name = null) {
     selectedMarker = L.marker([lat, lng], { icon: selectedIcon }).addTo(map);
 
     // Update UI
+    cachedForecastRecords = null;
+
     updateLocationPanel();
     updateContextSection();
+
     refreshForecastData();
+    initializeTimeline();
+    loadHistoricalForecasts();
 }
 
 function updateLocationPanel() {
@@ -530,8 +547,7 @@ async function initializeTimeline() {
     if (!timelineScroll) return;
 
     try {
-        const response = await fetch('/data/forecast/terrestrial?limit=50000');
-        const records = await response.json();
+        const records = await getForecastRecords();
 
         let html = '';
 
@@ -1630,9 +1646,9 @@ async function fetchCurrentForecast() {
 
     try {
 
-        const response = await fetch('/data/forecast/terrestrial?limit=50000');
+        const records = await getForecastRecords();
 
-        const records = await response.json();
+
 
         const lat = appState.selectedLocation.lat;
         const lng = appState.selectedLocation.lng;
@@ -2572,12 +2588,12 @@ function initializeForecastHistoryChart() {
 
 async function loadHistoricalForecasts() {
     try {
-        const response = await fetch('/data/forecast/terrestrial?limit=50000');
-        const records = await response.json();
+        const records = await getForecastRecords();
 
         const variable = document.getElementById('forecastHistoryVariable')?.value || 'temperature';
-        const range = document.querySelector('.forecast-history-range-buttons .btn.active')?.dataset.range || '24h';
-
+        const range = document.querySelector(
+            '.forecast-history-range-buttons button.active'
+        )?.dataset.range || '24h';
         const data = buildHistoricalForecastChartData(records, variable, range);
 
         updateHistoricalForecastChart(data);
@@ -2751,27 +2767,34 @@ function getForecastHistoryUnit(variable) {
 }
 function initializeForecastHistoryListeners() {
 
-    document
-        .querySelectorAll('.forecast-history-range-buttons .btn')
-        .forEach(button => {
+    const container = document.querySelector(
+        '.forecast-history-range-buttons'
+    );
 
-            button.addEventListener('click', function () {
+    if (!container) return;
 
-                document
-                    .querySelectorAll('.forecast-history-range-buttons .btn')
-                    .forEach(btn => btn.classList.remove('active'));
+    container.addEventListener('click', (e) => {
 
-                this.classList.add('active');
+        const button = e.target.closest('button');
 
-                loadHistoricalForecasts();
+        if (!button) return;
 
-            });
+        container
+            .querySelectorAll('button')
+            .forEach(btn => btn.classList.remove('active'));
 
-        });
+        button.classList.add('active');
 
-    const variableSelect = document.getElementById('forecastHistoryVariable');
+        loadHistoricalForecasts();
+    });
+
+    const variableSelect =
+        document.getElementById('forecastHistoryVariable');
 
     if (variableSelect) {
-        variableSelect.addEventListener('change', loadHistoricalForecasts);
+        variableSelect.addEventListener(
+            'change',
+            loadHistoricalForecasts
+        );
     }
 }
