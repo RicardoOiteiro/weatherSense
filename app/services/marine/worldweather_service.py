@@ -79,8 +79,40 @@ def get_wwo_marine(lat: float, lon: float):
             detail="Sem dados devolvidos pela WWO"
         )
 
-    primeiro_dia = weather[0]
-    hourly = primeiro_dia.get("hourly", [])
+    now = datetime.now()
+
+    hourly_filtrado = []
+
+    for dia in weather:
+
+        date = dia.get("date")
+        hourly = dia.get("hourly", [])
+
+        for bloco in hourly:
+
+            raw_time = str(bloco.get("time", "0")).zfill(4)
+
+            hour = int(raw_time[:2])
+            minute = int(raw_time[2:])
+
+            forecast_dt = datetime.fromisoformat(
+                f"{date} {hour:02d}:{minute:02d}"
+            )
+
+            diff_hours = (
+                forecast_dt - now
+            ).total_seconds() / 3600
+
+            if diff_hours < 0:
+                continue
+
+            if diff_hours > 24:
+                continue
+
+            hourly_filtrado.append({
+                "date": date,
+                "hourly": bloco
+            })
 
     
 
@@ -98,14 +130,14 @@ def get_wwo_marine(lat: float, lon: float):
 
     resultados = []
 
-    for bloco in hourly[:24]:
+    for item in hourly_filtrado:
 
         resultado = normalize_wwo_marine(
             lat=lat,
             lon=lon,
             distance_km=0,
-            date=primeiro_dia.get("date"),
-            hourly=bloco
+            date=item["date"],
+            hourly=item["hourly"]
         )
 
         resultado["requestedLocation"] = {
