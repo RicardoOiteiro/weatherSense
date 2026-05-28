@@ -1,0 +1,71 @@
+
+
+
+
+
+
+---------------------------------------------------OBSERVAÇÕES-----------------------------------------------------------
+
+
+data/observations/current  → observações atuais
+	ex: http://localhost:8000/data/observations/current?lat=39.7436&lon=-8.8071
+	Parâmetros: 
+		    -> lat
+		    -> lon
+
+data/observations/history  → gráficos históricos
+	ex: http://localhost:8000/data/observations/history?lat=39.7436&lon=-8.8071&variable=temperature&range=24h
+	Parâmetros:
+		     -> lat
+		     -> lon
+		     -> variable (temperature,humidity,windSpeed,precipitation,pressure,cloudCover)
+		     -> range (24h, 7d, 30d) - 30d a tirar;
+
+data/observations/records  → registos históricos paginados (tabela)
+	ex: http://localhost:8000/data/observations/records?lat=39.72738931603195&lon=-8.81134106384066&page=1&page_size=10
+	Parâmetros:
+		    -> lat
+		    -> lon
+		    -> page
+		    -> page_size
+		    -> search - TESTAR
+
+---------------------------------------------------PREVISÕES TERRESTRES-----------------------------------------------------------
+
+/data/forecast/terrestrial/current  → previsão atual
+	ex: http://localhost:8000/data/forecast/terrestrial/current?lat=39.7436&lon=-8.8071
+	Parâmetros:
+		     -> lat
+		     -> lon
+/data/forecast/terrestrial/history  → histórico de previsões guardadas
+	ex: http://localhost:8000/data/forecast/terrestrial/history?lat=39.7436&lon=-8.8071&variable=temperature&range=24h
+	Parâmetros:
+		     -> lat
+		     -> lon
+		     -> variable (temperature,humidity,windSpeed,precipitation,pressure,cloudCover)
+		     -> range (24h, 7d, 30d) - 30d a tirar;
+
+/data/forecast/terrestrial/records  → registos históricos paginados (tabela)
+	ex: http://localhost:8000/data/forecast/terrestrial/records?lat=39.7436&lon=-8.8071&page=1&page_size=10
+	Parâmetros:
+		    -> lat
+		    -> lon
+		    -> page
+		    -> page_size
+		    -> search - TESTAR
+
+/data/forecast/terrestrial/timeline → evolução futura das previsões
+	ex: http://localhost:8000/data/forecast/terrestrial/timeline?lat=39.735122&lon=-8.821217&provider=openweather&hours=24
+	Parâmetros: -> lat
+		    -> lon
+		    -> provider ex: openmeteo, ipma, openweather
+		    -> hours ex: 1,2, …, 12,24,48 h
+
+
+---------------------------------------------------PREVISÕES MARITIMAS-----------------------------------------------------------
+IDENTICO AO TERRESTRE 
+/data/forecast/marine/current
+/data/forecast/marine/history
+/data/forecast/marine/records
+/data/forecast/marine/timeline
+
