@@ -5,77 +5,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WeatherSense — Observações Meteorológicas | Leiria</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="css/observations_vB.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="js/observations_vB.js" defer></script>
 </head>
 
 <body>
-    <!-- Top Navigation Bar -->
-    <nav class="navbar">
+    <nav class="navbar" aria-label="Navegação principal">
         <div class="navbar-brand">
-            <i class="fas fa-cloud-sun-rain"></i>
+            <i class="fas fa-cloud-sun-rain" aria-hidden="true"></i>
             <span class="brand-text">WeatherSense</span>
             <span class="brand-badge">LEIRIA</span>
         </div>
+
         <div class="navbar-menu">
             <a href="#" class="nav-item">
-                <i class="fas fa-map-marked-alt"></i>
+                <i class="fas fa-map-marked-alt" aria-hidden="true"></i>
                 <span>Mapa / APIs</span>
             </a>
-             <a href="observations_vB.html" class="nav-item active">
-                <i class="fas fa-mountain-sun"></i>
+
+            <a href="observations_vB.html" class="nav-item active" aria-current="page">
+                <i class="fas fa-cloud-sun" aria-hidden="true"></i>
                 <span>Observações</span>
             </a>
+
             <a href="#" class="nav-item">
-                <i class="fas fa-water"></i>
+                <i class="fas fa-water" aria-hidden="true"></i>
                 <span>Previsão Marítima</span>
             </a>
+
             <a href="terrestrial-forecast_vB.html" class="nav-item">
-                <i class="fas fa-mountain-sun"></i>
+                <i class="fas fa-mountain-sun" aria-hidden="true"></i>
                 <span>Previsão Terrestre</span>
             </a>
+
             <a href="#" class="nav-item">
-                <i class="fas fa-chart-line"></i>
+                <i class="fas fa-chart-line" aria-hidden="true"></i>
                 <span>Dados e Análises</span>
             </a>
         </div>
+
         <div class="navbar-actions">
-            <button class="btn-icon" title="Notificações">
-                <i class="fas fa-bell"></i>
+            <button class="btn-icon" type="button" title="Notificações" aria-label="Notificações">
+                <i class="fas fa-bell" aria-hidden="true"></i>
                 <span class="notification-badge">3</span>
             </button>
-            <button class="btn-icon" title="Definições">
-                <i class="fas fa-cog"></i>
+
+            <button class="btn-icon" type="button" title="Definições" aria-label="Definições">
+                <i class="fas fa-cog" aria-hidden="true"></i>
             </button>
-            <div class="user-avatar">
-                <i class="fas fa-user"></i>
+
+            <div class="user-avatar" aria-label="Utilizador">
+                <i class="fas fa-user" aria-hidden="true"></i>
             </div>
         </div>
     </nav>
 
     <main class="dashboard">
-        <!-- Main Observations Section -->
-        <section class="main-observations">
-            <div class="map-container glass-card">
+        <section class="main-observations" aria-labelledby="mapSectionTitle">
+            <article class="map-container glass-card">
                 <div class="card-header">
-                    <h3><i class="fas fa-map"></i> Mapa Interativo — Distrito de Leiria</h3>
-                    <div class="map-controls">
-                        <button class="btn-icon" id="zoomIn" title="Aproximar">
-                            <i class="fas fa-plus"></i>
+                    <h3 id="mapSectionTitle">
+                        <i class="fas fa-map" aria-hidden="true"></i>
+                        Mapa Interativo — Distrito de Leiria
+                    </h3>
+
+                    <div class="map-controls" aria-label="Controlos do mapa">
+                        <button class="btn-icon" id="zoomIn" type="button" title="Aproximar" aria-label="Aproximar mapa">
+                            <i class="fas fa-plus" aria-hidden="true"></i>
                         </button>
-                        <button class="btn-icon" id="zoomOut" title="Afastar">
-                            <i class="fas fa-minus"></i>
+
+                        <button class="btn-icon" id="zoomOut" type="button" title="Afastar" aria-label="Afastar mapa">
+                            <i class="fas fa-minus" aria-hidden="true"></i>
                         </button>
-                        <button class="btn-icon" id="centerMap" title="Centrar">
-                            <i class="fas fa-crosshairs"></i>
+
+                        <button class="btn-icon" id="centerMap" type="button" title="Centrar" aria-label="Centrar mapa">
+                            <i class="fas fa-crosshairs" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
-                <div id="map"></div>
-                <div class="map-legend">
+
+                <div id="map" role="region" aria-label="Mapa de observações meteorológicas"></div>
+
+                <div class="map-legend" aria-label="Legenda do mapa">
                     <div class="legend-item">
                         <span class="legend-marker ipma"></span>
                         <span>IPMA</span>
@@ -89,142 +106,170 @@
                         <span>Selecionado</span>
                     </div>
                 </div>
-            </div>
+            </article>
 
-            <div class="location-panel glass-card">
+            <aside class="location-panel glass-card" aria-labelledby="locationPanelTitle">
                 <div class="card-header">
-                    <h3><i class="fas fa-location-dot"></i> Localização Selecionada</h3>
-                    <span class="status-badge online">
-                    </span>
+                    <h3 id="locationPanelTitle">
+                        <i class="fas fa-location-dot" aria-hidden="true"></i>
+                        Localização Selecionada
+                    </h3>
+                    <span class="status-badge online" title="Dados disponíveis"></span>
                 </div>
+
                 <div class="location-details">
                     <div class="location-main">
                         <div class="location-icon">
-                            <i class="fas fa-map-pin"></i>
+                            <i class="fas fa-map-pin" aria-hidden="true"></i>
                         </div>
+
                         <div class="location-info">
                             <h4 id="selectedLocationName">Leiria</h4>
                             <p id="selectedLocationCoords">39.7436° N, 8.8071° W</p>
                         </div>
                     </div>
+
                     <div class="location-stats">
                         <div class="stat-item">
                             <span class="stat-label">Altitude</span>
                             <span class="stat-value" id="locationAltitude">50 m</span>
                         </div>
+
                         <div class="stat-item">
                             <span class="stat-label">Distrito</span>
                             <span class="stat-value">Leiria</span>
                         </div>
                     </div>
                 </div>
+
                 <div class="sources-panel">
-                    <h4><i class="fas fa-satellite-dish"></i> Fontes/Estações Disponíveis:</h4>
+                    <h4>
+                        <i class="fas fa-satellite-dish" aria-hidden="true"></i>
+                        Fontes/Estações Disponíveis
+                    </h4>
+
                     <div class="source-item">
                         <div class="source-icon ipma">
-                            <i class="fas fa-cloud"></i>
+                            <i class="fas fa-cloud" aria-hidden="true"></i>
                         </div>
+
                         <div class="source-info">
                             <span class="source-name" id="ipmaStationName">IPMA</span>
                             <span class="source-distance" id="ipmaDistance">—</span>
                         </div>
-                        <span class="source-status active">
-                            <i class="fas fa-check-circle"></i>
+
+                        <span class="source-status active" title="Fonte ativa">
+                            <i class="fas fa-check-circle" aria-hidden="true"></i>
                         </span>
                     </div>
+
                     <div class="source-item">
                         <div class="source-icon foreca">
-                            <i class="fas fa-wind"></i>
+                            <i class="fas fa-wind" aria-hidden="true"></i>
                         </div>
+
                         <div class="source-info">
                             <span class="source-name" id="forecaStationName">Foreca</span>
                             <span class="source-distance" id="forecaDistance">—</span>
                         </div>
-                        <span class="source-status active">
-                            <i class="fas fa-check-circle"></i>
+
+                        <span class="source-status active" title="Fonte ativa">
+                            <i class="fas fa-check-circle" aria-hidden="true"></i>
                         </span>
                     </div>
                 </div>
-            </div>
+            </aside>
         </section>
 
-        <!-- Current Observations Comparison -->
-        <section class="current-observations">
+        <section class="current-observations" aria-labelledby="currentObservationsTitle">
             <div class="section-header">
-                <h2><i class="fas fa-broadcast-tower"></i> Observações Atuais</h2>
+                <h2 id="currentObservationsTitle">
+                    <i class="fas fa-broadcast-tower" aria-hidden="true"></i>
+                    Observações Atuais
+                </h2>
+
                 <span class="last-update">
-                    <i class="fas fa-sync-alt"></i> Última atualização: <span id="lastUpdateTime">--:--</span>
+                    <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                    Última atualização:
+                    <span id="lastUpdateTime">--:--</span>
                 </span>
             </div>
 
             <div class="observations-grid">
-                <!-- IPMA Card -->
-                <div class="observation-card glass-card ipma-card">
+                <article class="observation-card glass-card ipma-card" aria-labelledby="ipmaCardTitle">
                     <div class="card-header">
-                        <div class="source-badge ipma">
-                            <i class="fas fa-cloud"></i>
+                        <div class="source-badge ipma" id="ipmaCardTitle">
+                            <i class="fas fa-cloud" aria-hidden="true"></i>
                             <span>IPMA</span>
                         </div>
                         <span class="observation-time" id="ipmaObsTime">--:--</span>
                     </div>
+
                     <div class="observation-grid">
                         <div class="obs-item primary">
-                            <i class="fas fa-temperature-high"></i>
+                            <i class="fas fa-temperature-high" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="ipmaTemp">--</span>
                                 <span class="obs-unit">°C</span>
                             </div>
                             <span class="obs-label">Temperatura</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-droplet"></i>
+                            <i class="fas fa-droplet" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="ipmaHumidity">--</span>
                                 <span class="obs-unit">%</span>
                             </div>
                             <span class="obs-label">Humidade</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-wind"></i>
+                            <i class="fas fa-wind" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="ipmaWindSpeed">--</span>
                                 <span class="obs-unit">km/h</span>
                             </div>
                             <span class="obs-label">Vento</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-compass"></i>
+                            <i class="fas fa-compass" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="ipmaWindDir">--</span>
                             </div>
                             <span class="obs-label">Direção</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-cloud-rain"></i>
+                            <i class="fas fa-cloud-rain" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="ipmaPrecip">--</span>
                                 <span class="obs-unit">mm</span>
                             </div>
                             <span class="obs-label">Precipitação</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-gauge-high"></i>
+                            <i class="fas fa-gauge-high" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="ipmaPressure">--</span>
                                 <span class="obs-unit">hPa</span>
                             </div>
                             <span class="obs-label">Pressão</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-eye"></i>
+                            <i class="fas fa-eye" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="ipmaVisibility">--</span>
                                 <span class="obs-unit">km</span>
                             </div>
                             <span class="obs-label">Visibilidade</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-cloud"></i>
+                            <i class="fas fa-cloud" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="ipmaCloudCover">--</span>
                                 <span class="obs-unit">%</span>
@@ -232,80 +277,90 @@
                             <span class="obs-label">Nebulosidade</span>
                         </div>
                     </div>
+
                     <div class="card-footer">
                         <span class="distance-info">
-                            <i class="fas fa-route"></i> Distância: <span id="ipmaCardDistance">2.3 km</span>
+                            <i class="fas fa-route" aria-hidden="true"></i>
+                            Distância:
+                            <span id="ipmaCardDistance">—</span>
                         </span>
                     </div>
-                </div>
+                </article>
 
-                <!-- Foreca Card -->
-                <div class="observation-card glass-card foreca-card">
+                <article class="observation-card glass-card foreca-card" aria-labelledby="forecaCardTitle">
                     <div class="card-header">
-                        <div class="source-badge foreca">
-                            <i class="fas fa-wind"></i>
+                        <div class="source-badge foreca" id="forecaCardTitle">
+                            <i class="fas fa-wind" aria-hidden="true"></i>
                             <span>Foreca</span>
                         </div>
                         <span class="observation-time" id="forecaObsTime">--:--</span>
                     </div>
+
                     <div class="observation-grid">
                         <div class="obs-item primary">
-                            <i class="fas fa-temperature-high"></i>
+                            <i class="fas fa-temperature-high" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="forecaTemp">--</span>
                                 <span class="obs-unit">°C</span>
                             </div>
                             <span class="obs-label">Temperatura</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-droplet"></i>
+                            <i class="fas fa-droplet" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="forecaHumidity">--</span>
                                 <span class="obs-unit">%</span>
                             </div>
                             <span class="obs-label">Humidade</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-wind"></i>
+                            <i class="fas fa-wind" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="forecaWindSpeed">--</span>
                                 <span class="obs-unit">km/h</span>
                             </div>
                             <span class="obs-label">Vento</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-compass"></i>
+                            <i class="fas fa-compass" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="forecaWindDir">--</span>
                             </div>
                             <span class="obs-label">Direção</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-cloud-rain"></i>
+                            <i class="fas fa-cloud-rain" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="forecaPrecip">--</span>
                                 <span class="obs-unit">mm</span>
                             </div>
                             <span class="obs-label">Precipitação</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-gauge-high"></i>
+                            <i class="fas fa-gauge-high" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="forecaPressure">--</span>
                                 <span class="obs-unit">hPa</span>
                             </div>
                             <span class="obs-label">Pressão</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-eye"></i>
+                            <i class="fas fa-eye" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="forecaVisibility">--</span>
                                 <span class="obs-unit">km</span>
                             </div>
                             <span class="obs-label">Visibilidade</span>
                         </div>
+
                         <div class="obs-item">
-                            <i class="fas fa-cloud"></i>
+                            <i class="fas fa-cloud" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="forecaCloudCover">--</span>
                                 <span class="obs-unit">%</span>
@@ -313,105 +368,107 @@
                             <span class="obs-label">Nebulosidade</span>
                         </div>
                     </div>
+
                     <div class="card-footer">
                         <span class="distance-info">
-                            <i class="fas fa-route"></i> Distância: <span id="forecaCardDistance">1.8 km</span>
+                            <i class="fas fa-route" aria-hidden="true"></i>
+                            Distância:
+                            <span id="forecaCardDistance">—</span>
                         </span>
                     </div>
-                </div>
+                </article>
 
-                <!-- Comparison Card -->
-                <div class="comparison-card glass-card">
+                <article class="comparison-card glass-card" aria-labelledby="comparisonTitle">
                     <div class="card-header">
-                        <h3><i class="fas fa-not-equal"></i> Comparação IPMA vs Foreca</h3>
+                        <h3 id="comparisonTitle">
+                            <i class="fas fa-not-equal" aria-hidden="true"></i>
+                            Comparação IPMA vs Foreca
+                        </h3>
                     </div>
+
                     <div class="comparison-grid">
                         <div class="comparison-item">
                             <span class="comp-label">Temperatura</span>
                             <div class="comp-values">
-                                <span class="comp-diff" id="tempDiff">+0.0°C</span>
-                                <span class="comp-indicator" id="tempIndicator">
-                                    <i class="fas fa-equals"></i>
-                                </span>
+                                <span class="comp-diff" id="tempDiff">—</span>
+                                <span class="comp-indicator" id="tempIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
                             </div>
                         </div>
+
                         <div class="comparison-item">
                             <span class="comp-label">Humidade</span>
                             <div class="comp-values">
-                                <span class="comp-diff" id="humidityDiff">+0%</span>
-                                <span class="comp-indicator" id="humidityIndicator">
-                                    <i class="fas fa-equals"></i>
-                                </span>
+                                <span class="comp-diff" id="humidityDiff">—</span>
+                                <span class="comp-indicator" id="humidityIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
                             </div>
                         </div>
+
                         <div class="comparison-item">
                             <span class="comp-label">Vento</span>
                             <div class="comp-values">
-                                <span class="comp-diff" id="windDiff">+0 km/h</span>
-                                <span class="comp-indicator" id="windIndicator">
-                                    <i class="fas fa-equals"></i>
-                                </span>
+                                <span class="comp-diff" id="windDiff">—</span>
+                                <span class="comp-indicator" id="windIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
                             </div>
                         </div>
+
                         <div class="comparison-item">
                             <span class="comp-label">Precipitação</span>
                             <div class="comp-values">
-                                <span class="comp-diff" id="precipDiff">+0.0 mm</span>
-                                <span class="comp-indicator" id="precipIndicator">
-                                    <i class="fas fa-equals"></i>
-                                </span>
+                                <span class="comp-diff" id="precipDiff">—</span>
+                                <span class="comp-indicator" id="precipIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
                             </div>
                         </div>
+
                         <div class="comparison-item">
                             <span class="comp-label">Pressão</span>
                             <div class="comp-values">
-                                <span class="comp-diff" id="pressureDiff">+0 hPa</span>
-                                <span class="comp-indicator" id="pressureIndicator">
-                                    <i class="fas fa-equals"></i>
-                                </span>
+                                <span class="comp-diff" id="pressureDiff">—</span>
+                                <span class="comp-indicator" id="pressureIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
                             </div>
                         </div>
+
                         <div class="comparison-item">
                             <span class="comp-label">Visibilidade</span>
                             <div class="comp-values">
-                                <span class="comp-diff" id="visibilityDiff">+0 km</span>
-                                <span class="comp-indicator" id="visibilityIndicator">
-                                    <i class="fas fa-equals"></i>
-                                </span>
+                                <span class="comp-diff" id="visibilityDiff">—</span>
+                                <span class="comp-indicator" id="visibilityIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
                             </div>
                         </div>
                     </div>
+
                     <div class="comparison-summary">
                         <div class="summary-item">
                             <span class="summary-label">Concordância Geral</span>
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="agreementProgress" style="width: 85%"></div>
+                            <div class="progress-bar" aria-label="Concordância geral entre fontes">
+                                <div class="progress-fill" id="agreementProgress" style="width: 0%"></div>
                             </div>
-                            <span class="summary-value" id="agreementValue">85%</span>
+                            <span class="summary-value" id="agreementValue">—</span>
                         </div>
                     </div>
-                </div>
+                </article>
             </div>
         </section>
 
-        <!-- Additional Variables -->
-
-        <!-- Historical Analytics -->
-        <section class="analytics-section">
+        <section class="analytics-section" aria-labelledby="operationalTitle">
             <div class="section-header">
-                <h2><i class="fas fa-chart-pie"></i> Análise Operacional</h2>
+                <h2 id="operationalTitle">
+                    <i class="fas fa-chart-pie" aria-hidden="true"></i>
+                    Análise Operacional
+                </h2>
             </div>
 
             <div class="analytics-grid">
-
-                <div class="analytics-card glass-card drone-card">
+                <article class="analytics-card glass-card drone-card" aria-labelledby="droneTitle">
                     <div class="card-header">
-                        <h3><i class="fas fa-helicopter"></i> Condições para Drone</h3>
+                        <h3 id="droneTitle">
+                            <i class="fas fa-helicopter" aria-hidden="true"></i>
+                            Condições para Drone
+                        </h3>
                     </div>
 
                     <div class="observation-grid operational-grid">
                         <div class="obs-item primary">
-                            <i class="fas fa-signal"></i>
+                            <i class="fas fa-signal" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="droneScore">—</span>
                             </div>
@@ -419,7 +476,7 @@
                         </div>
 
                         <div class="obs-item">
-                            <i class="fas fa-wind"></i>
+                            <i class="fas fa-wind" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="droneWind">—</span>
                             </div>
@@ -427,7 +484,7 @@
                         </div>
 
                         <div class="obs-item">
-                            <i class="fas fa-cloud-rain"></i>
+                            <i class="fas fa-cloud-rain" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="dronePrecip">—</span>
                             </div>
@@ -435,35 +492,34 @@
                         </div>
 
                         <div class="obs-item">
-                            <i class="fas fa-compass"></i>
-
+                            <i class="fas fa-compass" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="droneWindDir">—</span>
                             </div>
-
                             <span class="obs-label">Direção</span>
                         </div>
 
                         <div class="obs-item">
-                            <i class="fas fa-eye"></i>
+                            <i class="fas fa-eye" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="droneVisibility">—</span>
                             </div>
                             <span class="obs-label">Visibilidade</span>
                         </div>
                     </div>
-                </div>
+                </article>
 
-
-                <!-- FIRE -->
-                <div class="analytics-card glass-card fire-card">
+                <article class="analytics-card glass-card fire-card" aria-labelledby="fireTitle">
                     <div class="card-header">
-                        <h3><i class="fas fa-fire"></i> Risco de Incêndio</h3>
+                        <h3 id="fireTitle">
+                            <i class="fas fa-fire" aria-hidden="true"></i>
+                            Risco de Incêndio
+                        </h3>
                     </div>
 
                     <div class="observation-grid operational-grid">
                         <div class="obs-item primary">
-                            <i class="fas fa-signal"></i>
+                            <i class="fas fa-signal" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="fireScore">—</span>
                             </div>
@@ -471,7 +527,7 @@
                         </div>
 
                         <div class="obs-item">
-                            <i class="fas fa-temperature-high"></i>
+                            <i class="fas fa-temperature-high" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="fireTemp">—</span>
                             </div>
@@ -479,7 +535,7 @@
                         </div>
 
                         <div class="obs-item">
-                            <i class="fas fa-droplet"></i>
+                            <i class="fas fa-droplet" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="fireHumidity">—</span>
                             </div>
@@ -487,72 +543,60 @@
                         </div>
 
                         <div class="obs-item">
-                            <i class="fas fa-wind"></i>
+                            <i class="fas fa-wind" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="fireWind">—</span>
                             </div>
                             <span class="obs-label">Vento</span>
                         </div>
-                        <div class="obs-item">
-                            <i class="fas fa-compass"></i>
 
+                        <div class="obs-item">
+                            <i class="fas fa-compass" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="fireWindDir">—</span>
                             </div>
-
                             <span class="obs-label">Direção</span>
                         </div>
 
                         <div class="obs-item">
-                            <i class="fas fa-cloud-rain"></i>
+                            <i class="fas fa-cloud-rain" aria-hidden="true"></i>
                             <div class="obs-data">
                                 <span class="obs-value" id="firePrecip">—</span>
                             </div>
                             <span class="obs-label">Precipitação</span>
                         </div>
                     </div>
+                </article>
 
-
-                </div>
-                <div class="analytics-card glass-card status-card" id="operationalStatusCard">
+                <article class="analytics-card glass-card status-card" id="operationalStatusCard" aria-labelledby="statusTitle">
+                    <h3 id="statusTitle" class="sr-only">Estado operacional resumido</h3>
 
                     <div class="status-split">
-
-                        <!-- DRONE -->
                         <div class="status-side drone-side">
-                            <i class="fas fa-helicopter"></i>
-
+                            <i class="fas fa-helicopter" aria-hidden="true"></i>
                             <h4>Drone</h4>
-
-                            <p id="operationalDroneText">
-                                A aguardar análise para drone.
-                            </p>
+                            <p id="operationalDroneText">A aguardar análise para drone.</p>
                         </div>
 
-                        <!-- FIRE -->
                         <div class="status-side fire-side">
-                            <i class="fas fa-fire"></i>
-
+                            <i class="fas fa-fire" aria-hidden="true"></i>
                             <h4>Incêndio</h4>
-
-                            <p id="operationalFireText">
-                                A aguardar análise de incêndio.
-                            </p>
+                            <p id="operationalFireText">A aguardar análise de incêndio.</p>
                         </div>
-
                     </div>
-
-                </div>
-
+                </article>
+            </div>
         </section>
 
-
-        <!-- Historical Observations Section -->
-        <section class="historical-section">
+        <section class="historical-section" aria-labelledby="historicalTitle">
             <div class="section-header">
-                <h2><i class="fas fa-clock-rotate-left"></i> Observações Históricas</h2>
+                <h2 id="historicalTitle">
+                    <i class="fas fa-clock-rotate-left" aria-hidden="true"></i>
+                    Observações Históricas
+                </h2>
 
                 <div class="chart-controls">
+                    <label class="sr-only" for="historyVariable">Variável histórica</label>
                     <select id="historyVariable" class="filter-input">
                         <option value="temperature">Temperatura</option>
                         <option value="humidity">Humidade</option>
@@ -560,118 +604,143 @@
                         <option value="precipitation">Precipitação</option>
                         <option value="pressure">Pressão</option>
                     </select>
-                    <div class="time-range-buttons">
-                        <button class="btn btn-sm active" data-range="24h">24h</button>
-                        <button class="btn btn-sm" data-range="7d">7d</button>
-                        <button class="btn btn-sm" data-range="30d">30d</button>
+
+                    <div class="time-range-buttons" aria-label="Intervalo temporal">
+                        <button class="btn btn-sm active" type="button" data-range="24h">24h</button>
+                        <button class="btn btn-sm" type="button" data-range="7d">7d</button>
+                        <button class="btn btn-sm" type="button" data-range="30d">30d</button>
                     </div>
                 </div>
             </div>
 
             <div class="historical-grid">
-                <div class="main-chart-container glass-card">
+                <article class="main-chart-container glass-card">
                     <div class="card-header">
-                        <h3><i class="fas fa-chart-area"></i> Evolução Temporal</h3>
+                        <h3>
+                            <i class="fas fa-chart-area" aria-hidden="true"></i>
+                            Evolução Temporal
+                        </h3>
+
                         <div class="chart-legend">
-                            <span class="legend-item ipma"><i class="fas fa-circle"></i> IPMA</span>
-                            <span class="legend-item foreca"><i class="fas fa-circle"></i> Foreca</span>
+                            <span class="legend-item ipma"><i class="fas fa-circle" aria-hidden="true"></i> IPMA</span>
+                            <span class="legend-item foreca"><i class="fas fa-circle" aria-hidden="true"></i> Foreca</span>
                         </div>
                     </div>
+
                     <div class="chart-wrapper">
                         <canvas id="historyChart"></canvas>
                     </div>
-                </div>
+                </article>
 
-                <div class="summary-cards">
+                <aside class="summary-cards" aria-label="Resumo histórico">
                     <div class="summary-card glass-card">
                         <div class="summary-icon blue">
-                            <i class="fas fa-calculator"></i>
+                            <i class="fas fa-calculator" aria-hidden="true"></i>
                         </div>
                         <div class="summary-content">
                             <span class="summary-label">Média</span>
-                            <span class="summary-value" id="historyAvg">18.5°C</span>
+                            <span class="summary-value" id="historyAvg">—</span>
                         </div>
                     </div>
+
                     <div class="summary-card glass-card">
                         <div class="summary-icon green">
-                            <i class="fas fa-arrow-down"></i>
+                            <i class="fas fa-arrow-down" aria-hidden="true"></i>
                         </div>
                         <div class="summary-content">
                             <span class="summary-label">Mínimo</span>
-                            <span class="summary-value" id="historyMin">12.3°C</span>
+                            <span class="summary-value" id="historyMin">—</span>
                         </div>
                     </div>
+
                     <div class="summary-card glass-card">
                         <div class="summary-icon orange">
-                            <i class="fas fa-arrow-up"></i>
+                            <i class="fas fa-arrow-up" aria-hidden="true"></i>
                         </div>
                         <div class="summary-content">
                             <span class="summary-label">Máximo</span>
-                            <span class="summary-value" id="historyMax">24.8°C</span>
+                            <span class="summary-value" id="historyMax">—</span>
                         </div>
                     </div>
+
                     <div class="summary-card glass-card">
                         <div class="summary-icon purple">
-                            <i class="fas fa-database"></i>
+                            <i class="fas fa-database" aria-hidden="true"></i>
                         </div>
                         <div class="summary-content">
                             <span class="summary-label">Registos</span>
-                            <span class="summary-value" id="historyCount">1,248</span>
+                            <span class="summary-value" id="historyCount">0</span>
                         </div>
                     </div>
-                </div>
+                </aside>
             </div>
         </section>
 
-
-
-        <!-- Historical Records Table -->
-        <section class="records-section">
+        <section class="records-section" aria-labelledby="recordsTitle">
             <div class="section-header">
-                <h2><i class="fas fa-table"></i> Registos Históricos</h2>
+                <h2 id="recordsTitle">
+                    <i class="fas fa-table" aria-hidden="true"></i>
+                    Registos Históricos
+                </h2>
+
                 <div class="table-actions">
-                    <button class="btn btn-secondary" id="exportCSV">
-                        <i class="fas fa-file-csv"></i> Exportar CSV
+                    <button class="btn btn-secondary" id="exportCSV" type="button">
+                        <i class="fas fa-file-csv" aria-hidden="true"></i>
+                        Exportar CSV
                     </button>
-                    <button class="btn btn-secondary" id="refreshTable">
-                        <i class="fas fa-sync-alt"></i> Atualizar
+
+                    <button class="btn btn-secondary" id="refreshTable" type="button">
+                        <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        Atualizar
                     </button>
                 </div>
             </div>
+
             <div class="table-container glass-card">
                 <div class="table-search">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="tableSearch" placeholder="Pesquisar registos...">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <label class="sr-only" for="tableSearch">Pesquisar registos</label>
+                    <input type="text" id="tableSearch" placeholder="Pesquisar registos..." autocomplete="off">
                 </div>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Data</th>
-                            <th>Hora</th>
-                            <th>Fonte</th>
-                            <th>Localização</th>
-                            <th>Variável</th>
-                            <th>Valor</th>
-                            <th>Unidade</th>
-                            <th>Distância km</th>
-                            <th>Latitude</th>
-                            <th>Longitude</th>
-                        </tr>
-                    </thead>
-                    <tbody id="recordsTableBody">
-                        <!-- Table rows will be populated by JavaScript -->
-                    </tbody>
-                </table>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Data</th>
+                                <th scope="col">Hora</th>
+                                <th scope="col">Fonte</th>
+                                <th scope="col">Localização</th>
+                                <th scope="col">Variável</th>
+                                <th scope="col">Valor</th>
+                                <th scope="col">Unidade</th>
+                                <th scope="col">Distância km</th>
+                                <th scope="col">Latitude</th>
+                                <th scope="col">Longitude</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsTableBody">
+                            <tr>
+                                <td colspan="10">A carregar registos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
                 <div class="table-pagination">
-                    <span class="pagination-info">Mostrando <span id="showingCount">1-10</span> de <span
-                            id="totalCount">1,248</span> registos</span>
+                    <span class="pagination-info">
+                        Mostrando <span id="showingCount">0-0</span> de <span id="totalCount">0</span> registos
+                    </span>
+
                     <div class="pagination-controls">
-                        <button class="btn-icon" id="prevPage" disabled>
-                            <i class="fas fa-chevron-left"></i>
+                        <button class="btn-icon" id="prevPage" type="button" disabled aria-label="Página anterior">
+                            <i class="fas fa-chevron-left" aria-hidden="true"></i>
                         </button>
+
                         <span class="page-numbers" id="pageNumbers"></span>
-                        <button class="btn-icon" id="nextPage">
-                            <i class="fas fa-chevron-right"></i>
+
+                        <button class="btn-icon" id="nextPage" type="button" aria-label="Página seguinte">
+                            <i class="fas fa-chevron-right" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -679,21 +748,20 @@
         </section>
     </main>
 
-    <!-- Footer -->
     <footer class="dashboard-footer">
         <div class="footer-content">
             <span class="footer-brand">
-                <i class="fas fa-cloud-sun-rain"></i> WeatherSense
+                <i class="fas fa-cloud-sun-rain" aria-hidden="true"></i>
+                WeatherSense
             </span>
+
             <span class="footer-info">
                 Plataforma de Monitorização Meteorológica — Distrito de Leiria
             </span>
-            <span class="footer-status">
-            </span>
+
+            <span class="footer-status"></span>
         </div>
     </footer>
-
-    <script src="js/observations_vB.js"></script>
 </body>
 
 </html>

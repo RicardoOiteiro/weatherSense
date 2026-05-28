@@ -97,6 +97,60 @@ CREATE TABLE measurement_facts (
 
 
 -- ÍNDICES (recomendado para pesquisas rápidas) 
-CREATE INDEX idx_request_id ON measurement_facts(request_id); 
-CREATE INDEX idx_request_time ON measurement_facts(id_date_request, id_hour_request);
-CREATE INDEX idx_data_time ON measurement_facts(id_date_data, id_hour_data);
+--CREATE INDEX idx_request_id ON measurement_facts(request_id); 
+--CREATE INDEX idx_request_time ON measurement_facts(id_date_request, id_hour_request);
+--CREATE INDEX idx_data_time ON measurement_facts(id_date_data, id_hour_data);
+
+-- ÍNDICES BASE
+CREATE INDEX IF NOT EXISTS idx_request_id 
+ON measurement_facts(request_id);
+
+CREATE INDEX IF NOT EXISTS idx_request_time 
+ON measurement_facts(id_date_request, id_hour_request);
+
+CREATE INDEX IF NOT EXISTS idx_data_time 
+ON measurement_facts(id_date_data, id_hour_data);
+
+
+-- ÍNDICES DE PERFORMANCE
+CREATE INDEX IF NOT EXISTS idx_mf_request_desc
+ON measurement_facts (
+    request_id DESC,
+    id_measurement DESC
+);
+
+CREATE INDEX IF NOT EXISTS idx_mf_status_source_time
+ON measurement_facts (
+    data_status,
+    id_source,
+    id_date_data,
+    id_hour_data
+);
+
+CREATE INDEX IF NOT EXISTS idx_mf_source_location_variable_time
+ON measurement_facts (
+    id_source,
+    id_location,
+    id_variable,
+    id_date_data,
+    id_hour_data
+);
+
+CREATE INDEX IF NOT EXISTS idx_source_data_type_name
+ON source_dimension (
+    data_type,
+    data_nature,
+    name,
+    weather_model
+);
+
+CREATE INDEX IF NOT EXISTS idx_variable_field_name
+ON variable_dimension (
+    field_name
+);
+
+CREATE INDEX IF NOT EXISTS idx_location_lat_lon
+ON location_dimension (
+    latitude,
+    longitude
+);

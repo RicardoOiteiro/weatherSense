@@ -4,20 +4,9 @@
  * Prepared for FastAPI integration
  */
 
-// ================================
-// Configuration & API Endpoints
-// ================================
-const API_CONFIG = {
-    baseUrl: '', // Will be set to FastAPI backend URL
-    endpoints: {
-        forecast: '/data/terrestrial-forecast',
-        currentForecast: '/data/terrestrial-forecast/current',
-        historyForecast: '/data/terrestrial-forecast/history',
-        models: '/data/terrestrial-forecast/models'
-    }
-};
 
-// ================================
+
+// ===============================
 // State Management
 // ================================
 const appState = {
@@ -27,8 +16,6 @@ const appState = {
         lng: -8.8071,
         altitude: 50
     },
-    selectedVariable: 'temperature',
-    selectedTimeRange: 24,
     currentData: {
         icon: null,
         ecmwf: null,
@@ -36,7 +23,6 @@ const appState = {
         ipma: null,
         openweather: null
     },
-    forecastData: [],
     tableData: [],
     pagination: {
         currentPage: 1,
@@ -56,41 +42,144 @@ const MODEL_COLORS = {
     openweather: '#a855f7'
 };
 
-let cachedForecastRecords = null;
-
-async function getForecastRecords() {
-    if (cachedForecastRecords) {
-        return cachedForecastRecords;
-    }
-
-    const response = await fetch('/data/forecast/terrestrial?limit=50000');
-    cachedForecastRecords = await response.json();
-
-    return cachedForecastRecords;
-}
+// ================================
+// Cache & Provider State
+// ================================
 let currentForecastProvider = 'openmeteo';
 
-// ================================
-// Mock Data for Development
-// ================================
+
+function mapCurrentForecast(data) {
+
+    const values = data.values || {};
+
+    function getValue(field) {
+        const value = values[field]?.value;
+
+        if (
+            value === null ||
+            value === undefined ||
+            value === -99 ||
+            value === -99.0
+        ) {
+            return null;
+        }
+
+        return Number(value) || value;
+    }
+
+    return {
+        temperature: getValue('temperatureC'),
+        minTemp: getValue('temperatureMinC'),
+        maxTemp: getValue('temperatureMaxC'),
+        feelsLike: getValue('feelsLikeTemperatureC'),
+        humidity: getValue('humidityPercent'),
+        pressure: getValue('pressureHpa'),
+        cloudCover: getValue('cloudCoverPercent'),
+        visibility: getValue('visibilityKm'),
+        windSpeed: getValue('windSpeedKmh'),
+        windSpeedMax: getValue('windSpeedMaxKmh'),
+        windGust: getValue('windGustKmh'),
+        windDirectionDegrees: getValue('windDirectionDegrees'),
+        windDirectionCardinal: values.windDirectionCardinal?.value ?? null,
+        precipitation: getValue('precipitationMm'),
+        precipitationProbability: getValue('precipitationProbabilityPercent'),
+        sunrise: values.sunriseH?.value ?? null,
+        sunset: values.sunsetH?.value ?? null,
+        forecastTime: data.time ?? '—',
+        forecastDate: data.date ?? '—',
+        model: data.model ?? '—'
+    };
+}
+
+function getValidValues(models, field) {
+    return models
+        .map(model => model?.[field])
+        .filter(value =>
+            value !== null &&
+            value !== undefined &&
+            Number(value) !== -99 &&
+            Number(value) !== -99.0 &&
+            !Number.isNaN(Number(value))
+        )
+        .map(Number);
+}
+
+function averageValues(values) {
+    const valid = values
+        .filter(v =>
+            v !== null &&
+            v !== undefined &&
+            Number(v) !== -99 &&
+            Number(v) !== -99.0 &&
+            !Number.isNaN(Number(v))
+        )
+        .map(Number);
+
+    if (valid.length === 0) return null;
+    return valid.reduce((a, b) => a + b, 0) / valid.length;
+}
+
+function mostCommonValue(values) {
+    const valid = values.filter(v => v && v !== '—');
+    if (!valid.length) return '—';
+
+    const counts = {};
+    valid.forEach(value => {
+        counts[value] = (counts[value] || 0) + 1;
+    });
+
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function degreesToCardinal(deg) {
+    if (deg === null || deg === undefined) return '—';
+
+    const directions = [
+        'N', 'NNE', 'NE', 'ENE',
+        'E', 'ESE', 'SE', 'SSE',
+        'S', 'SSW', 'SW', 'WSW',
+        'W', 'WNW', 'NW', 'NNW'
+    ];
+
+    const index = Math.round(deg / 22.5) % 16;
+    return directions[index];
+}
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+async function getCurrentForecastRecords() {
+    const { lat, lng } = appState.selectedLocation;
+
+    const response = await fetch(
+        `/data/forecast/terrestrial/current?lat=${lat}&lon=${lng}`
+    );
+
+    if (!response.ok) {
+        throw new Error('Erro ao carregar previsões atuais');
+    }
+
+    return response.json();
+}
+
 // ================================
 // Initialization
 // ================================
 document.addEventListener('DOMContentLoaded', function () {
     initializeMap();
-    initializeEvolutionChart();
-    initializeTimeline();
     initializeEventListeners();
     loadInitialData();
     initializeTable();
     updateLastUpdateTime();
     initializeForecastTabs();
     initializeForecastHistoryChart();
-    loadHistoricalForecasts();
     initializeForecastHistoryListeners();
+    refreshAfterLocationChange();
 
     // Auto-refresh every 10 minutes
-    //setInterval(refreshForecastData, 600000);
+    // setInterval(refreshForecastData, 600000);
 });
 
 // ================================
@@ -101,63 +190,38 @@ let markers = [];
 let selectedMarker;
 
 function initializeMap() {
-    // Initialize Leaflet map centered on Leiria district
-    map = L.map('map', {
-        zoomControl: false
-    }).setView([39.7436, -8.8071], 8);
+    map = L.map('map', { zoomControl: false }).setView([39.7436, -8.8071], 8);
 
-    // Satellite layer
-    const satelliteLayer = L.tileLayer(
+    L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        {
-            attribution: 'Tiles © Esri'
-        }
+        { attribution: 'Tiles © Esri' }
     ).addTo(map);
 
-    // Labels layer (cities, roads, places)
-    const labelsLayer = L.tileLayer(
+    L.tileLayer(
         'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-        {
-            attribution: 'Labels © Esri',
-            pane: 'overlayPane'
-        }
+        { attribution: 'Labels © Esri', pane: 'overlayPane' }
     ).addTo(map);
 
-    // Add Leiria district boundary
     addDistrictBoundary();
-
-    // Add weather station markers
     addForecastMarkers();
 
-    // Map click handler
     map.on('click', function (e) {
         selectLocation(e.latlng.lat, e.latlng.lng);
     });
 
-    // Custom zoom controls
-    document.getElementById('zoomIn').addEventListener('click', () => map.zoomIn());
-
-    document.getElementById('zoomOut').addEventListener('click', () => map.zoomOut());
-
-    document.getElementById('centerMap').addEventListener('click', () => {
+    document.getElementById('zoomIn')?.addEventListener('click', () => map.zoomIn());
+    document.getElementById('zoomOut')?.addEventListener('click', () => map.zoomOut());
+    document.getElementById('centerMap')?.addEventListener('click', () => {
         map.setView([39.7436, -8.8071], 8);
     });
 }
+
 function addDistrictBoundary() {
-    // Simplified Leiria district boundary coordinates
     const leiriaBoundary = [
-        [40.0736, -8.4771],
-        [40.0236, -8.7271],
-        [39.9236, -8.9271],
-        [39.7736, -9.0271],
-        [39.5236, -9.1271],
-        [39.3736, -9.0771],
-        [39.3736, -8.8271],
-        [39.4236, -8.5771],
-        [39.5736, -8.4271],
-        [39.7736, -8.3771],
-        [39.9236, -8.3771],
-        [40.0736, -8.4771]
+        [40.0736, -8.4771], [40.0236, -8.7271], [39.9236, -8.9271],
+        [39.7736, -9.0271], [39.5236, -9.1271], [39.3736, -9.0771],
+        [39.3736, -8.8271], [39.4236, -8.5771], [39.5736, -8.4271],
+        [39.7736, -8.3771], [39.9236, -8.3771], [40.0736, -8.4771]
     ];
 
     L.polygon(leiriaBoundary, {
@@ -171,20 +235,19 @@ function addDistrictBoundary() {
 
 function addForecastMarkers() {
     const forecastPoints = [
-        { name: "São Pedro de Moel", lat: 39.766853, lng: -9.019775, provider: "openmeteo" },
-        { name: "Figueira da Foz", lat: 40.1508, lng: -8.8618, provider: "openmeteo" },
-        { name: "Nazaré / Alcobaça", lat: 39.601, lng: -9.07, provider: "ipma" },
-        { name: "Peniche / Cabo Carvoeiro", lat: 39.361378, lng: -9.387817, provider: "openweather" },
-        { name: "Óbidos", lat: 39.360421, lng: -9.157214, provider: "ipma" },
-        { name: "Bidoeira de Cima", lat: 39.842572, lng: -8.743315, provider: "openmeteo" },
-        { name: "ESTG Leiria", lat: 39.735122, lng: -8.821217, provider: "ipma" },
-        { name: "Pinhal de Leiria", lat: 39.8225, lng: -8.9450, provider: "openmeteo" },
-        { name: "Pedrógão Grande", lat: 39.919392, lng: -8.133316, provider: "openweather" },
-        { name: "Ansião", lat: 39.910834, lng: -8.434238, provider: "ipma" },
-        { name: "Castanheira de Pêra", lat: 40.002723, lng: -8.205671, provider: "openmeteo" },
-        { name: "Caranguejeira", lat: 39.744706, lng: -8.691161, provider: "ipma" }
+        { name: "São Pedro de Moel", lat: 39.766853, lng: -9.019775 },
+        { name: "Figueira da Foz", lat: 40.1508, lng: -8.8618 },
+        { name: "Nazaré / Alcobaça", lat: 39.601, lng: -9.07 },
+        { name: "Peniche / Cabo Carvoeiro", lat: 39.361378, lng: -9.387817 },
+        { name: "Óbidos", lat: 39.360421, lng: -9.157214 },
+        { name: "Bidoeira de Cima", lat: 39.842572, lng: -8.743315 },
+        { name: "ESTG Leiria", lat: 39.735122, lng: -8.821217 },
+        { name: "Pinhal de Leiria", lat: 39.8225, lng: -8.9450 },
+        { name: "Pedrógão Grande", lat: 39.919392, lng: -8.133316 },
+        { name: "Ansião", lat: 39.910834, lng: -8.434238 },
+        { name: "Castanheira de Pêra", lat: 40.002723, lng: -8.205671 },
+        { name: "Caranguejeira", lat: 39.744706, lng: -8.691161 }
     ];
-
 
     forecastPoints.forEach(point => {
         const color = '#00d4ff';
@@ -193,8 +256,7 @@ function addForecastMarkers() {
             className: 'custom-div-icon',
             html: `<div style="
                 background: ${color};
-                width: 16px;
-                height: 16px;
+                width: 16px; height: 16px;
                 border-radius: 50%;
                 border: 2px solid rgba(255,255,255,0.8);
                 box-shadow: 0 0 12px ${color};
@@ -207,73 +269,34 @@ function addForecastMarkers() {
             .addTo(map)
             .bindPopup(`
                 <div style="color: #f8fafc; padding: 8px;">
-                    <h4 style="margin: 0 0 8px 0; color: #00d4ff;">
-                        ${point.name}
-                    </h4>
-                    <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                        Ponto de observação
-                    </p>
+                    <h4 style="margin: 0 0 8px 0; color: #00d4ff;">${point.name}</h4>
+                    <p style="margin: 0; font-size: 12px; color: #94a3b8;">Ponto de observação</p>
                     <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">
                         ${point.lat.toFixed(4)}°N, ${Math.abs(point.lng).toFixed(4)}°W
                     </p>
                 </div>
             `);
 
-        marker.on('click', () => {
-            selectLocation(point.lat, point.lng, point.name);
-        });
-
+        marker.on('click', () => selectLocation(point.lat, point.lng, point.name));
         markers.push(marker);
     });
 }
 
-function createPopupContent(point) {
-    const providerLabels = {
-        openmeteo: 'Open-Meteo',
-        ipma: 'IPMA',
-        openweather: 'OpenWeather'
-    };
-
-    const providerColors = {
-        openmeteo: '#0ea5e9',
-        ipma: '#00ff88',
-        openweather: '#a855f7'
-    };
-
-    return `
-        <div style="color: #f8fafc; padding: 8px;">
-            <h4 style="margin: 0 0 8px 0; color: ${providerColors[point.provider]};">
-                ${point.name}
-            </h4>
-            <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                Fonte: ${providerLabels[point.provider]}
-            </p>
-            <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">
-                ${point.lat.toFixed(4)}°N, ${Math.abs(point.lng).toFixed(4)}°W
-            </p>
-        </div>
-    `;
-}
-
 function selectLocation(lat, lng, name = null) {
     appState.selectedLocation = {
-        lat: lat,
-        lng: lng,
+        lat,
+        lng,
         name: name || `${lat.toFixed(4)}°N, ${Math.abs(lng).toFixed(4)}°W`,
         altitude: Math.floor(Math.random() * 200) + 10
     };
 
-    // Update selected marker
-    if (selectedMarker) {
-        map.removeLayer(selectedMarker);
-    }
+    if (selectedMarker) map.removeLayer(selectedMarker);
 
     const selectedIcon = L.divIcon({
         className: 'custom-div-icon',
         html: `<div style="
             background: #a855f7;
-            width: 20px;
-            height: 20px;
+            width: 20px; height: 20px;
             border-radius: 50%;
             border: 3px solid rgba(255,255,255,0.9);
             box-shadow: 0 0 16px #a855f7;
@@ -284,279 +307,85 @@ function selectLocation(lat, lng, name = null) {
 
     selectedMarker = L.marker([lat, lng], { icon: selectedIcon }).addTo(map);
 
-    // Update UI
-    cachedForecastRecords = null;
-
     updateLocationPanel();
     updateContextSection();
+    refreshAfterLocationChange();
+}
 
-    refreshForecastData();
-    initializeTimeline();
-    loadHistoricalForecasts();
+async function refreshAfterLocationChange() {
+    
+    await Promise.all([
+        fetchCurrentForecast(),
+        initializeTimeline(),
+        loadHistoricalForecast(),
+        loadRecordsData(1)
+    ]);
 }
 
 function updateLocationPanel() {
     const loc = appState.selectedLocation;
-    document.getElementById('selectedLocationName').textContent = loc.name;
+    setText('selectedLocationName', loc.name);
     document.getElementById('selectedLocationCoords').textContent =
         `${loc.lat.toFixed(4)}° N, ${Math.abs(loc.lng).toFixed(4)}° W`;
-    document.getElementById('locationAltitude').textContent = `${loc.altitude} m`;
+    setText('locationAltitude', `${loc.altitude} m`);
 }
 
 function updateContextSection() {
     const loc = appState.selectedLocation;
-
     const contextLocation = document.getElementById('contextLocation');
     const contextCoords = document.getElementById('contextCoords');
 
-    if (contextLocation) {
-        contextLocation.textContent = loc.name;
-    }
-
-    if (contextCoords) {
-        contextCoords.textContent =
-            `${loc.lat.toFixed(4)}° N, ${Math.abs(loc.lng).toFixed(4)}° W`;
-    }
+    if (contextLocation) contextLocation.textContent = loc.name;
+    if (contextCoords) contextCoords.textContent =
+        `${loc.lat.toFixed(4)}° N, ${Math.abs(loc.lng).toFixed(4)}° W`;
 }
+
+
+
+
 
 // ================================
-// Charts Initialization
+// Timeline
 // ================================
-let evolutionChart;
-
-function initializeEvolutionChart() {
-    const canvas = document.getElementById('evolutionChart');
-    if (!canvas) return;
-
-    if (evolutionChart) {
-        evolutionChart.destroy();
-        evolutionChart = null;
-    }
-
-    canvas.removeAttribute('width');
-    canvas.removeAttribute('height');
-    canvas.removeAttribute('style');
-
-    const ctx = canvas.getContext('2d');
-    const data = generateEvolutionData(appState.selectedVariable, appState.selectedTimeRange);
-
-    evolutionChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: data.labels,
-            datasets: [
-                {
-                    label: 'ICON',
-                    data: data.icon,
-                    borderColor: MODEL_COLORS.icon,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    pointRadius: 3,
-                    pointHoverRadius: 6
-                },
-                {
-                    label: 'ECMWF',
-                    data: data.ecmwf,
-                    borderColor: MODEL_COLORS.ecmwf,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    pointRadius: 3,
-                    pointHoverRadius: 6
-                },
-                {
-                    label: 'ARPEGE',
-                    data: data.arpege,
-                    borderColor: MODEL_COLORS.arpege,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    pointRadius: 3,
-                    pointHoverRadius: 6
-                },
-                {
-                    label: 'IPMA',
-                    data: data.ipma,
-                    borderColor: MODEL_COLORS.ipma,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    pointRadius: 3,
-                    pointHoverRadius: 6
-                },
-                {
-                    label: 'OpenWeather',
-                    data: data.openweather,
-                    borderColor: MODEL_COLORS.openweather,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    pointRadius: 3,
-                    pointHoverRadius: 6
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            resizeDelay: 200,
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(26, 31, 46, 0.95)',
-                    titleColor: '#f8fafc',
-                    bodyColor: '#94a3b8',
-                    borderColor: 'rgba(148, 163, 184, 0.2)',
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: true,
-                    callbacks: {
-                        label: function (context) {
-                            const unit = getVariableUnit(appState.selectedVariable);
-                            return `${context.dataset.label}: ${context.parsed.y}${unit}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(148, 163, 184, 0.1)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 11 }
-                    }
-                },
-                y: {
-                    grid: {
-                        color: 'rgba(148, 163, 184, 0.1)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 11 },
-                        callback: function (value) {
-                            return value + getVariableUnit(appState.selectedVariable);
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-function generateEvolutionData(variable, hours) {
-    const labels = [];
-    const now = new Date();
-    const pointCount = Math.floor(hours / 3) + 1;
-
-    for (let i = 0; i < pointCount; i++) {
-        const time = new Date(now.getTime() + (i * 3 * 60 * 60 * 1000));
-        labels.push(time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }));
-    }
-
-    const baseValues = {
-        temperature: { base: 22, variance: 5 },
-        humidity: { base: 60, variance: 15 },
-        windSpeed: { base: 15, variance: 10 },
-        windGust: { base: 25, variance: 15 },
-        precipitation: { base: 20, variance: 30 },
-        cloudCover: { base: 40, variance: 30 },
-        pressure: { base: 1015, variance: 5 }
-    };
-
-    const config = baseValues[variable] || baseValues.temperature;
-
-    const generateModelData = (offset = 0) => {
-        return labels.map((_, i) => {
-            const hourOfDay = (now.getHours() + i * 3) % 24;
-            const dayFactor = Math.sin((hourOfDay - 6) * Math.PI / 12);
-            const base = config.base + (variable === 'temperature' ? dayFactor * 4 : 0);
-            const value = base + (Math.random() - 0.5) * config.variance + offset;
-            return Math.round(value * 10) / 10;
-        });
-    };
-
-    return {
-        labels,
-        icon: generateModelData(0),
-        ecmwf: generateModelData(0.5),
-        arpege: generateModelData(-0.3),
-        ipma: generateModelData(0.8),
-        openweather: generateModelData(-0.5)
-    };
-}
-
-function getVariableUnit(variable) {
-    const units = {
-        temperature: '°C',
-        humidity: '%',
-        windSpeed: ' km/h',
-        windGust: ' km/h',
-        precipitation: '%',
-        cloudCover: '%',
-        pressure: ' hPa'
-    };
-    return units[variable] || '';
-}
-
-function updateEvolutionChart() {
-    const data = generateEvolutionData(appState.selectedVariable, appState.selectedTimeRange);
-
-    evolutionChart.data.labels = data.labels;
-    evolutionChart.data.datasets[0].data = data.icon;
-    evolutionChart.data.datasets[1].data = data.ecmwf;
-    evolutionChart.data.datasets[2].data = data.arpege;
-    evolutionChart.data.datasets[3].data = data.ipma;
-    evolutionChart.data.datasets[4].data = data.openweather;
-
-    evolutionChart.update('none');
-
-    updateAnalytics(data);
-}
-
-// ================================
-// Timeline Initialization
-// ================================
-
 function initializeForecastTabs() {
     document.querySelectorAll('.forecast-model-tab').forEach(tab => {
         tab.addEventListener('click', () => {
-            document
-                .querySelectorAll('.forecast-model-tab')
-                .forEach(t => t.classList.remove('active'));
-
+            document.querySelectorAll('.forecast-model-tab').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-
             currentForecastProvider = tab.dataset.provider;
-
             initializeTimeline();
         });
     });
 }
+
+async function getForecastTimelineData() {
+    const { lat, lng } = appState.selectedLocation;
+
+    const response = await fetch(
+        `/data/forecast/terrestrial/timeline?lat=${lat}&lon=${lng}&provider=${currentForecastProvider}&hours=24`
+    );
+
+    if (!response.ok) {
+        throw new Error(`Erro HTTP ao carregar timeline: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
 async function initializeTimeline() {
     const timelineScroll = document.getElementById('timelineScroll');
-
     if (!timelineScroll) return;
 
     try {
-        const records = await getForecastRecords();
+        const data = await getForecastTimelineData();
+        const models = data.models || {};
 
         let html = '';
 
         if (currentForecastProvider === 'openmeteo') {
-            const openMeteoModels = ['ICON', 'ECMWF', 'ARPEGE'];
-
-            html = openMeteoModels
+            html = ['ICON', 'ECMWF', 'ARPEGE']
                 .map(modelName => {
-                    const timelineData = buildOpenMeteoTimeline(records, modelName);
+                    const timelineData = models[modelName] || [];
 
                     if (!timelineData.length) return '';
 
@@ -571,9 +400,7 @@ async function initializeTimeline() {
         }
 
         if (currentForecastProvider === 'ipma') {
-
-            const timelineData =
-                buildIpmaTimeline(records);
+            const timelineData = models['ECMWF + AROME'] || [];
 
             html = renderTimelineModelRow({
                 provider: 'IPMA',
@@ -584,9 +411,7 @@ async function initializeTimeline() {
         }
 
         if (currentForecastProvider === 'openweather') {
-
-            const timelineData =
-                buildOpenWeatherTimeline(records);
+            const timelineData = models.OWM || [];
 
             html = renderTimelineModelRow({
                 provider: 'OpenWeather',
@@ -607,551 +432,46 @@ async function initializeTimeline() {
 }
 
 function initializeTimelineArrows() {
-    document
-        .querySelectorAll('.timeline-arrow')
-        .forEach(button => {
-            button.addEventListener('click', () => {
-                const model = button.dataset.model;
-                const timeline = document.getElementById(`timeline-${model}`);
+    document.querySelectorAll('.timeline-arrow').forEach(button => {
+        button.addEventListener('click', () => {
+            const model = button.dataset.model;
+            const timeline = document.getElementById(`timeline-${model}`);
+            if (!timeline) return;
 
-                if (!timeline) return;
-
-                const direction = button.classList.contains('next') ? 1 : -1;
-
-                timeline.scrollBy({
-                    left: direction * 600,
-                    behavior: 'smooth'
-                });
-            });
+            const direction = button.classList.contains('next') ? 1 : -1;
+            timeline.scrollBy({ left: direction * 600, behavior: 'smooth' });
         });
-}
-function buildOpenMeteoTimeline(records, modelName) {
-    const lat = appState.selectedLocation.lat;
-    const lng = appState.selectedLocation.lng;
-
-    const modelRecords = records.filter(item =>
-        item.source?.toLowerCase() === 'open-meteo' &&
-        item.model?.toUpperCase().includes(modelName) &&
-        item.requestedLocation &&
-        Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
-        Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
-    );
-
-    const latestRequestId = modelRecords[0]?.requestId;
-
-    const latestRecords = modelRecords.filter(item =>
-        item.requestId === latestRequestId
-    );
-
-    const grouped = {};
-
-    latestRecords.forEach(record => {
-        const key = `${record.date} ${record.time}`;
-
-        if (!grouped[key]) {
-            grouped[key] = {
-                dateRaw: record.date,
-                timeRaw: record.time,
-                date: formatTimelineDate(record.date),
-                time: record.time.slice(0, 5),
-
-                temperature: null,
-                minTemp: null,
-                maxTemp: null,
-                humidity: null,
-                pressure: null,
-                cloudCover: null,
-                visibility: null,
-                windSpeed: null,
-                windSpeedMax: null,
-                windGust: null,
-                windDirectionDegrees: null,
-                windDirection: null,
-                precipitation: null,
-                sunrise: null,
-                sunset: null,
-
-                icon: 'fa-cloud-sun'
-            };
-        }
-
-        const field = record.variable?.fieldName;
-        const value = record.value;
-
-        switch (field) {
-            case 'temperatureC':
-                grouped[key].temperature = Number(value);
-                break;
-
-            case 'temperatureMinC':
-                grouped[key].minTemp = Number(value);
-                break;
-
-            case 'temperatureMaxC':
-                grouped[key].maxTemp = Number(value);
-                break;
-
-            case 'humidityPercent':
-                grouped[key].humidity = Number(value);
-                break;
-
-            case 'pressureHpa':
-                grouped[key].pressure = Number(value);
-                break;
-
-            case 'cloudCoverPercent':
-                grouped[key].cloudCover = Number(value);
-                break;
-
-            case 'visibilityKm':
-                grouped[key].visibility = Number(value);
-                break;
-
-            case 'windSpeedKmh':
-                grouped[key].windSpeed = Number(value);
-                break;
-
-            case 'windSpeedMaxKmh':
-                grouped[key].windSpeedMax = Number(value);
-                break;
-
-            case 'windGustKmh':
-                grouped[key].windGust = Number(value);
-                break;
-
-            case 'windDirectionDegrees':
-                grouped[key].windDirectionDegrees = Number(value);
-                grouped[key].windDirection =
-                    `${Math.round(Number(value))}° ${degreesToCardinal(Number(value))}`;
-                break;
-
-            case 'precipitationMm':
-                grouped[key].precipitation = Number(value);
-                break;
-
-            case 'sunriseH':
-                grouped[key].sunrise = value;
-                break;
-
-            case 'sunsetH':
-                grouped[key].sunset = value;
-                break;
-        }
     });
-
-    const sorted = Object.values(grouped)
-        .sort((a, b) =>
-            new Date(`${a.dateRaw}T${a.timeRaw}`) -
-            new Date(`${b.dateRaw}T${b.timeRaw}`)
-        );
-
-    console.log(
-        modelName,
-        sorted.map(item => `${item.dateRaw} ${item.timeRaw}`)
-    );
-
-    return sorted.slice(0, 24);
 }
 
-function buildOpenWeatherTimeline(records) {
 
-    const lat = appState.selectedLocation.lat;
-    const lng = appState.selectedLocation.lng;
 
-    const filtered = records.filter(item =>
-        item.source?.toLowerCase() === 'openweather' &&
-        item.requestedLocation &&
-        Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
-        Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
-    );
 
-    const latestRequestId = filtered[0]?.requestId;
 
-    const latestRequestRecords = filtered.filter(
-        item => item.requestId === latestRequestId
-    );
-
-    const grouped = {};
-
-    latestRequestRecords.forEach(item => {
-
-        const key = `${item.date} ${item.time}`;
-
-        if (!grouped[key]) {
-            grouped[key] = {
-                datetime: key,
-                dateRaw: item.date,
-                date: formatTimelineDate(item.date),
-                time: item.time.slice(0, 5),
-                icon: 'fa-cloud-sun'
-            };
-        }
-
-        const field = item.variable?.fieldName;
-        const value = item.value;
-
-        switch (field) {
-
-            case 'temperatureC':
-                grouped[key].temperature = value;
-                break;
-
-            case 'temperatureMinC':
-                grouped[key].minTemp = value;
-                break;
-
-            case 'temperatureMaxC':
-                grouped[key].maxTemp = value;
-                break;
-
-            case 'humidityPercent':
-                grouped[key].humidity = value;
-                break;
-
-            case 'pressureHpa':
-                grouped[key].pressure = value;
-                break;
-
-            case 'cloudCoverPercent':
-                grouped[key].cloudCover = value;
-                break;
-
-            case 'windSpeedKmh':
-                grouped[key].windSpeed = value;
-                break;
-
-            case 'windGustKmh':
-                grouped[key].windGust = value;
-                break;
-
-            case 'windDirectionDegrees':
-                grouped[key].windDirection =
-                    `${value}° ${degreesToCardinal(value)}`;
-                break;
-
-            case 'precipitationMm':
-                grouped[key].precipitation = value;
-                break;
-
-            case 'precipitationProbabilityPercent':
-                grouped[key].precipitationProbability = value;
-                break;
-        }
-    });
-
-    return Object.values(grouped)
-        .sort((a, b) =>
-            new Date(a.datetime) - new Date(b.datetime)
-        )
-        .slice(0, 8);
-}
 
 function renderTimelineModelRow(modelData) {
-
     return `
         <div class="timeline-model-row">
-
             <div class="timeline-model-left">
-
-                ${renderTimelineModelSummary(
-        modelData.data,
-        modelData.model
-    )}
-
+                ${renderTimelineModelSummary(modelData.data, modelData.model, modelData.provider)}
                 <div class="timeline-model-controls">
-
-                    <button
-                        class="timeline-arrow prev"
-                        data-model="${modelData.model}">
+                    <button class="timeline-arrow prev" data-model="${modelData.model}">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-
-                    <button
-                        class="timeline-arrow next"
-                        data-model="${modelData.model}">
+                    <button class="timeline-arrow next" data-model="${modelData.model}">
                         <i class="fas fa-chevron-right"></i>
                     </button>
-
                 </div>
-
             </div>
-
-            <div
-                class="timeline-model-hours"
-                id="timeline-${modelData.model}">
-
+            <div class="timeline-model-hours" id="timeline-${modelData.model}">
                 ${renderTimelineBlocks(modelData.data, modelData.provider)}
             </div>
-
         </div>
     `;
 }
-function buildIconTimeline(records) {
-    const lat = appState.selectedLocation.lat;
-    const lng = appState.selectedLocation.lng;
 
-    const iconRecords = records.filter(item =>
-        item.source?.toLowerCase() === 'open-meteo' &&
-        item.model?.toUpperCase() === 'ICON' &&
-        item.requestedLocation &&
-        Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
-        Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
-    );
-
-    const latestRequestId = iconRecords[0]?.requestId;
-
-    const latestRecords = iconRecords.filter(item =>
-        item.requestId === latestRequestId
-    );
-
-    const grouped = {};
-
-    latestRecords.forEach(record => {
-        const key = `${record.date} ${record.time}`;
-
-        if (!grouped[key]) {
-            grouped[key] = {
-                dateRaw: record.date,
-                timeRaw: record.time,
-                date: formatTimelineDate(record.date),
-                time: record.time.slice(0, 5),
-                temperature: null,
-                minTemp: null,
-                maxTemp: null,
-                humidity: null,
-                pressure: null,
-                cloudCover: null,
-                visibility: null,
-                windSpeed: null,
-                windSpeedMax: null,
-                windGust: null,
-                windDirectionDegrees: null,
-                windDirection: null,
-                precipitation: null,
-                sunrise: null,
-                sunset: null,
-                icon: 'fa-cloud-sun'
-            };
-        }
-
-        const field = record.variable?.fieldName;
-        const value = record.value;
-
-        switch (field) {
-            case 'temperatureC':
-                grouped[key].temperature = Number(value);
-                break;
-
-            case 'temperatureMinC':
-                grouped[key].minTemp = Number(value);
-                break;
-
-            case 'temperatureMaxC':
-                grouped[key].maxTemp = Number(value);
-                break;
-
-            case 'humidityPercent':
-                grouped[key].humidity = Number(value);
-                break;
-
-            case 'pressureHpa':
-                grouped[key].pressure = Number(value);
-                break;
-
-            case 'cloudCoverPercent':
-                grouped[key].cloudCover = Number(value);
-                break;
-
-            case 'visibilityKm':
-                grouped[key].visibility = Number(value);
-                break;
-
-            case 'windSpeedKmh':
-                grouped[key].windSpeed = Number(value);
-                break;
-
-            case 'windSpeedMaxKmh':
-                grouped[key].windSpeedMax = Number(value);
-                break;
-
-            case 'windGustKmh':
-                grouped[key].windGust = Number(value);
-                break;
-
-            case 'windDirectionDegrees':
-                grouped[key].windDirectionDegrees = Number(value);
-                grouped[key].windDirection =
-                    `${Math.round(Number(value))}° ${degreesToCardinal(Number(value))}`;
-                break;
-
-            case 'precipitationMm':
-                grouped[key].precipitation = Number(value);
-                break;
-
-            case 'sunriseH':
-                grouped[key].sunrise = value;
-                break;
-
-            case 'sunsetH':
-                grouped[key].sunset = value;
-                break;
-        }
-    });
-
-    return Object.values(grouped)
-        .sort((a, b) =>
-            new Date(`${a.dateRaw}T${a.timeRaw}`) -
-            new Date(`${b.dateRaw}T${b.timeRaw}`)
-        )
-        .slice(0, 24);
-}
-
-function buildIpmaTimeline(records) {
-
-    const lat = appState.selectedLocation.lat;
-    const lng = appState.selectedLocation.lng;
-
-    const filtered = records.filter(item =>
-        item.source?.toLowerCase() === 'ipma' &&
-        item.requestedLocation &&
-        Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
-        Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
-    );
-
-    const latestRequestId = filtered[0]?.requestId;
-
-    const latestRequestRecords = filtered.filter(
-        item => item.requestId === latestRequestId
-    );
-
-    const grouped = {};
-
-    latestRequestRecords.forEach(item => {
-
-        const key = `${item.date} ${item.time}`;
-
-        if (!grouped[key]) {
-            grouped[key] = {
-                datetime: key,
-                dateRaw: item.date,
-                timeRaw: item.time,
-                date: formatTimelineDate(item.date),
-                time: item.time.slice(0, 5),
-
-                temperature: null,
-                minTemp: null,
-                maxTemp: null,
-                humidity: null,
-                pressure: null,
-                cloudCover: null,
-                visibility: null,
-                windSpeed: null,
-                windGust: null,
-                windDirection: null,
-                precipitation: null,
-                precipitationProbability: null,
-                sunrise: null,
-                sunset: null,
-
-                icon: 'fa-cloud-sun'
-            };
-        }
-
-        const field = item.variable?.fieldName;
-        const rawValue = item.value;
-        const value = rawValue !== null && rawValue !== undefined
-            ? Number(rawValue)
-            : null;
-
-        switch (field) {
-
-            case 'temperatureC':
-                grouped[key].temperature = value;
-                break;
-
-            case 'temperatureMinC':
-                grouped[key].minTemp = value;
-                break;
-
-            case 'temperatureMaxC':
-                grouped[key].maxTemp = value;
-                break;
-
-            case 'humidityPercent':
-                grouped[key].humidity = value;
-                break;
-
-            case 'windSpeedKmh':
-                grouped[key].windSpeed = value;
-                break;
-
-            case 'windGustKmh':
-                grouped[key].windGust = value;
-                break;
-
-            case 'windDirectionCardinal':
-                grouped[key].windDirection = rawValue;
-                break;
-
-            case 'windDirectionDegrees':
-                grouped[key].windDirection =
-                    `${Math.round(value)}° ${degreesToCardinal(value)}`;
-                break;
-
-            case 'precipitationProbabilityPercent':
-                grouped[key].precipitationProbability =
-                    value !== -99 ? value : null;
-                break;
-        }
-    });
-
-    return Object.values(grouped)
-        .sort((a, b) =>
-            new Date(a.datetime.replace(' ', 'T')) -
-            new Date(b.datetime.replace(' ', 'T'))
-        )
-        .slice(0, 24);
-}
-
-function formatTimelineDate(dateString) {
-    const date = new Date(dateString);
-
-    return date.toLocaleDateString('pt-PT', {
-        weekday: 'short',
-        day: '2-digit'
-    });
-}
-function formatTimelineShortDate(dateString) {
-
-    const date = new Date(dateString);
-
-    return date.toLocaleDateString('pt-PT', {
-        day: '2-digit',
-        month: 'short'
-    });
-
-}
-
-function getDailySummaryByDate(forecastData) {
-    const groupedByDate = {};
-
-    forecastData.forEach(item => {
-        if (!groupedByDate[item.dateRaw]) {
-            groupedByDate[item.dateRaw] = {
-                dateRaw: item.dateRaw,
-                minTemp: item.minTemp,
-                maxTemp: item.maxTemp,
-                sunrise: item.sunrise,
-                sunset: item.sunset
-            };
-        }
-    });
-
-    return groupedByDate;
-}
-function renderTimelineModelSummary(forecastData, modelName = 'ICON') {
+function renderTimelineModelSummary(forecastData, modelName = 'ICON', provider = 'Open-Meteo') {
     const first = forecastData[0];
-
     if (!first) return '';
 
     const days = Object.values(
@@ -1165,181 +485,136 @@ function renderTimelineModelSummary(forecastData, modelName = 'ICON') {
                     sunset: item.sunset
                 };
             }
-
             return acc;
         }, {})
     );
 
     return `
         <div class="timeline-model-summary premium-summary">
-
             <div class="timeline-model-main">
                 <div class="timeline-model-icon">
                     <i class="fas fa-cloud-sun"></i>
                 </div>
-
                 <div class="timeline-model-info">
                     <span class="timeline-model-provider">
-    Open-Meteo -
-    <strong>${modelName}</strong>
-</span>
-                   
+                        ${provider} - <strong>${modelName}</strong>
+                    </span>
                 </div>
             </div>
-
             <div class="timeline-days-wrapper">
-
                 ${days.map(day => `
                     <div class="timeline-day-summary">
-
                         <div class="timeline-day-title">
                             <i class="fas fa-calendar-days"></i>
                             <span>${day.label}</span>
                         </div>
-
                         <div class="timeline-day-temp-grid">
-
                             <div>
                                 <span>MÍN</span>
                                 <strong class="temp-min">
-                                    ${day.minTemp !== null && day.minTemp !== undefined
-            ? `${Number(day.minTemp).toFixed(1)}°C`
-            : '—'}
+                                    ${day.minTemp != null ? `${Number(day.minTemp).toFixed(1)}°C` : '—'}
                                 </strong>
                             </div>
-
                             <div>
                                 <span>MÁX</span>
                                 <strong class="temp-max">
-                                    ${day.maxTemp !== null && day.maxTemp !== undefined
-            ? `${Number(day.maxTemp).toFixed(1)}°C`
-            : '—'}
+                                    ${day.maxTemp != null ? `${Number(day.maxTemp).toFixed(1)}°C` : '—'}
                                 </strong>
                             </div>
-
                         </div>
-
                         <div class="timeline-day-sun premium-sun">
-                            <span>
-                                <i class="fas fa-sun"></i>
-                                ${day.sunrise ?? '—'}
-                            </span>
-
-                            <span>
-                                <i class="fas fa-moon"></i>
-                                ${day.sunset ?? '—'}
-                            </span>
+                            <span><i class="fas fa-sun"></i> ${day.sunrise ?? '—'}</span>
+                            <span><i class="fas fa-moon"></i> ${day.sunset ?? '—'}</span>
                         </div>
-
                     </div>
                 `).join('')}
-
             </div>
-
         </div>
     `;
 }
 
 function renderTimelineBlocks(forecastData, provider = '') {
+    const isIpma = provider === 'IPMA';
 
-    return forecastData.map((forecast, index) => {
-
-        const isIpma = provider === 'IPMA';
-
-        return `
-            <div class="timeline-block ${index === 0 ? 'current' : ''}">
-
-                <div class="timeline-datetime">
-                    <span class="timeline-date">${forecast.date}</span>
-                    <span class="timeline-hour">${forecast.time}</span>
-                </div>
-
-                <i class="fas ${forecast.icon} timeline-icon"></i>
-
-                <span class="timeline-temp">
-                    ${forecast.temperature !== null ? `${forecast.temperature.toFixed(1)}°C` : '—'}
-                </span>
-
-                <div class="timeline-details">
-
-                    <span><i class="fas fa-droplet"></i> ${forecast.humidity !== null ? `${forecast.humidity}%` : '—'}</span>
-
-                    ${!isIpma ? `
-                        <span><i class="fas fa-gauge"></i> ${forecast.pressure !== null ? `${forecast.pressure.toFixed(1)} hPa` : '—'}</span>
-                        <span><i class="fas fa-cloud"></i> ${forecast.cloudCover !== null ? `${forecast.cloudCover}%` : '—'}</span>
-                    ` : ''}
-
-                    <span><i class="fas fa-wind"></i> ${forecast.windSpeed !== null ? `${forecast.windSpeed.toFixed(1)} km/h` : '—'}</span>
-
-                    ${!isIpma ? `
-                        <span><i class="fas fa-burst"></i> ${forecast.windGust !== null ? `${forecast.windGust.toFixed(1)} km/h` : '—'}</span>
-                    ` : ''}
-
-                    <span><i class="fas fa-location-arrow"></i> ${forecast.windDirection ?? '—'}</span>
-
-                    <span>
-                        <i class="fas fa-cloud-rain"></i>
-                        ${forecast.precipitation !== null && forecast.precipitation !== undefined
-                ? `${forecast.precipitation} mm`
-                : forecast.precipitationProbability !== null && forecast.precipitationProbability !== undefined
-                    ? `${forecast.precipitationProbability}%`
-                    : '—'
-            }
-                    </span>
-
-                </div>
-
+    return forecastData.map((forecast, index) => `
+        <div class="timeline-block ${index === 0 ? 'current' : ''}">
+            <div class="timeline-datetime">
+                <span class="timeline-date">${forecast.date}</span>
+                <span class="timeline-hour">${forecast.time}</span>
             </div>
-        `;
-    }).join('');
+            <i class="fas ${forecast.icon} timeline-icon"></i>
+            <span class="timeline-temp">
+                ${forecast.temperature != null ? `${forecast.temperature.toFixed(1)}°C` : '—'}
+            </span>
+            <div class="timeline-details">
+                <span><i class="fas fa-droplet"></i> ${forecast.humidity != null ? `${forecast.humidity}%` : '—'}</span>
+                ${!isIpma ? `
+                    <span><i class="fas fa-gauge"></i> ${forecast.pressure != null ? `${forecast.pressure.toFixed(1)} hPa` : '—'}</span>
+                    <span><i class="fas fa-cloud"></i> ${forecast.cloudCover != null ? `${forecast.cloudCover}%` : '—'}</span>
+                ` : ''}
+                <span><i class="fas fa-wind"></i> ${forecast.windSpeed != null ? `${forecast.windSpeed.toFixed(1)} km/h` : '—'}</span>
+                ${!isIpma ? `
+                    <span><i class="fas fa-burst"></i> ${forecast.windGust != null ? `${forecast.windGust.toFixed(1)} km/h` : '—'}</span>
+                ` : ''}
+                <span><i class="fas fa-location-arrow"></i> ${forecast.windDirection ?? '—'}</span>
+                <span>
+                    <i class="fas fa-cloud-rain"></i>
+                    ${forecast.precipitation != null
+            ? `${forecast.precipitation} mm`
+            : forecast.precipitationProbability != null
+                ? `${forecast.precipitationProbability}%`
+                : '—'
+        }
+                </span>
+            </div>
+        </div>
+    `).join('');
 }
+
+
+
+function formatTimelineShortDate(dateString) {
+    return new Date(dateString).toLocaleDateString('pt-PT', {
+        day: '2-digit',
+        month: 'short'
+    });
+}
+
 // ================================
 // Event Listeners
 // ================================
 function initializeEventListeners() {
-    // Variable selector buttons
-    document.querySelectorAll('.var-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            document.querySelectorAll('.var-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            appState.selectedVariable = this.dataset.variable;
-            updateEvolutionChart();
-        });
-    });
+   
 
-    // Time range buttons
-    document.querySelectorAll('.range-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            appState.selectedTimeRange = parseInt(this.dataset.range);
-            updateEvolutionChart();
-        });
-    });
-
-
-
-    // Table search
-    document.getElementById('tableSearch').addEventListener('input', function () {
-        filterTable(this.value);
-    });
-
-    // Export CSV
-    document.getElementById('exportCsv').addEventListener('click', exportToCsv);
-
-    // Pagination
-    document.getElementById('prevPage').addEventListener('click', function () {
+    document.getElementById('prevPage')?.addEventListener('click', function () {
         if (appState.pagination.currentPage > 1) {
-            appState.pagination.currentPage--;
-            renderTable();
+            loadRecordsData(appState.pagination.currentPage - 1);
         }
     });
 
-    document.getElementById('nextPage').addEventListener('click', function () {
-        const totalPages = Math.ceil(appState.pagination.totalItems / appState.pagination.itemsPerPage);
+    document.getElementById('nextPage')?.addEventListener('click', function () {
+        const totalPages = Math.ceil(
+            appState.pagination.totalItems / appState.pagination.itemsPerPage
+        );
+
         if (appState.pagination.currentPage < totalPages) {
-            appState.pagination.currentPage++;
-            renderTable();
+            loadRecordsData(appState.pagination.currentPage + 1);
+        }
+    });
+    document.getElementById('tableSearch')?.addEventListener('input', function () {
+        loadRecordsData(1);
+    });
+    document.getElementById('exportCsv')?.addEventListener('click', exportToCsv);
+
+  
+
+    document.getElementById('nextPage')?.addEventListener('click', function () {
+        const totalPages = Math.ceil(
+            appState.pagination.totalItems / appState.pagination.itemsPerPage
+        );
+
+        if (appState.pagination.currentPage < totalPages) {
+            loadRecordsData(appState.pagination.currentPage + 1);
         }
     });
 }
@@ -1347,696 +622,221 @@ function initializeEventListeners() {
 // ================================
 // Data Loading & API Integration
 // ================================
-function loadInitialData() {
-
-    appState.tableData = generateMockTableData();
-
-    appState.pagination.totalItems =
-        appState.tableData.length;
-
-    renderTable();
-
-    fetchCurrentForecast();
-
+async function loadInitialData() {
+    await loadRecordsData(1);
     updateLastUpdateTime();
+}
+
+async function getForecastRecordsPage(page = 1) {
+    const { lat, lng } = appState.selectedLocation;
+    const pageSize = appState.pagination.itemsPerPage;
+    const search = document.getElementById('tableSearch')?.value.trim() || '';
+
+    const params = new URLSearchParams({
+        lat,
+        lon: lng,
+        page,
+        page_size: pageSize
+    });
+
+    if (search) {
+        params.append('search', search);
+    }
+
+    const response = await fetch(`/data/forecast/terrestrial/records?${params.toString()}`);
+
+    if (!response.ok) {
+        throw new Error(`Erro HTTP ao carregar registos: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+async function loadRecordsData(page = 1) {
+    try {
+        const data = await getForecastRecordsPage(page);
+
+        appState.tableData = data.rows;
+        appState.pagination.currentPage = data.page;
+        appState.pagination.itemsPerPage = data.pageSize;
+        appState.pagination.totalItems = data.total;
+
+        renderTable();
+
+    } catch (error) {
+        console.error('Erro ao carregar registos:', error);
+        appState.tableData = [];
+        appState.pagination.totalItems = 0;
+        renderTable();
+    }
 }
 
 function refreshForecastData() {
-    fetchCurrentForecast();
+    refreshAfterLocationChange();
     updateLastUpdateTime();
-    //updateForecastOperational();
 }
 
-// Prepared for FastAPI integration
-
-
-function getNearestForecastKey(records) {
-    const now = new Date();
-
-    let nearestKey = null;
-    let nearestDiff = Infinity;
-
-    const keys = [...new Set(
-        records.map(item => `${item.date} ${item.time}`)
-    )];
-
-    keys.forEach(key => {
-        const forecastDate = new Date(key.replace(' ', 'T'));
-        const diff = Math.abs(forecastDate - now);
-
-        if (diff < nearestDiff) {
-            nearestDiff = diff;
-            nearestKey = key;
-        }
-    });
-
-    return nearestKey;
-}
-
-function mapOpenWeatherForecast(records) {
-
-    function getValue(fieldNames) {
-        if (!Array.isArray(fieldNames)) {
-            fieldNames = [fieldNames];
-        }
-
-        const record = records.find(item =>
-            fieldNames.includes(item.variable?.fieldName)
-        );
-
-        return record ? Number(record.value) : null;
-    }
-
-    return {
-        temperature: getValue('temperatureC'),
-        minTemp: getValue('temperatureMinC'),
-        maxTemp: getValue('temperatureMaxC'),
-
-        humidity: getValue([
-            'humidityPercent',
-            'relativeHumidityPercent'
-        ]),
-
-        pressure: getValue([
-            'pressureHpa',
-            'atmosphericPressureHpa'
-        ]),
-
-        cloudCover: getValue('cloudCoverPercent'),
-
-        visibility: getValue('visibilityKm'),
-
-        windSpeed: getValue('windSpeedKmh'),
-        windGust: getValue('windGustKmh'),
-        windDirectionDegrees: getValue('windDirectionDegrees'),
-
-        precipitation: getValue('precipitationProbabilityPercent'),
-
-        forecastTime: records[0]?.time ?? '—',
-        forecastDate: records[0]?.date ?? '—'
-    };
-}
+// ================================
+// Forecast Mapping & Cards
+// ================================
 
 function updateOpenWeatherCard(data) {
-
-    setText(
-        'owTemp',
-        data.temperature !== null
-            ? `${data.temperature.toFixed(1)}°C`
-            : '—'
+    setText('owTemp', data.temperature != null ? `${data.temperature.toFixed(1)}°C` : '—');
+    setText('owMinTemp', data.minTemp != null ? `${data.minTemp.toFixed(1)}°C` : '—');
+    setText('owMaxTemp', data.maxTemp != null ? `${data.maxTemp.toFixed(1)}°C` : '—');
+    setText('owHumidity', data.humidity != null ? `${data.humidity}%` : '—');
+    setText('owPressure', data.pressure != null ? `${data.pressure} hPa` : '—');
+    setText('owCloud', data.cloudCover != null ? `${data.cloudCover}%` : '—');
+    setText('owVisibility', data.visibility != null ? `${data.visibility} km` : '—');
+    setText('owWind', data.windSpeed != null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
+    setText('owGust', data.windGust != null ? `${data.windGust.toFixed(1)} km/h` : '—');
+    setText('owWindDir', data.windDirectionDegrees != null
+        ? `${Math.round(data.windDirectionDegrees)}° ${degreesToCardinal(data.windDirectionDegrees)}`
+        : '—'
     );
-
-    setText(
-        'owMinTemp',
-        data.minTemp !== null
-            ? `${data.minTemp.toFixed(1)}°C`
-            : '—'
-    );
-
-    setText(
-        'owMaxTemp',
-        data.maxTemp !== null
-            ? `${data.maxTemp.toFixed(1)}°C`
-            : '—'
-    );
-
-    setText(
-        'owHumidity',
-        data.humidity !== null
-            ? `${data.humidity}%`
-            : '—'
-    );
-
-    setText(
-        'owPressure',
-        data.pressure !== null
-            ? `${data.pressure} hPa`
-            : '—'
-    );
-
-    setText(
-        'owCloud',
-        data.cloudCover !== null
-            ? `${data.cloudCover}%`
-            : '—'
-    );
-
-    setText(
-        'owVisibility',
-        data.visibility !== null
-            ? `${data.visibility} km`
-            : '—'
-    );
-
-    setText(
-        'owWind',
-        data.windSpeed !== null
-            ? `${data.windSpeed.toFixed(1)} km/h`
-            : '—'
-    );
-
-    setText(
-        'owGust',
-        data.windGust !== null
-            ? `${data.windGust.toFixed(1)} km/h`
-            : '—'
-    );
-
-    setText(
-        'owWindDir',
-        data.windDirectionDegrees !== null
-            ? `${Math.round(data.windDirectionDegrees)}° ${degreesToCardinal(data.windDirectionDegrees)}`
-            : '—'
-    );
-
-    setText(
-        'owPrecip',
-        data.precipitation !== null
-            ? `${data.precipitation}%`
-            : '—'
-    );
-
-    setText(
-        'owForecastTime',
-        data.forecastTime !== '—'
-            ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
-            : '—'
+    setText('owPrecip', data.precipitation != null ? `${data.precipitation}%` : '—');
+    setText('owForecastTime', data.forecastTime !== '—'
+        ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
+        : '—'
     );
 }
 
-function setText(id, value) {
-    const el = document.getElementById(id);
 
-    if (el) {
-        el.textContent = value;
-    }
-}
-
-function mapIpmaForecast(records) {
-    console.log(records);
-
-    function getValue(fieldName) {
-        const record = records.find(item =>
-            item.variable?.fieldName === fieldName
-        );
-
-        return record ? Number(record.value) : null;
-    }
-
-    function getText(fieldName) {
-        const record = records.find(item =>
-            item.variable?.fieldName === fieldName
-        );
-
-        return record ? record.value : null;
-    }
-
-    return {
-        temperature: getValue('temperatureC'),
-        minTemp: getValue('temperatureMinC'),
-        maxTemp: getValue('temperatureMaxC'),
-        feelsLike: getValue('feelsLikeTemperatureC'),
-        humidity: getValue('humidityPercent'),
-
-        windSpeed: getValue('windSpeedKmh'),
-        windGust: getValue('windGustKmh'),
-        windDirectionDegrees: getValue('windDirectionDegrees'),
-        windDirectionCardinal: getText('windDirectionCardinal'),
-
-        precipitation: getValue('precipitationProbabilityPercent'),
-
-        pressure: getValue('pressureHpa'),
-        cloudCover: getValue('cloudCoverPercent'),
-        visibility: getValue('visibilityKm'),
-
-        forecastTime: records[0]?.time ?? '—',
-        forecastDate: records[0]?.date ?? '—',
-        distance: records[0]?.location?.distanceKm ?? null
-    };
-}
 
 function updateIpmaCard(data) {
-
-    setText(
-        'ipmaTemp',
-        data.temperature !== null
-            ? `${data.temperature.toFixed(1)}°C`
-            : '—'
+    setText('ipmaTemp', data.temperature != null ? `${data.temperature.toFixed(1)}°C` : '—');
+    setText('ipmaTempMin', data.minTemp != null ? `${Number(data.minTemp).toFixed(1)}°C` : '—');
+    setText('ipmaTempMax', data.maxTemp != null ? `${Number(data.maxTemp).toFixed(1)}°C` : '—');
+    setText('ipmaFeelsLike', data.feelsLike != null ? `${data.feelsLike.toFixed(1)}°C` : '—');
+    setText('ipmaHumidity', data.humidity != null ? `${data.humidity.toFixed(1)}%` : '—');
+    setText('ipmaWind', data.windSpeed != null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
+    setText('ipmaWindDir', data.windDirectionCardinal ?? '—');
+    setText('ipmaPrecip', data.precipitation != null && Number(data.precipitation) !== -99
+        ? `${data.precipitation}%`
+        : '—'
     );
-    setText(
-        'ipmaTempMin',
-        data.minTemp !== null &&
-            data.minTemp !== undefined
-            ? `${Number(data.minTemp).toFixed(1)}°C`
-            : '—'
-    );
-
-    setText(
-        'ipmaTempMax',
-        data.maxTemp !== null &&
-            data.maxTemp !== undefined
-            ? `${Number(data.maxTemp).toFixed(1)}°C`
-            : '—'
-    );
-
-    setText(
-        'ipmaFeelsLike',
-        data.feelsLike !== null
-            ? `${data.feelsLike.toFixed(1)}°C`
-            : '—'
-    );
-
-    setText(
-        'ipmaHumidity',
-        data.humidity !== null
-            ? `${data.humidity.toFixed(1)}%`
-            : '—'
-    );
-
-    setText(
-        'ipmaWind',
-        data.windSpeed !== null
-            ? `${data.windSpeed.toFixed(1)} km/h`
-            : '—'
-    );
-
-    setText(
-        'ipmaWindDir',
-        data.windDirectionCardinal ?? '—'
-    );
-
-    setText(
-        'ipmaPrecip',
-        data.precipitation !== null &&
-            Number(data.precipitation) !== -99
-            ? `${data.precipitation}%`
-            : '—'
-    );
-
-    setText(
-        'ipmaForecastTime',
-        data.forecastTime !== '—'
-            ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
-            : '—'
+    setText('ipmaForecastTime', data.forecastTime !== '—'
+        ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
+        : '—'
     );
 }
+
+
+function updateOpenMeteoCard(modelKey, data) {
+    const prefix = { icon: 'icon', ecmwf: 'ecmwf', arpege: 'arpege' }[modelKey];
+
+    setText(`${prefix}Temp`, data.temperature != null ? `${data.temperature.toFixed(1)}°C` : '—');
+    setText(`${prefix}MinMax`,
+        data.minTemp != null && data.maxTemp != null
+            ? `${data.minTemp.toFixed(1)}°C / ${data.maxTemp.toFixed(1)}°C`
+            : '— / —'
+    );
+    setText(`${prefix}Humidity`, data.humidity != null ? `${data.humidity}%` : '—');
+    setText(`${prefix}Pressure`, data.pressure != null ? `${data.pressure} hPa` : '—');
+    setText(`${prefix}Cloud`, data.cloudCover != null ? `${data.cloudCover}%` : '—');
+    setText(`${prefix}Visibility`, data.visibility != null ? `${data.visibility.toFixed(2)} km` : '—');
+    setText(`${prefix}Wind`, data.windSpeed != null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
+    setText(`${prefix}Gust`, data.windGust != null ? `${data.windGust.toFixed(1)} km/h` : '—');
+    setText(`${prefix}WindDir`, data.windDirectionDegrees != null
+        ? `${Math.round(data.windDirectionDegrees)}° ${degreesToCardinal(data.windDirectionDegrees)}`
+        : '—'
+    );
+    setText(`${prefix}Precip`, data.precipitation != null ? `${data.precipitation} mm` : '—');
+    setText(`${prefix}Sunrise`, data.sunrise ?? '—');
+    setText(`${prefix}Sunset`, data.sunset ?? '—');
+
+    if (modelKey === 'icon') {
+        setText('openmeteoForecastTime', data.forecastTime !== '—'
+            ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
+            : '—'
+        );
+    }
+}
+
+
+
 
 
 async function fetchCurrentForecast() {
-
     try {
 
-        const records = await getForecastRecords();
+        const data = await getCurrentForecastRecords();
 
+        const currentData = {
+            icon: data.openmeteo?.icon
+                ? mapCurrentForecast(data.openmeteo.icon)
+                : null,
 
+            ecmwf: data.openmeteo?.ecmwf
+                ? mapCurrentForecast(data.openmeteo.ecmwf)
+                : null,
 
-        const lat = appState.selectedLocation.lat;
-        const lng = appState.selectedLocation.lng;
+            arpege: data.openmeteo?.arpege
+                ? mapCurrentForecast(data.openmeteo.arpege)
+                : null,
 
-        // =========================
-        // OPENWEATHER
-        // =========================
+            ipma: data.ipma
+                ? mapCurrentForecast(data.ipma)
+                : null,
 
-        const openWeatherRecords = records.filter(item =>
-            item.source?.toLowerCase() === 'openweather' &&
-            item.requestedLocation &&
-            Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
-            Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
-        );
-
-        const latestOWRequestId = openWeatherRecords[0]?.requestId;
-
-        const latestOWRequestRecords = openWeatherRecords.filter(item =>
-            item.requestId === latestOWRequestId
-        );
-
-        const nearestOWForecastKey = getNearestForecastKey(latestOWRequestRecords);
-
-        const latestOWRecords = latestOWRequestRecords.filter(item =>
-            `${item.date} ${item.time}` === nearestOWForecastKey
-        );
-
-        const openweather = mapOpenWeatherForecast(latestOWRecords);
-
-        appState.currentData.openweather = openweather;
-
-        updateOpenWeatherCard(openweather);
-
-        // =========================
-        // IPMA
-        // =========================
-
-        const ipmaRecords = records.filter(item =>
-            item.source?.toLowerCase() === 'ipma' &&
-            item.requestedLocation &&
-            Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
-            Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
-        );
-
-        const latestIpmaRequestId = ipmaRecords[0]?.requestId;
-
-        const latestIpmaRequestRecords = ipmaRecords.filter(item =>
-            item.requestId === latestIpmaRequestId
-        );
-
-        const nearestIpmaForecastKey = getNearestForecastKey(latestIpmaRequestRecords);
-
-        const latestIpmaRecords = latestIpmaRequestRecords.filter(item =>
-            `${item.date} ${item.time}` === nearestIpmaForecastKey
-        );
-
-        const ipma = mapIpmaForecast(latestIpmaRecords);
-
-        appState.currentData.ipma = ipma;
-
-        updateIpmaCard(ipma);
-
-        // =========================
-        // OPEN-METEO
-        // =========================
-
-        const openMeteoRecords = records.filter(item =>
-            item.source?.toLowerCase() === 'open-meteo' &&
-            item.requestedLocation &&
-            Number(item.requestedLocation.latitude).toFixed(4) === Number(lat).toFixed(4) &&
-            Number(item.requestedLocation.longitude).toFixed(4) === Number(lng).toFixed(4)
-        );
-
-        const openMeteoModels = {
-            icon: 'ICON',
-            ecmwf: 'ECMWF',
-            arpege: 'ARPEGE'
+            openweather: data.openweather
+                ? mapCurrentForecast(data.openweather)
+                : null
         };
 
-        Object.entries(openMeteoModels).forEach(([key, modelName]) => {
-            const modelRecords = openMeteoRecords.filter(item =>
-                item.model?.toUpperCase().includes(modelName)
-            );
+        appState.currentData = currentData;
 
-            const latestRequestId = modelRecords[0]?.requestId;
+        if (currentData.openweather) {
+            updateOpenWeatherCard(currentData.openweather);
+        }
 
-            const latestRequestRecords = modelRecords.filter(item =>
-                item.requestId === latestRequestId
-            );
+        if (currentData.ipma) {
+            updateIpmaCard(currentData.ipma);
+        }
 
-            const nearestForecastKey = getNearestForecastKey(latestRequestRecords);
+        if (currentData.icon) {
+            updateOpenMeteoCard('icon', currentData.icon);
+        }
 
-            const latestRecords = latestRequestRecords.filter(item =>
-                `${item.date} ${item.time}` === nearestForecastKey
-            );
+        if (currentData.ecmwf) {
+            updateOpenMeteoCard('ecmwf', currentData.ecmwf);
+        }
 
-            const mapped = mapOpenMeteoForecast(latestRecords);
+        if (currentData.arpege) {
+            updateOpenMeteoCard('arpege', currentData.arpege);
+        }
 
-            appState.currentData[key] = mapped;
-
-            updateOpenMeteoCard(key, mapped);
-
-
-
-        });
         updateForecastAgreement();
         updateForecastOperational();
 
     } catch (error) {
 
-        console.error('Erro previsão terrestre:', error);
-
-    }
-
-}
-
-function mapOpenMeteoForecast(records) {
-    function getValue(fieldName) {
-        const record = records.find(item =>
-            item.variable?.fieldName === fieldName
-        );
-
-        if (!record || record.value === null || record.value === undefined) {
-            return null;
-        }
-
-        const value = Number(record.value);
-
-        return Number.isNaN(value) ? null : value;
-    }
-
-    function getText(fieldName) {
-        const record = records.find(item =>
-            item.variable?.fieldName === fieldName
-        );
-
-        if (!record) {
-            return null;
-        }
-
-        return record.value ?? record.valueText ?? null;
-    }
-
-    return {
-        temperature: getValue('temperatureC'),
-        minTemp: getValue('temperatureMinC'),
-        maxTemp: getValue('temperatureMaxC'),
-
-        humidity: getValue('humidityPercent'),
-        pressure: getValue('pressureHpa'),
-        cloudCover: getValue('cloudCoverPercent'),
-        visibility: getValue('visibilityKm'),
-
-        windSpeed: getValue('windSpeedKmh'),
-        windSpeedMax: getValue('windSpeedMaxKmh'),
-        windGust: getValue('windGustKmh'),
-        windDirectionDegrees: getValue('windDirectionDegrees'),
-
-        precipitation: getValue('precipitationMm'),
-        precipitationProbability: getValue('precipitationProbabilityPercent'),
-
-        sunrise: getText('sunriseH'),
-        sunset: getText('sunsetH'),
-
-        forecastTime: records[0]?.time ?? '—',
-        forecastDate: records[0]?.date ?? '—',
-        model: records[0]?.model ?? '—',
-        requestId: records[0]?.requestId ?? null
-    };
-}
-
-function updateOpenMeteoCard(modelKey, data) {
-    const prefix = {
-        icon: 'icon',
-        ecmwf: 'ecmwf',
-        arpege: 'arpege'
-    }[modelKey];
-
-    setText(`${prefix}Temp`, data.temperature !== null ? `${data.temperature.toFixed(1)}°C` : '—');
-
-    setText(
-        `${prefix}MinMax`,
-        data.minTemp !== null && data.maxTemp !== null
-            ? `${data.minTemp.toFixed(1)}°C / ${data.maxTemp.toFixed(1)}°C`
-            : '— / —'
-    );
-
-    setText(`${prefix}Humidity`, data.humidity !== null ? `${data.humidity}%` : '—');
-    setText(`${prefix}Pressure`, data.pressure !== null ? `${data.pressure} hPa` : '—');
-    setText(`${prefix}Cloud`, data.cloudCover !== null ? `${data.cloudCover}%` : '—');
-    setText(`${prefix}Visibility`, data.visibility !== null ? `${data.visibility.toFixed(2)} km` : '—');
-
-    setText(`${prefix}Wind`, data.windSpeed !== null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
-    setText(`${prefix}Gust`, data.windGust !== null ? `${data.windGust.toFixed(1)} km/h` : '—');
-    setText(
-        `${prefix}WindDir`,
-        data.windDirectionDegrees !== null
-            ? `${Math.round(data.windDirectionDegrees)}° ${degreesToCardinal(data.windDirectionDegrees)}`
-            : '—'
-    );
-
-    setText(`${prefix}Precip`, data.precipitation !== null ? `${data.precipitation} mm` : '—');
-
-    setText(`${prefix}Sunrise`, data.sunrise ?? '—');
-    setText(`${prefix}Sunset`, data.sunset ?? '—');
-    if (modelKey === 'icon') {
-        setText(
-            'openmeteoForecastTime',
-            data.forecastTime !== '—'
-                ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
-                : '—'
+        console.error(
+            'Erro previsão terrestre:',
+            error
         );
     }
 }
 
-async function fetchForecastModels() {
-    try {
-        const response = await fetch(`${API_CONFIG.baseUrl}${API_CONFIG.endpoints.models}`);
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error('Error fetching forecast models:', error);
-        return [];
-    }
-}
 
 // ================================
 // UI Update Functions
 // ================================
 
-
-function updateCurrentForecast() {
-    const data = appState.currentData;
-
-    // Calculate average from all models
-    const temps = [data.icon.temperature, data.ecmwf.temperature, data.arpege.temperature, data.ipma.temperature, data.openweather.temperature];
-    const avgTemp = Math.round(temps.reduce((a, b) => a + b, 0) / temps.length);
-
-    document.getElementById('currentTemp').textContent = avgTemp;
-    document.getElementById('currentMin').textContent = `${Math.min(data.icon.minTemp, data.ecmwf.minTemp, data.arpege.minTemp, data.ipma.minTemp, data.openweather.minTemp)}°C`;
-    document.getElementById('currentMax').textContent = `${Math.max(data.icon.maxTemp, data.ecmwf.maxTemp, data.arpege.maxTemp, data.ipma.maxTemp, data.openweather.maxTemp)}°C`;
-
-    // Average other values
-    const avgHumidity = Math.round([data.icon.humidity, data.ecmwf.humidity, data.arpege.humidity, data.ipma.humidity, data.openweather.humidity].reduce((a, b) => a + b, 0) / 5);
-    const avgWind = Math.round([data.icon.windSpeed, data.ecmwf.windSpeed, data.arpege.windSpeed, data.ipma.windSpeed, data.openweather.windSpeed].reduce((a, b) => a + b, 0) / 5);
-    const avgGust = Math.round([data.icon.windGust, data.ecmwf.windGust, data.arpege.windGust, data.ipma.windGust, data.openweather.windGust].reduce((a, b) => a + b, 0) / 5);
-    const avgPrecip = Math.round([data.icon.precipitation, data.ecmwf.precipitation, data.arpege.precipitation, data.ipma.precipitation, data.openweather.precipitation].reduce((a, b) => a + b, 0) / 5);
-    const avgCloud = Math.round([data.icon.cloudCover, data.ecmwf.cloudCover, data.arpege.cloudCover, data.ipma.cloudCover, data.openweather.cloudCover].reduce((a, b) => a + b, 0) / 5);
-    const avgPressure = Math.round([data.icon.pressure, data.ecmwf.pressure, data.arpege.pressure, data.ipma.pressure, data.openweather.pressure].reduce((a, b) => a + b, 0) / 5);
-    const avgVisibility = Math.round([data.icon.visibility, data.ecmwf.visibility, data.arpege.visibility, data.ipma.visibility, data.openweather.visibility].reduce((a, b) => a + b, 0) / 5);
-
-    document.getElementById('currentHumidity').textContent = `${avgHumidity}%`;
-    document.getElementById('currentPressure').textContent = `${avgPressure} hPa`;
-    document.getElementById('currentCloud').textContent = `${avgCloud}%`;
-    document.getElementById('currentVisibility').textContent = `${avgVisibility} km`;
-    document.getElementById('currentWind').textContent = `${avgWind} km/h NW`;
-    document.getElementById('currentGust').textContent = `${avgGust} km/h`;
-    document.getElementById('currentWindDir').textContent = `315° NW`;
-    document.getElementById('currentPrecipProb').textContent = `${avgPrecip}%`;
-
-    // Update forecast time
-    const now = new Date();
-    const endTime = new Date(now.getTime() + 3 * 60 * 60 * 1000);
-    document.getElementById('currentForecastTime').textContent =
-        `Hoje, ${now.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })} - ${endTime.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}`;
-}
-
-function updateAnalytics(data) {
-    // Calculate analytics from the evolution chart data
-    const allValues = [...data.icon, ...data.ecmwf, ...data.arpege, ...data.ipma, ...data.openweather];
-    const avg = (allValues.reduce((a, b) => a + b, 0) / allValues.length).toFixed(1);
-    const min = Math.min(...allValues).toFixed(1);
-    const max = Math.max(...allValues).toFixed(1);
-    const spread = (max - min).toFixed(1);
-
-    const unit = getVariableUnit(appState.selectedVariable);
-
-    document.getElementById('avgValue').textContent = `${avg}${unit}`;
-    document.getElementById('minValue').textContent = `${min}${unit}`;
-    document.getElementById('maxValue').textContent = `${max}${unit}`;
-    document.getElementById('spreadValue').textContent = `${spread}${unit}`;
-
-    // Find highest and lowest model predictions for the first time point
-    const firstPointValues = [
-        { model: 'ICON', value: data.icon[0] },
-        { model: 'ECMWF', value: data.ecmwf[0] },
-        { model: 'ARPEGE', value: data.arpege[0] },
-        { model: 'IPMA', value: data.ipma[0] },
-        { model: 'OpenWeather', value: data.openweather[0] }
-    ];
-
-    const highest = firstPointValues.reduce((a, b) => a.value > b.value ? a : b);
-    const lowest = firstPointValues.reduce((a, b) => a.value < b.value ? a : b);
-
-    document.getElementById('highestModel').textContent = `${highest.model} (${highest.value}${unit})`;
-    document.getElementById('lowestModel').textContent = `${lowest.model} (${lowest.value}${unit})`;
-    document.getElementById('maxDifference').textContent = `${(highest.value - lowest.value).toFixed(1)}${unit}`;
-
-    // Calculate agreement (models within 10% of mean)
-    const mean = firstPointValues.reduce((a, b) => a + b.value, 0) / 5;
-    const agreeing = firstPointValues.filter(m => Math.abs(m.value - mean) < mean * 0.1).length;
-    document.getElementById('agreementValue').textContent = `${Math.round(agreeing / 5 * 100)}%`;
-    document.getElementById('modelsAgreeing').textContent = `${agreeing} de 5`;
-}
-
-function updateOperationalCards() {
-    // Drone conditions
-    const dronePercentage = 75 + Math.floor(Math.random() * 20);
-    document.getElementById('dronePercentage').textContent = `${dronePercentage}%`;
-    const droneGauge = document.getElementById('droneGauge');
-    droneGauge.setAttribute('stroke-dasharray', `${dronePercentage * 2.83} 283`);
-
-    if (dronePercentage >= 70) {
-        document.getElementById('droneStatus').className = 'operational-status favorable';
-        document.getElementById('droneStatus').innerHTML = '<i class="fas fa-circle-check"></i> Favorável';
-    } else if (dronePercentage >= 40) {
-        document.getElementById('droneStatus').className = 'operational-status moderate';
-        document.getElementById('droneStatus').innerHTML = '<i class="fas fa-triangle-exclamation"></i> Atenção';
-    } else {
-        document.getElementById('droneStatus').className = 'operational-status unfavorable';
-        document.getElementById('droneStatus').innerHTML = '<i class="fas fa-circle-xmark"></i> Não recomendado';
-    }
-
-    // Fire risk
-    const firePercentage = 30 + Math.floor(Math.random() * 40);
-    document.getElementById('firePercentage').textContent = `${firePercentage}%`;
-    const fireGauge = document.getElementById('fireGauge');
-    fireGauge.setAttribute('stroke-dasharray', `${firePercentage * 2.83} 283`);
-
-    if (firePercentage <= 30) {
-        document.getElementById('fireStatus').className = 'operational-status favorable';
-        document.getElementById('fireStatus').innerHTML = '<i class="fas fa-circle-check"></i> Baixo';
-        fireGauge.style.stroke = '#10b981';
-    } else if (firePercentage <= 60) {
-        document.getElementById('fireStatus').className = 'operational-status moderate';
-        document.getElementById('fireStatus').innerHTML = '<i class="fas fa-triangle-exclamation"></i> Moderado';
-        fireGauge.style.stroke = '#f59e0b';
-    } else {
-        document.getElementById('fireStatus').className = 'operational-status unfavorable';
-        document.getElementById('fireStatus').innerHTML = '<i class="fas fa-fire"></i> Elevado';
-        fireGauge.style.stroke = '#ef4444';
-    }
-}
-
 function updateLastUpdateTime() {
-    const now = new Date();
-
     const contextUpdate = document.getElementById('contextUpdate');
-
     if (contextUpdate) {
-        contextUpdate.textContent =
-            now.toLocaleTimeString('pt-PT', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+        contextUpdate.textContent = new Date().toLocaleTimeString('pt-PT', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     }
 }
 
 // ================================
 // Table Functions
 // ================================
-function generateMockTableData() {
-    const models = ['ICON', 'ECMWF', 'ARPEGE', 'IPMA', 'OpenWeather'];
-    const variables = ['Temperatura', 'Humidade', 'Vento', 'Rajada', 'Precipitação', 'Nebulosidade', 'Pressão'];
-    const units = ['°C', '%', 'km/h', 'km/h', '%', '%', 'hPa'];
-    const data = [];
 
-    const now = new Date();
-
-    for (let i = 0; i < 240; i++) {
-        const time = new Date(now.getTime() + (Math.floor(i / 5) * 3 * 60 * 60 * 1000));
-        const modelIndex = i % 5;
-        const varIndex = Math.floor(Math.random() * variables.length);
-
-        data.push({
-            date: time.toLocaleDateString('pt-PT'),
-            time: time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
-            source: models[modelIndex],
-            variable: variables[varIndex],
-            value: (15 + Math.random() * 20).toFixed(1),
-            unit: units[varIndex],
-            lat: (39.7 + Math.random() * 0.3).toFixed(4),
-            lng: (-8.8 - Math.random() * 0.3).toFixed(4)
-        });
-    }
-
-    return data;
-}
 
 function initializeTable() {
     renderTable();
@@ -2045,14 +845,19 @@ function initializeTable() {
 
 function renderTable() {
     const tbody = document.getElementById('recordsTableBody');
-    const start = (appState.pagination.currentPage - 1) * appState.pagination.itemsPerPage;
-    const end = start + appState.pagination.itemsPerPage;
-    const pageData = appState.tableData.slice(start, end);
+    if (!tbody) return;
 
-    let html = '';
-    pageData.forEach(row => {
-        const sourceClass = row.source.toLowerCase().replace(' ', '');
-        html += `
+    const pageData = appState.tableData;
+
+    tbody.innerHTML = pageData.map(row => {
+        const sourceClass = row.source
+            .toLowerCase()
+            .replaceAll(' ', '')
+            .replaceAll('·', '')
+            .replaceAll('+', '')
+            .replaceAll('-', '');
+
+        return `
             <tr>
                 <td>${row.date}</td>
                 <td>${row.time}</td>
@@ -2064,30 +869,35 @@ function renderTable() {
                 <td>${row.lng}</td>
             </tr>
         `;
-    });
+    }).join('');
 
-    tbody.innerHTML = html;
+    const { currentPage, itemsPerPage, totalItems } = appState.pagination;
 
-    // Update pagination info
-    document.getElementById('paginationInfo').textContent =
-        `Mostrando ${start + 1}-${Math.min(end, appState.pagination.totalItems)} de ${appState.pagination.totalItems} registos`;
+    const start = totalItems
+        ? (currentPage - 1) * itemsPerPage + 1
+        : 0;
 
-    // Update button states
-    document.getElementById('prevPage').disabled = appState.pagination.currentPage === 1;
-    document.getElementById('nextPage').disabled = end >= appState.pagination.totalItems;
+    const end = Math.min(currentPage * itemsPerPage, totalItems);
+
+    setText(
+        'paginationInfo',
+        `Mostrando ${start}-${end} de ${totalItems} registos`
+    );
+
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = end >= totalItems;
 
     renderPagination();
 }
-
 function renderPagination() {
     const totalPages = Math.ceil(appState.pagination.totalItems / appState.pagination.itemsPerPage);
     const currentPage = appState.pagination.currentPage;
     const pageNumbers = document.getElementById('pageNumbers');
 
-    let html = '';
     const startPage = Math.max(1, currentPage - 2);
     const endPage = Math.min(totalPages, currentPage + 2);
 
+    let html = '';
     for (let i = startPage; i <= endPage; i++) {
         html += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
     }
@@ -2096,25 +906,9 @@ function renderPagination() {
 }
 
 function goToPage(page) {
-    appState.pagination.currentPage = page;
-    renderTable();
+    loadRecordsData(page);
 }
 
-function filterTable(searchTerm) {
-    if (!searchTerm) {
-        appState.tableData = generateMockTableData();
-    } else {
-        const term = searchTerm.toLowerCase();
-        appState.tableData = generateMockTableData().filter(row =>
-            row.source.toLowerCase().includes(term) ||
-            row.variable.toLowerCase().includes(term) ||
-            row.date.includes(term)
-        );
-    }
-    appState.pagination.totalItems = appState.tableData.length;
-    appState.pagination.currentPage = 1;
-    renderTable();
-}
 
 function exportToCsv() {
     const headers = ['Data', 'Hora', 'Fonte/Modelo', 'Variável', 'Valor', 'Unidade', 'Latitude', 'Longitude'];
@@ -2132,68 +926,28 @@ function exportToCsv() {
     link.click();
 }
 
-// Make goToPage globally accessible
 window.goToPage = goToPage;
 
-
-function degreesToCardinal(deg) {
-
-    if (deg === null || deg === undefined) {
-        return '—';
-    }
-
-    const directions = [
-        'N', 'NNE', 'NE', 'ENE',
-        'E', 'ESE', 'SE', 'SSE',
-        'S', 'SSW', 'SW', 'WSW',
-        'W', 'WNW', 'NW', 'NNW'
-    ];
-
-    const index = Math.round(deg / 22.5) % 16;
-
-    return directions[index];
-}
-
-function getValidValues(models, field) {
-
-    return models
-        .map(model => model?.[field])
-
-        .filter(value =>
-
-            value !== null &&
-            value !== undefined &&
-
-            Number(value) !== -99 &&
-            Number(value) !== -99.0 &&
-
-            !Number.isNaN(Number(value))
-        )
-
-        .map(Number);
-}
-
+// ================================
+// Forecast Agreement
+// ================================
 function calculateSpread(values) {
     if (!values.length) return null;
-
     return Math.max(...values) - Math.min(...values);
 }
 
 function scoreFromSpread(spread, thresholds) {
     if (spread === null) return null;
-
     if (spread <= thresholds.excellent) return 100;
     if (spread <= thresholds.good) return 85;
     if (spread <= thresholds.medium) return 65;
     if (spread <= thresholds.low) return 45;
-
     return 25;
 }
 
 function updateSpreadRow(valueId, indicatorId, spread, unit, thresholds) {
     const valueEl = document.getElementById(valueId);
     const indicatorEl = document.getElementById(indicatorId);
-
     if (!valueEl || !indicatorEl) return;
 
     if (spread === null) {
@@ -2204,7 +958,6 @@ function updateSpreadRow(valueId, indicatorId, spread, unit, thresholds) {
     }
 
     valueEl.textContent = `${spread.toFixed(1)}${unit}`;
-
     const score = scoreFromSpread(spread, thresholds);
 
     if (score >= 85) {
@@ -2233,48 +986,12 @@ function updateForecastAgreement() {
     if (!models.length) return;
 
     const rows = [
-        {
-            field: 'temperature',
-            valueId: 'forecastTempSpread',
-            indicatorId: 'forecastTempIndicator',
-            unit: '°C',
-            thresholds: { excellent: 1, good: 2, medium: 4, low: 6 }
-        },
-        {
-            field: 'humidity',
-            valueId: 'forecastHumiditySpread',
-            indicatorId: 'forecastHumidityIndicator',
-            unit: '%',
-            thresholds: { excellent: 5, good: 10, medium: 20, low: 30 }
-        },
-        {
-            field: 'windSpeed',
-            valueId: 'forecastWindSpread',
-            indicatorId: 'forecastWindIndicator',
-            unit: ' km/h',
-            thresholds: { excellent: 3, good: 7, medium: 12, low: 20 }
-        },
-        {
-            field: 'precipitation',
-            valueId: 'forecastPrecipSpread',
-            indicatorId: 'forecastPrecipIndicator',
-            unit: '',
-            thresholds: { excellent: 0.5, good: 2, medium: 5, low: 10 }
-        },
-        {
-            field: 'pressure',
-            valueId: 'forecastPressureSpread',
-            indicatorId: 'forecastPressureIndicator',
-            unit: ' hPa',
-            thresholds: { excellent: 1, good: 3, medium: 6, low: 10 }
-        },
-        {
-            field: 'visibility',
-            valueId: 'forecastVisibilitySpread',
-            indicatorId: 'forecastVisibilityIndicator',
-            unit: ' km',
-            thresholds: { excellent: 2, good: 5, medium: 10, low: 20 }
-        }
+        { field: 'temperature', valueId: 'forecastTempSpread', indicatorId: 'forecastTempIndicator', unit: '°C', thresholds: { excellent: 1, good: 2, medium: 4, low: 6 } },
+        { field: 'humidity', valueId: 'forecastHumiditySpread', indicatorId: 'forecastHumidityIndicator', unit: '%', thresholds: { excellent: 5, good: 10, medium: 20, low: 30 } },
+        { field: 'windSpeed', valueId: 'forecastWindSpread', indicatorId: 'forecastWindIndicator', unit: ' km/h', thresholds: { excellent: 3, good: 7, medium: 12, low: 20 } },
+        { field: 'precipitation', valueId: 'forecastPrecipSpread', indicatorId: 'forecastPrecipIndicator', unit: '', thresholds: { excellent: 0.5, good: 2, medium: 5, low: 10 } },
+        { field: 'pressure', valueId: 'forecastPressureSpread', indicatorId: 'forecastPressureIndicator', unit: ' hPa', thresholds: { excellent: 1, good: 3, medium: 6, low: 10 } },
+        { field: 'visibility', valueId: 'forecastVisibilitySpread', indicatorId: 'forecastVisibilityIndicator', unit: ' km', thresholds: { excellent: 2, good: 5, medium: 10, low: 20 } }
     ];
 
     const scores = [];
@@ -2282,51 +999,26 @@ function updateForecastAgreement() {
     rows.forEach(row => {
         const values = getValidValues(models, row.field);
         const spread = calculateSpread(values);
-
-        const score = updateSpreadRow(
-            row.valueId,
-            row.indicatorId,
-            spread,
-            row.unit,
-            row.thresholds
-        );
-
-        if (score !== null && score !== undefined) {
-            scores.push(score);
-        }
+        const score = updateSpreadRow(row.valueId, row.indicatorId, spread, row.unit, row.thresholds);
+        if (score != null) scores.push(score);
     });
 
-    const agreement =
-        scores.length
-            ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-            : null;
+    const agreement = scores.length
+        ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+        : null;
 
     const progress = document.getElementById('forecastAgreementProgress');
     const value = document.getElementById('forecastAgreementValue');
 
     if (progress && value) {
-        progress.style.width = agreement !== null ? `${agreement}%` : '0%';
-        value.textContent = agreement !== null ? `${agreement}%` : '—';
+        progress.style.width = agreement != null ? `${agreement}%` : '0%';
+        value.textContent = agreement != null ? `${agreement}%` : '—';
     }
 }
 
-function average(values) {
-
-    const valid = values.filter(v =>
-
-        v !== null &&
-        v !== undefined &&
-        Number(v) !== -99 &&
-        !Number.isNaN(Number(v))
-    );
-
-    if (!valid.length) return null;
-
-    return (
-        valid.reduce((a, b) => a + Number(b), 0)
-        / valid.length
-    );
-}
+// ================================
+// Operational Cards
+// ================================
 function getForecastModels() {
     return [
         appState.currentData.icon,
@@ -2337,69 +1029,32 @@ function getForecastModels() {
     ].filter(Boolean);
 }
 
-function averageValues(values) {
-    const valid = values
-        .filter(v =>
-            v !== null &&
-            v !== undefined &&
-            Number(v) !== -99 &&
-            Number(v) !== -99.0 &&
-            !Number.isNaN(Number(v))
-        )
-        .map(Number);
-
-    if (valid.length === 0) return null;
-
-    return valid.reduce((a, b) => a + b, 0) / valid.length;
-}
-
-function mostCommonValue(values) {
-    const valid = values.filter(v => v && v !== '—');
-
-    if (!valid.length) return '—';
-
-    const counts = {};
-
-    valid.forEach(value => {
-        counts[value] = (counts[value] || 0) + 1;
-    });
-
-    return Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])[0][0];
+function getWindDirection(models) {
+    return mostCommonValue(
+        models.map(m => {
+            if (m.windDirectionCardinal) return m.windDirectionCardinal;
+            if (m.windDirectionDegrees != null) return degreesToCardinal(m.windDirectionDegrees);
+            return null;
+        })
+    );
 }
 
 function updateForecastDroneReadiness() {
     const models = getForecastModels();
-
     if (!models.length) return;
 
     const wind = averageValues(models.map(m => m.windSpeed));
     const precipitation = averageValues(models.map(m => m.precipitation));
     const visibility = averageValues(models.map(m => m.visibility));
-
-    const windDirection = mostCommonValue(
-        models.map(m => {
-            if (m.windDirectionCardinal) return m.windDirectionCardinal;
-
-            if (m.windDirectionDegrees !== null && m.windDirectionDegrees !== undefined) {
-                return degreesToCardinal(m.windDirectionDegrees);
-            }
-
-            return null;
-        })
-    );
+    const windDirection = getWindDirection(models);
 
     let score = 100;
-
-    if (wind !== null && wind > 30) score -= 35;
-    else if (wind !== null && wind > 20) score -= 20;
-
-    if (precipitation !== null && precipitation > 1) score -= 35;
-    else if (precipitation !== null && precipitation > 0) score -= 15;
-
-    if (visibility !== null && visibility < 3) score -= 30;
-    else if (visibility !== null && visibility < 5) score -= 15;
-
+    if (wind != null && wind > 30) score -= 35;
+    else if (wind != null && wind > 20) score -= 20;
+    if (precipitation != null && precipitation > 1) score -= 35;
+    else if (precipitation != null && precipitation > 0) score -= 15;
+    if (visibility != null && visibility < 3) score -= 30;
+    else if (visibility != null && visibility < 5) score -= 15;
     score = Math.max(0, score);
 
     let label = 'Operacional';
@@ -2418,34 +1073,16 @@ function updateForecastDroneReadiness() {
 
     setText('droneScore', `${score}%`);
     setText('droneStatusText', label);
-
-    setText(
-        'droneWind',
-        wind !== null ? `${wind.toFixed(1)} km/h` : '—'
-    );
-
-    setText(
-        'dronePrecip',
-        precipitation !== null ? `${precipitation.toFixed(1)} mm` : '—'
-    );
-
-    setText(
-        'droneVisibility',
-        visibility !== null ? `${visibility.toFixed(1)} km` : '—'
-    );
-
+    setText('droneWind', wind != null ? `${wind.toFixed(1)} km/h` : '—');
+    setText('dronePrecip', precipitation != null ? `${precipitation.toFixed(1)} mm` : '—');
+    setText('droneVisibility', visibility != null ? `${visibility.toFixed(1)} km` : '—');
     setText('droneWindDir', windDirection);
-
-    const droneScore = document.getElementById('droneScore');
-
-    if (droneScore) {
-        droneScore.className = `obs-value ${cssClass}`;
-    }
-
     setText('operationalDroneText', note);
 
-    const droneSide = document.querySelector('.drone-side');
+    const droneScore = document.getElementById('droneScore');
+    if (droneScore) droneScore.className = `obs-value ${cssClass}`;
 
+    const droneSide = document.querySelector('.drone-side');
     if (droneSide) {
         droneSide.classList.remove('drone-safe', 'drone-warning', 'drone-danger');
         droneSide.classList.add(`drone-${cssClass}`);
@@ -2454,39 +1091,22 @@ function updateForecastDroneReadiness() {
 
 function updateForecastFireRisk() {
     const models = getForecastModels();
-
     if (!models.length) return;
 
     const temp = averageValues(models.map(m => m.temperature));
     const humidity = averageValues(models.map(m => m.humidity));
     const wind = averageValues(models.map(m => m.windSpeed));
     const precipitation = averageValues(models.map(m => m.precipitation));
-
-    const windDirection = mostCommonValue(
-        models.map(m => {
-            if (m.windDirectionCardinal) return m.windDirectionCardinal;
-
-            if (m.windDirectionDegrees !== null && m.windDirectionDegrees !== undefined) {
-                return degreesToCardinal(m.windDirectionDegrees);
-            }
-
-            return null;
-        })
-    );
+    const windDirection = getWindDirection(models);
 
     let score = 0;
-
-    if (temp !== null && temp >= 30) score += 30;
-    else if (temp !== null && temp >= 25) score += 20;
-
-    if (humidity !== null && humidity <= 30) score += 30;
-    else if (humidity !== null && humidity <= 45) score += 15;
-
-    if (wind !== null && wind >= 25) score += 25;
-    else if (wind !== null && wind >= 15) score += 15;
-
-    if (precipitation !== null && precipitation === 0) score += 15;
-
+    if (temp != null && temp >= 30) score += 30;
+    else if (temp != null && temp >= 25) score += 20;
+    if (humidity != null && humidity <= 30) score += 30;
+    else if (humidity != null && humidity <= 45) score += 15;
+    if (wind != null && wind >= 25) score += 25;
+    else if (wind != null && wind >= 15) score += 15;
+    if (precipitation != null && precipitation === 0) score += 15;
     score = Math.min(100, score);
 
     let label = 'Baixo';
@@ -2509,39 +1129,17 @@ function updateForecastFireRisk() {
 
     setText('fireScore', `${score}%`);
     setText('fireStatusText', label);
-
-    setText(
-        'fireTemp',
-        temp !== null ? `${temp.toFixed(1)}°C` : '—'
-    );
-
-    setText(
-        'fireHumidity',
-        humidity !== null ? `${humidity.toFixed(0)}%` : '—'
-    );
-
-    setText(
-        'fireWind',
-        wind !== null ? `${wind.toFixed(1)} km/h` : '—'
-    );
-
+    setText('fireTemp', temp != null ? `${temp.toFixed(1)}°C` : '—');
+    setText('fireHumidity', humidity != null ? `${humidity.toFixed(0)}%` : '—');
+    setText('fireWind', wind != null ? `${wind.toFixed(1)} km/h` : '—');
     setText('fireWindDir', windDirection);
-
-    setText(
-        'firePrecip',
-        precipitation !== null ? `${precipitation.toFixed(1)} mm` : '—'
-    );
-
-    const fireScore = document.getElementById('fireScore');
-
-    if (fireScore) {
-        fireScore.className = `obs-value ${cssClass}`;
-    }
-
+    setText('firePrecip', precipitation != null ? `${precipitation.toFixed(1)} mm` : '—');
     setText('operationalFireText', note);
 
-    const fireSide = document.querySelector('.fire-side');
+    const fireScore = document.getElementById('fireScore');
+    if (fireScore) fireScore.className = `obs-value ${cssClass}`;
 
+    const fireSide = document.querySelector('.fire-side');
     if (fireSide) {
         fireSide.classList.remove('fire-safe', 'fire-warning', 'fire-danger');
         fireSide.classList.add(`fire-${cssClass}`);
@@ -2553,15 +1151,16 @@ function updateForecastOperational() {
     updateForecastFireRisk();
 }
 
+// ================================
+// Forecast History Chart
+// ================================
 let forecastHistoryChart;
 
 function initializeForecastHistoryChart() {
     const canvas = document.getElementById('forecastHistoryChart');
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-
-    forecastHistoryChart = new Chart(ctx, {
+    forecastHistoryChart = new Chart(canvas.getContext('2d'), {
         type: 'line',
         data: {
             labels: [],
@@ -2586,97 +1185,48 @@ function initializeForecastHistoryChart() {
     });
 }
 
-async function loadHistoricalForecasts() {
-    try {
-        const records = await getForecastRecords();
+async function loadHistoricalForecast() {
 
-        const variable = document.getElementById('forecastHistoryVariable')?.value || 'temperature';
-        const range = document.querySelector(
-            '.forecast-history-range-buttons button.active'
-        )?.dataset.range || '24h';
-        const data = buildHistoricalForecastChartData(records, variable, range);
+    try {
+
+        const data = await getHistoricalForecastData();
+
+        appState.historicalData = data;
 
         updateHistoricalForecastChart(data);
 
     } catch (error) {
-        console.error('Erro ao carregar histórico de previsões:', error);
+
+        console.error(
+            'Erro ao carregar histórico previsão:',
+            error
+        );
     }
 }
+async function getHistoricalForecastData() {
 
-function buildHistoricalForecastChartData(records, selectedVariable, selectedRange) {
-    const variableMap = {
-        temperature: 'temperatureC',
-        humidity: 'humidityPercent',
-        windSpeed: 'windSpeedKmh',
-        precipitation: 'precipitationMm',
-        pressure: 'pressureHpa',
-        cloudCover: 'cloudCoverPercent'
-    };
+    const { lat, lng } = appState.selectedLocation;
 
-    const fieldName = variableMap[selectedVariable] || 'temperatureC';
+    const variable =
+        document.getElementById('forecastHistoryVariable')?.value
+        || 'temperature';
 
-    let filtered = records.filter(item =>
-        item.requestId &&
-        item.requestId.startsWith('FOR_T-') &&
-        item.variable?.fieldName === fieldName
+    const range =
+        document.querySelector(
+            '.forecast-history-range-buttons .btn.active'
+        )?.dataset.range || '24h';
+
+    const response = await fetch(
+        `/data/forecast/terrestrial/history?lat=${lat}&lon=${lng}&variable=${variable}&range=${range}`
     );
 
-    filtered = filtered.filter(item => {
-        if (!item.requestedLocation) return false;
-
-        return (
-            Number(item.requestedLocation.latitude).toFixed(4) === Number(appState.selectedLocation.lat).toFixed(4) &&
-            Number(item.requestedLocation.longitude).toFixed(4) === Number(appState.selectedLocation.lng).toFixed(4)
+    if (!response.ok) {
+        throw new Error(
+            `Erro HTTP ao carregar histórico previsão: ${response.status}`
         );
-    });
+    }
 
-    filtered = filterForecastHistoryByRange(filtered, selectedRange);
-
-    filtered.sort((a, b) =>
-        `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)
-    );
-
-    const grouped = {};
-
-    filtered.forEach(item => {
-        const hour = item.time.slice(0, 2);
-        const key = `${item.date} ${hour}:00`;
-
-        if (!grouped[key]) {
-            grouped[key] = {
-                label: formatForecastHistoryLabel(item.date, `${hour}:00`),
-                icon: null,
-                ecmwf: null,
-                arpege: null,
-                ipma: null,
-                openweather: null
-            };
-        }
-
-        const source = item.source?.toLowerCase();
-        const model = item.model?.toUpperCase() || '';
-        const value = Number(item.value);
-
-        if (Number.isNaN(value) || value === -99) return;
-
-        if (source === 'open-meteo' && model.includes('ICON')) grouped[key].icon = value;
-        if (source === 'open-meteo' && model.includes('ECMWF')) grouped[key].ecmwf = value;
-        if (source === 'open-meteo' && model.includes('ARPEGE')) grouped[key].arpege = value;
-        if (source === 'ipma') grouped[key].ipma = value;
-        if (source === 'openweather') grouped[key].openweather = value;
-    });
-
-    const points = Object.values(grouped);
-
-    return {
-        labels: points.map(p => p.label),
-        icon: points.map(p => p.icon),
-        ecmwf: points.map(p => p.ecmwf),
-        arpege: points.map(p => p.arpege),
-        ipma: points.map(p => p.ipma),
-        openweather: points.map(p => p.openweather),
-        variable: selectedVariable
-    };
+    return await response.json();
 }
 
 function updateHistoricalForecastChart(data) {
@@ -2691,27 +1241,21 @@ function updateHistoricalForecastChart(data) {
 
     const unit = getForecastHistoryUnit(data.variable);
 
-    forecastHistoryChart.options.scales.y.ticks.callback = function (value) {
-        return `${value}${unit}`;
-    };
-
-    forecastHistoryChart.options.plugins.tooltip.callbacks.label = function (context) {
-        if (context.raw === null || context.raw === undefined) {
-            return `${context.dataset.label}: —`;
+    forecastHistoryChart.options.scales.y.ticks.callback = value => `${value}${unit}`;
+    forecastHistoryChart.options.plugins.tooltip = {
+        ...forecastHistoryChart.options.plugins.tooltip,
+        callbacks: {
+            label: context => context.raw != null
+                ? `${context.dataset.label}: ${context.raw}${unit}`
+                : `${context.dataset.label}: —`
         }
-
-        return `${context.dataset.label}: ${context.raw}${unit}`;
     };
 
     forecastHistoryChart.update();
 
     const allValues = [
-        ...data.icon,
-        ...data.ecmwf,
-        ...data.arpege,
-        ...data.ipma,
-        ...data.openweather
-    ].filter(v => v !== null && v !== undefined && !Number.isNaN(v));
+        ...data.icon, ...data.ecmwf, ...data.arpege, ...data.ipma, ...data.openweather
+    ].filter(v => v != null && !Number.isNaN(v));
 
     if (!allValues.length) {
         setText('forecastHistoryAvg', '—');
@@ -2730,29 +1274,6 @@ function updateHistoricalForecastChart(data) {
 }
 
 
-function filterForecastHistoryByRange(records, selectedRange) {
-    const now = new Date();
-
-    let days = 1;
-
-    if (selectedRange === '7d') days = 7;
-    if (selectedRange === '30d') days = 30;
-
-    const minDate = new Date(
-        now.getTime() - days * 24 * 60 * 60 * 1000
-    );
-
-    return records.filter(item => {
-        const itemDate = new Date(`${item.date}T${item.time}`);
-
-        return itemDate >= minDate && itemDate <= now;
-    });
-}
-function formatForecastHistoryLabel(date, time) {
-    const [year, month, day] = date.split('-');
-    return `${day}/${month} ${time.slice(0, 5)}`;
-}
-
 function getForecastHistoryUnit(variable) {
     const units = {
         temperature: '°C',
@@ -2762,39 +1283,27 @@ function getForecastHistoryUnit(variable) {
         pressure: ' hPa',
         cloudCover: '%'
     };
-
     return units[variable] || '';
 }
+
 function initializeForecastHistoryListeners() {
-
-    const container = document.querySelector(
-        '.forecast-history-range-buttons'
-    );
-
+    const container = document.querySelector('.forecast-history-range-buttons');
     if (!container) return;
 
     container.addEventListener('click', (e) => {
-
         const button = e.target.closest('button');
-
         if (!button) return;
 
-        container
-            .querySelectorAll('button')
-            .forEach(btn => btn.classList.remove('active'));
-
+        container.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
 
-        loadHistoricalForecasts();
+        loadHistoricalForecast();
     });
 
-    const variableSelect =
-        document.getElementById('forecastHistoryVariable');
-
-    if (variableSelect) {
-        variableSelect.addEventListener(
-            'change',
-            loadHistoricalForecasts
-        );
-    }
+    document
+        .getElementById('forecastHistoryVariable')
+        ?.addEventListener('change', () => {
+            console.log('Variável mudou:', document.getElementById('forecastHistoryVariable').value);
+            loadHistoricalForecast();
+        });
 }
