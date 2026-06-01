@@ -182,7 +182,7 @@ def normalize_ipma_marine(requested_lat, requested_lon, location, forecast, dail
         },
         "time": {
             "date": forecast_date,
-            "hour": update_hour,
+            "hour": "00:00",
             "dataUpdate": forecast.get("dataUpdate"),
         },
         "marine": {
