@@ -1285,3 +1285,314 @@ def get_terrestrial_forecast_timeline(
 
     finally:
         conn.close()
+
+
+
+@app.get("/data/forecast/marine/current")
+def get_current_marine_forecast(lat: float, lon: float):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                WITH latest_requests AS (
+                    SELECT DISTINCT ON (sd.name, sd.weather_model)
+                        mf.request_id,
+                        sd.name AS source,
+                        sd.weather_model
+                    FROM measurement_facts mf
+                    JOIN source_dimension sd
+                        ON mf.id_source = sd.id_source
+                    WHERE mf.data_status = 'forecast'
+                      AND LOWER(sd.data_type) = 'marine'
+                      AND mf.raw_json->'requestedLocation'->>'latitude' = %s
+                      AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                    ORDER BY sd.name, sd.weather_model, mf.request_id DESC
+                )
+                SELECT
+                    mf.request_id,
+                    sd.name AS source,
+                    sd.weather_model,
+                    vd.field_name,
+                    vd.description,
+                    vd.unit,
+                    mf.value,
+                    mf.value_text,
+                    cd.date,
+                    hd.full_time,
+                    ld.name AS location_name,
+                    ld.latitude,
+                    ld.longitude,
+                    mf.distance_km
+                FROM measurement_facts mf
+                JOIN source_dimension sd
+                    ON mf.id_source = sd.id_source
+                JOIN variable_dimension vd
+                    ON mf.id_variable = vd.id_variable
+                JOIN calendar_dimension cd
+                    ON mf.id_date_data = cd.id_date
+                JOIN hour_dimension hd
+                    ON mf.id_hour_data = hd.id_hour
+                JOIN location_dimension ld
+                    ON mf.id_location = ld.id_location
+                JOIN latest_requests lr
+                    ON lr.request_id = mf.request_id
+                   AND lr.source = sd.name
+                   AND (
+                        lr.weather_model = sd.weather_model
+                        OR (lr.weather_model IS NULL AND sd.weather_model IS NULL)
+                   )
+                WHERE mf.data_status = 'forecast'
+                  AND LOWER(sd.data_type) = 'marine'
+                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
+                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                ORDER BY sd.name, sd.weather_model, cd.date, hd.full_time, vd.field_name
+                """,
+                (str(lat), str(lon), str(lat), str(lon))
+            )
+
+            rows = cursor.fetchall()
+
+            now = datetime.now(ZoneInfo("Europe/Lisbon")).replace(tzinfo=None)
+
+            grouped = {}
+
+            for row in rows:
+                request_id = row[0]
+                source = row[1]
+                model = row[2]
+                field_name = row[3]
+                description = row[4]
+                unit = row[5]
+                value = row[6] if row[6] is not None else row[7]
+                forecast_date = row[8]
+                forecast_time = row[9]
+                location_name = row[10]
+                latitude = row[11]
+                longitude = row[12]
+                distance_km = row[13]
+
+                forecast_dt = datetime.combine(forecast_date, forecast_time)
+
+                group_key = (
+                    source.lower(),
+                    model or "sem_modelo",
+                    forecast_dt
+                )
+
+                if group_key not in grouped:
+                    grouped[group_key] = {
+                        "requestId": request_id,
+                        "source": source,
+                        "model": model,
+                        "datetime": forecast_dt,
+                        "date": str(forecast_date),
+                        "time": str(forecast_time),
+                        "location": {
+                            "name": location_name,
+                            "latitude": latitude,
+                            "longitude": longitude,
+                            "distanceKm": distance_km
+                        },
+                        "values": {}
+                    }
+
+                grouped[group_key]["values"][field_name] = {
+                    "description": description,
+                    "unit": unit,
+                    "value": value
+                }
+
+            nearest_by_source = {}
+
+            for item in grouped.values():
+                source = item["source"].lower()
+                model = (item["model"] or "").upper()
+
+                if source == "open-meteo":
+                    key = "openmeteo"
+                elif source == "worldweatheronline":
+                    key = "worldweatheronline"
+                elif source == "ipma":
+                    key = "ipma"
+                else:
+                    key = source.replace(" ", "").replace("-", "")
+
+                diff = abs(item["datetime"] - now)
+
+                if key not in nearest_by_source or diff < nearest_by_source[key]["diff"]:
+                    nearest_by_source[key] = {
+                        "diff": diff,
+                        "data": item
+                    }
+
+            result = {
+                "ipma": None,
+                "openmeteo": None,
+                "worldweatheronline": None
+            }
+
+            for key in result:
+                if key in nearest_by_source:
+                    result[key] = nearest_by_source[key]["data"]
+
+            return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        conn.close()
+
+
+@app.get("/data/forecast/marine/future")
+def get_marine_forecast_future(lat: float, lon: float):
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                WITH latest_requests AS (
+                    SELECT DISTINCT ON (sd.name, sd.weather_model)
+                        mf.request_id,
+                        sd.name AS source,
+                        sd.weather_model
+                    FROM measurement_facts mf
+                    JOIN source_dimension sd
+                        ON mf.id_source = sd.id_source
+                    WHERE mf.data_status = 'forecast'
+                      AND LOWER(sd.data_type) = 'marine'
+                      AND mf.raw_json->'requestedLocation'->>'latitude' = %s
+                      AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                    ORDER BY sd.name, sd.weather_model, mf.request_id DESC
+                )
+                SELECT
+                    mf.request_id,
+                    sd.name AS source,
+                    sd.weather_model,
+                    vd.field_name,
+                    vd.description,
+                    vd.unit,
+                    mf.value,
+                    mf.value_text,
+                    cd.date,
+                    hd.full_time,
+                    ld.latitude,
+                    ld.longitude,
+                    mf.distance_km
+                FROM measurement_facts mf
+                JOIN source_dimension sd
+                    ON mf.id_source = sd.id_source
+                JOIN variable_dimension vd
+                    ON mf.id_variable = vd.id_variable
+                JOIN calendar_dimension cd
+                    ON mf.id_date_data = cd.id_date
+                JOIN hour_dimension hd
+                    ON mf.id_hour_data = hd.id_hour
+                JOIN location_dimension ld
+                    ON mf.id_location = ld.id_location
+                JOIN latest_requests lr
+                    ON lr.request_id = mf.request_id
+                   AND lr.source = sd.name
+                   AND (
+                        lr.weather_model = sd.weather_model
+                        OR (lr.weather_model IS NULL AND sd.weather_model IS NULL)
+                   )
+                WHERE mf.data_status = 'forecast'
+                  AND LOWER(sd.data_type) = 'marine'
+                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
+                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                ORDER BY sd.name, sd.weather_model, cd.date, hd.full_time, vd.field_name
+                """,
+                (str(lat), str(lon), str(lat), str(lon))
+            )
+
+            rows = cursor.fetchall()
+
+            grouped = {}
+
+            for row in rows:
+                request_id = row[0]
+                source = row[1]
+                model = row[2]
+                field_name = row[3]
+                description = row[4]
+                unit = row[5]
+                value = row[6] if row[6] is not None else row[7]
+                forecast_date = row[8]
+                forecast_time = row[9]
+                location_lat = row[10]
+                location_lon = row[11]
+                distance_km = row[12]
+
+                forecast_dt = datetime.combine(forecast_date, forecast_time)
+
+                source_lower = source.lower()
+
+                if source_lower == "open-meteo":
+                    source_key = "openmeteo"
+                elif source_lower == "worldweatheronline":
+                    source_key = "worldweatheronline"
+                elif source_lower == "ipma":
+                    source_key = "ipma"
+                else:
+                    source_key = source_lower.replace(" ", "").replace("-", "")
+
+                group_key = (
+                    source_key,
+                    model or "sem_modelo",
+                    forecast_dt
+                )
+
+                if group_key not in grouped:
+                    grouped[group_key] = {
+                        "requestId": request_id,
+                        "source": source,
+                        "model": model,
+                        "datetime": forecast_dt.isoformat(),
+                        "date": str(forecast_date),
+                        "time": str(forecast_time),
+                        "location": {
+                            "latitude": location_lat,
+                            "longitude": location_lon,
+                            "distanceKm": distance_km
+                        },
+                        "values": {}
+                    }
+
+                grouped[group_key]["values"][field_name] = {
+                    "description": description,
+                    "unit": unit,
+                    "value": value
+                }
+
+            result = {
+                "ipma": [],
+                "openmeteo": [],
+                "worldweatheronline": []
+            }
+
+            for item in grouped.values():
+                source_lower = item["source"].lower()
+
+                if source_lower == "ipma":
+                    result["ipma"].append(item)
+
+                elif source_lower == "open-meteo":
+                    result["openmeteo"].append(item)
+
+                elif source_lower == "worldweatheronline":
+                    result["worldweatheronline"].append(item)
+
+            for key in result:
+                result[key].sort(key=lambda x: x["datetime"])
+
+            return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        conn.close()
