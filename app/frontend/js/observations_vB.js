@@ -1,6 +1,57 @@
-/**
- * WeatherSense - Meteorological Observations Dashboard
- */
+// ============================================================================
+// WeatherSense - Observações Meteorológicas
+// ============================================================================
+//
+// Estrutura do ficheiro:
+//
+//  1. State
+//     - Estado global da aplicação
+//     - Configurações e localizações monitorizadas
+//
+//  2. Generic Helpers
+//     - Funções auxiliares
+//     - Formatação e cálculos genéricos
+//
+//  3. Fetch / API
+//     - Comunicação com o backend FastAPI
+//     - Carregamento de observações e histórico
+//
+//  4. Initialization
+//     - Inicialização da aplicação
+//     - Carregamento inicial dos dados
+//
+//  5. Map
+//     - Mapa Leaflet
+//     - Pontos de observação
+//     - Seleção de localizações
+//
+//  6. Current Observations
+//     - Observações atuais
+//     - Atualização dos cards IPMA e Foreca
+//
+//  7. Historical Observations
+//     - Histórico temporal
+//     - Estatísticas e métricas históricas
+//
+//  8. Charts
+//     - Gráficos Chart.js
+//     - Evolução temporal das variáveis
+//
+//  9. Operational Analysis
+//     - Condições para Drone
+//     - Risco de Incêndio
+//     - Comparação IPMA vs Foreca
+//
+// 10. Table
+//     - Registos históricos
+//     - Paginação
+//     - Exportação CSV
+//
+// 11. UI Events
+//     - Eventos da interface
+//     - Filtros e navegação
+//
+// ============================================================================
 
 // ================================
 // 1. State

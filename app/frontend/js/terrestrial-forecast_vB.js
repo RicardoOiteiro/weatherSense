@@ -1,14 +1,65 @@
-/**
- * WeatherSense - Terrestrial Forecast Dashboard
- * JavaScript Module for Terrestrial Forecast Page
- * Prepared for FastAPI integration
- */
-
-
-
-// ===============================
-// State Management
+// ============================================================================
+// WeatherSense - Previsão Terrestre
+// ============================================================================
+//
+// Estrutura do ficheiro:
+//
+//  1. State
+//     - Estado global da aplicação
+//     - Configurações e constantes
+//
+//  2. Utilities
+//     - Funções auxiliares
+//     - Formatação e cálculos genéricos
+//
+//  3. Data Mapping
+//     - Normalização dos dados recebidos das APIs
+//
+//  4. API Services
+//     - Comunicação com o backend FastAPI
+//
+//  5. Application Initialization
+//     - Inicialização da aplicação
+//
+//  6. Map Management
+//     - Gestão do mapa Leaflet
+//     - Seleção de localizações
+//
+//  7. Current Forecast Management
+//     - Previsões atuais
+//     - Atualização dos cards dos modelos
+//
+//  8. Timeline Forecast
+//     - Previsões futuras
+//     - Timeline temporal dos modelos
+//
+//  9. Forecast Agreement Analysis
+//     - Concordância entre modelos
+//     - Cálculo de spreads
+//
+// 10. Operational Analysis
+//     - Condições para drone
+//     - Risco de incêndio
+//
+// 11. Historical Forecast Analysis
+//     - Histórico de previsões
+//     - Gráficos e estatísticas
+//
+// 12. Records Table
+//     - Tabela de registos
+//     - Paginação e exportação CSV
+//
+// 13. Event Listeners
+//     - Eventos da interface
+//
+// 14. UI Updates
+//     - Atualizações visuais
+//     - Refresh da interface
+//
+// ============================================================================
 // ================================
+// 1. State
+// =================================
 const appState = {
     selectedLocation: {
         name: 'Leiria',
@@ -31,9 +82,6 @@ const appState = {
     }
 };
 
-// ================================
-// Model Colors Configuration
-// ================================
 const MODEL_COLORS = {
     icon: '#00d4ff',
     ecmwf: '#22d3ee',
@@ -42,9 +90,75 @@ const MODEL_COLORS = {
     openweather: '#a855f7'
 };
 
+
 // ================================
-// Cache & Provider State
+// 2. Utilities
 // ================================
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+function degreesToCardinal(deg) {
+    if (deg === null || deg === undefined) return '—';
+
+    const directions = [
+        'N', 'NNE', 'NE', 'ENE',
+        'E', 'ESE', 'SE', 'SSE',
+        'S', 'SSW', 'SW', 'WSW',
+        'W', 'WNW', 'NW', 'NNW'
+    ];
+
+    const index = Math.round(deg / 22.5) % 16;
+    return directions[index];
+}
+
+function getValidValues(models, field) {
+    return models
+        .map(model => model?.[field])
+        .filter(value =>
+            value !== null &&
+            value !== undefined &&
+            Number(value) !== -99 &&
+            Number(value) !== -99.0 &&
+            !Number.isNaN(Number(value))
+        )
+        .map(Number);
+}
+
+function averageValues(values) {
+    const valid = values
+        .filter(v =>
+            v !== null &&
+            v !== undefined &&
+            Number(v) !== -99 &&
+            Number(v) !== -99.0 &&
+            !Number.isNaN(Number(v))
+        )
+        .map(Number);
+
+    if (valid.length === 0) return null;
+    return valid.reduce((a, b) => a + b, 0) / valid.length;
+}
+
+function mostCommonValue(values) {
+    const valid = values.filter(v => v && v !== '—');
+    if (!valid.length) return '—';
+
+    const counts = {};
+    valid.forEach(value => {
+        counts[value] = (counts[value] || 0) + 1;
+    });
+
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+// ================================
+// 3. Data Mapping
+// ================================
+
+
 let currentForecastProvider = 'openmeteo';
 
 
@@ -91,64 +205,10 @@ function mapCurrentForecast(data) {
     };
 }
 
-function getValidValues(models, field) {
-    return models
-        .map(model => model?.[field])
-        .filter(value =>
-            value !== null &&
-            value !== undefined &&
-            Number(value) !== -99 &&
-            Number(value) !== -99.0 &&
-            !Number.isNaN(Number(value))
-        )
-        .map(Number);
-}
 
-function averageValues(values) {
-    const valid = values
-        .filter(v =>
-            v !== null &&
-            v !== undefined &&
-            Number(v) !== -99 &&
-            Number(v) !== -99.0 &&
-            !Number.isNaN(Number(v))
-        )
-        .map(Number);
-
-    if (valid.length === 0) return null;
-    return valid.reduce((a, b) => a + b, 0) / valid.length;
-}
-
-function mostCommonValue(values) {
-    const valid = values.filter(v => v && v !== '—');
-    if (!valid.length) return '—';
-
-    const counts = {};
-    valid.forEach(value => {
-        counts[value] = (counts[value] || 0) + 1;
-    });
-
-    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-}
-
-function degreesToCardinal(deg) {
-    if (deg === null || deg === undefined) return '—';
-
-    const directions = [
-        'N', 'NNE', 'NE', 'ENE',
-        'E', 'ESE', 'SE', 'SSE',
-        'S', 'SSW', 'SW', 'WSW',
-        'W', 'WNW', 'NW', 'NNW'
-    ];
-
-    const index = Math.round(deg / 22.5) % 16;
-    return directions[index];
-}
-
-function setText(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
-}
+// ================================
+// 4. API Services
+// ================================
 
 async function getCurrentForecastRecords() {
     const { lat, lng } = appState.selectedLocation;
@@ -164,9 +224,76 @@ async function getCurrentForecastRecords() {
     return response.json();
 }
 
+async function getForecastTimelineData() {
+    const { lat, lng } = appState.selectedLocation;
+
+    const response = await fetch(
+        `/data/forecast/terrestrial/timeline?lat=${lat}&lon=${lng}&provider=${currentForecastProvider}&hours=24`
+    );
+
+    if (!response.ok) {
+        throw new Error(`Erro HTTP ao carregar timeline: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+async function getForecastRecordsPage(page = 1) {
+    const { lat, lng } = appState.selectedLocation;
+    const pageSize = appState.pagination.itemsPerPage;
+    const search = document.getElementById('tableSearch')?.value.trim() || '';
+
+    const params = new URLSearchParams({
+        lat,
+        lon: lng,
+        page,
+        page_size: pageSize
+    });
+
+    if (search) {
+        params.append('search', search);
+    }
+
+    const response = await fetch(`/data/forecast/terrestrial/records?${params.toString()}`);
+
+    if (!response.ok) {
+        throw new Error(`Erro HTTP ao carregar registos: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+async function getHistoricalForecastData() {
+
+    const { lat, lng } = appState.selectedLocation;
+
+    const variable =
+        document.getElementById('forecastHistoryVariable')?.value
+        || 'temperature';
+
+    const range =
+        document.querySelector(
+            '.forecast-history-range-buttons .btn.active'
+        )?.dataset.range || '24h';
+
+    const response = await fetch(
+        `/data/forecast/terrestrial/history?lat=${lat}&lon=${lng}&variable=${variable}&range=${range}`
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            `Erro HTTP ao carregar histórico previsão: ${response.status}`
+        );
+    }
+
+    return await response.json();
+}
+
+
 // ================================
-// Initialization
+// 5. Application Initialization
 // ================================
+
 document.addEventListener('DOMContentLoaded', function () {
     initializeMap();
     initializeEventListeners();
@@ -182,9 +309,21 @@ document.addEventListener('DOMContentLoaded', function () {
     // setInterval(refreshForecastData, 600000);
 });
 
+async function loadInitialData() {
+    await loadRecordsData(1);
+    updateLastUpdateTime();
+}
+
+function refreshForecastData() {
+    refreshAfterLocationChange();
+    updateLastUpdateTime();
+}
+
+
 // ================================
-// Map Initialization
+// 6. Map Management
 // ================================
+
 let map;
 let markers = [];
 let selectedMarker;
@@ -312,16 +451,6 @@ function selectLocation(lat, lng, name = null) {
     refreshAfterLocationChange();
 }
 
-async function refreshAfterLocationChange() {
-    
-    await Promise.all([
-        fetchCurrentForecast(),
-        initializeTimeline(),
-        loadHistoricalForecast(),
-        loadRecordsData(1)
-    ]);
-}
-
 function updateLocationPanel() {
     const loc = appState.selectedLocation;
     setText('selectedLocationName', loc.name);
@@ -340,12 +469,144 @@ function updateContextSection() {
         `${loc.lat.toFixed(4)}° N, ${Math.abs(loc.lng).toFixed(4)}° W`;
 }
 
+// ================================
+// 7. Current Forecast Management
+// ================================
 
+async function fetchCurrentForecast() {
+    try {
 
+        const data = await getCurrentForecastRecords();
+
+        const currentData = {
+            icon: data.openmeteo?.icon
+                ? mapCurrentForecast(data.openmeteo.icon)
+                : null,
+
+            ecmwf: data.openmeteo?.ecmwf
+                ? mapCurrentForecast(data.openmeteo.ecmwf)
+                : null,
+
+            arpege: data.openmeteo?.arpege
+                ? mapCurrentForecast(data.openmeteo.arpege)
+                : null,
+
+            ipma: data.ipma
+                ? mapCurrentForecast(data.ipma)
+                : null,
+
+            openweather: data.openweather
+                ? mapCurrentForecast(data.openweather)
+                : null
+        };
+
+        appState.currentData = currentData;
+
+        if (currentData.openweather) {
+            updateOpenWeatherCard(currentData.openweather);
+        }
+
+        if (currentData.ipma) {
+            updateIpmaCard(currentData.ipma);
+        }
+
+        if (currentData.icon) {
+            updateOpenMeteoCard('icon', currentData.icon);
+        }
+
+        if (currentData.ecmwf) {
+            updateOpenMeteoCard('ecmwf', currentData.ecmwf);
+        }
+
+        if (currentData.arpege) {
+            updateOpenMeteoCard('arpege', currentData.arpege);
+        }
+
+        updateForecastAgreement();
+        updateForecastOperational();
+
+    } catch (error) {
+
+        console.error(
+            'Erro previsão terrestre:',
+            error
+        );
+    }
+}
+
+function updateOpenWeatherCard(data) {
+    setText('owTemp', data.temperature != null ? `${data.temperature.toFixed(1)}°C` : '—');
+    setText('owMinTemp', data.minTemp != null ? `${data.minTemp.toFixed(1)}°C` : '—');
+    setText('owMaxTemp', data.maxTemp != null ? `${data.maxTemp.toFixed(1)}°C` : '—');
+    setText('owHumidity', data.humidity != null ? `${data.humidity}%` : '—');
+    setText('owPressure', data.pressure != null ? `${data.pressure} hPa` : '—');
+    setText('owCloud', data.cloudCover != null ? `${data.cloudCover}%` : '—');
+    setText('owVisibility', data.visibility != null ? `${data.visibility} km` : '—');
+    setText('owWind', data.windSpeed != null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
+    setText('owGust', data.windGust != null ? `${data.windGust.toFixed(1)} km/h` : '—');
+    setText('owWindDir', data.windDirectionDegrees != null
+        ? `${Math.round(data.windDirectionDegrees)}° ${degreesToCardinal(data.windDirectionDegrees)}`
+        : '—'
+    );
+    setText('owPrecip', data.precipitation != null ? `${data.precipitation}%` : '—');
+    setText('owForecastTime', data.forecastTime !== '—'
+        ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
+        : '—'
+    );
+}
+
+function updateIpmaCard(data) {
+    setText('ipmaTemp', data.temperature != null ? `${data.temperature.toFixed(1)}°C` : '—');
+    setText('ipmaTempMin', data.minTemp != null ? `${Number(data.minTemp).toFixed(1)}°C` : '—');
+    setText('ipmaTempMax', data.maxTemp != null ? `${Number(data.maxTemp).toFixed(1)}°C` : '—');
+    setText('ipmaFeelsLike', data.feelsLike != null ? `${data.feelsLike.toFixed(1)}°C` : '—');
+    setText('ipmaHumidity', data.humidity != null ? `${data.humidity.toFixed(1)}%` : '—');
+    setText('ipmaWind', data.windSpeed != null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
+    setText('ipmaWindDir', data.windDirectionCardinal ?? '—');
+    setText('ipmaPrecip', data.precipitation != null && Number(data.precipitation) !== -99
+        ? `${data.precipitation}%`
+        : '—'
+    );
+    setText('ipmaForecastTime', data.forecastTime !== '—'
+        ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
+        : '—'
+    );
+}
+
+function updateOpenMeteoCard(modelKey, data) {
+    const prefix = { icon: 'icon', ecmwf: 'ecmwf', arpege: 'arpege' }[modelKey];
+
+    setText(`${prefix}Temp`, data.temperature != null ? `${data.temperature.toFixed(1)}°C` : '—');
+    setText(`${prefix}MinMax`,
+        data.minTemp != null && data.maxTemp != null
+            ? `${data.minTemp.toFixed(1)}°C / ${data.maxTemp.toFixed(1)}°C`
+            : '— / —'
+    );
+    setText(`${prefix}Humidity`, data.humidity != null ? `${data.humidity}%` : '—');
+    setText(`${prefix}Pressure`, data.pressure != null ? `${data.pressure} hPa` : '—');
+    setText(`${prefix}Cloud`, data.cloudCover != null ? `${data.cloudCover}%` : '—');
+    setText(`${prefix}Visibility`, data.visibility != null ? `${data.visibility.toFixed(2)} km` : '—');
+    setText(`${prefix}Wind`, data.windSpeed != null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
+    setText(`${prefix}Gust`, data.windGust != null ? `${data.windGust.toFixed(1)} km/h` : '—');
+    setText(`${prefix}WindDir`, data.windDirectionDegrees != null
+        ? `${Math.round(data.windDirectionDegrees)}° ${degreesToCardinal(data.windDirectionDegrees)}`
+        : '—'
+    );
+    setText(`${prefix}Precip`, data.precipitation != null ? `${data.precipitation} mm` : '—');
+    setText(`${prefix}Sunrise`, data.sunrise ?? '—');
+    setText(`${prefix}Sunset`, data.sunset ?? '—');
+
+    if (modelKey === 'icon') {
+        setText('openmeteoForecastTime', data.forecastTime !== '—'
+            ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
+            : '—'
+        );
+    }
+}
 
 
 // ================================
-// Timeline
+// 8. Timeline Forecast
 // ================================
 function initializeForecastTabs() {
     document.querySelectorAll('.forecast-model-tab').forEach(tab => {
@@ -356,20 +617,6 @@ function initializeForecastTabs() {
             initializeTimeline();
         });
     });
-}
-
-async function getForecastTimelineData() {
-    const { lat, lng } = appState.selectedLocation;
-
-    const response = await fetch(
-        `/data/forecast/terrestrial/timeline?lat=${lat}&lon=${lng}&provider=${currentForecastProvider}&hours=24`
-    );
-
-    if (!response.ok) {
-        throw new Error(`Erro HTTP ao carregar timeline: ${response.status}`);
-    }
-
-    return await response.json();
 }
 
 async function initializeTimeline() {
@@ -443,11 +690,6 @@ function initializeTimelineArrows() {
         });
     });
 }
-
-
-
-
-
 
 function renderTimelineModelRow(modelData) {
     return `
@@ -571,8 +813,6 @@ function renderTimelineBlocks(forecastData, provider = '') {
     `).join('');
 }
 
-
-
 function formatTimelineShortDate(dateString) {
     return new Date(dateString).toLocaleDateString('pt-PT', {
         day: '2-digit',
@@ -580,357 +820,11 @@ function formatTimelineShortDate(dateString) {
     });
 }
 
-// ================================
-// Event Listeners
-// ================================
-function initializeEventListeners() {
-   
-
-    document.getElementById('prevPage')?.addEventListener('click', function () {
-        if (appState.pagination.currentPage > 1) {
-            loadRecordsData(appState.pagination.currentPage - 1);
-        }
-    });
-
-    document.getElementById('nextPage')?.addEventListener('click', function () {
-        const totalPages = Math.ceil(
-            appState.pagination.totalItems / appState.pagination.itemsPerPage
-        );
-
-        if (appState.pagination.currentPage < totalPages) {
-            loadRecordsData(appState.pagination.currentPage + 1);
-        }
-    });
-    document.getElementById('tableSearch')?.addEventListener('input', function () {
-        loadRecordsData(1);
-    });
-    document.getElementById('exportCsv')?.addEventListener('click', exportToCsv);
-
-  
-
-    document.getElementById('nextPage')?.addEventListener('click', function () {
-        const totalPages = Math.ceil(
-            appState.pagination.totalItems / appState.pagination.itemsPerPage
-        );
-
-        if (appState.pagination.currentPage < totalPages) {
-            loadRecordsData(appState.pagination.currentPage + 1);
-        }
-    });
-}
 
 // ================================
-// Data Loading & API Integration
-// ================================
-async function loadInitialData() {
-    await loadRecordsData(1);
-    updateLastUpdateTime();
-}
-
-async function getForecastRecordsPage(page = 1) {
-    const { lat, lng } = appState.selectedLocation;
-    const pageSize = appState.pagination.itemsPerPage;
-    const search = document.getElementById('tableSearch')?.value.trim() || '';
-
-    const params = new URLSearchParams({
-        lat,
-        lon: lng,
-        page,
-        page_size: pageSize
-    });
-
-    if (search) {
-        params.append('search', search);
-    }
-
-    const response = await fetch(`/data/forecast/terrestrial/records?${params.toString()}`);
-
-    if (!response.ok) {
-        throw new Error(`Erro HTTP ao carregar registos: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-async function loadRecordsData(page = 1) {
-    try {
-        const data = await getForecastRecordsPage(page);
-
-        appState.tableData = data.rows;
-        appState.pagination.currentPage = data.page;
-        appState.pagination.itemsPerPage = data.pageSize;
-        appState.pagination.totalItems = data.total;
-
-        renderTable();
-
-    } catch (error) {
-        console.error('Erro ao carregar registos:', error);
-        appState.tableData = [];
-        appState.pagination.totalItems = 0;
-        renderTable();
-    }
-}
-
-function refreshForecastData() {
-    refreshAfterLocationChange();
-    updateLastUpdateTime();
-}
-
-// ================================
-// Forecast Mapping & Cards
+// 9. Forecast Agreement Analysis
 // ================================
 
-function updateOpenWeatherCard(data) {
-    setText('owTemp', data.temperature != null ? `${data.temperature.toFixed(1)}°C` : '—');
-    setText('owMinTemp', data.minTemp != null ? `${data.minTemp.toFixed(1)}°C` : '—');
-    setText('owMaxTemp', data.maxTemp != null ? `${data.maxTemp.toFixed(1)}°C` : '—');
-    setText('owHumidity', data.humidity != null ? `${data.humidity}%` : '—');
-    setText('owPressure', data.pressure != null ? `${data.pressure} hPa` : '—');
-    setText('owCloud', data.cloudCover != null ? `${data.cloudCover}%` : '—');
-    setText('owVisibility', data.visibility != null ? `${data.visibility} km` : '—');
-    setText('owWind', data.windSpeed != null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
-    setText('owGust', data.windGust != null ? `${data.windGust.toFixed(1)} km/h` : '—');
-    setText('owWindDir', data.windDirectionDegrees != null
-        ? `${Math.round(data.windDirectionDegrees)}° ${degreesToCardinal(data.windDirectionDegrees)}`
-        : '—'
-    );
-    setText('owPrecip', data.precipitation != null ? `${data.precipitation}%` : '—');
-    setText('owForecastTime', data.forecastTime !== '—'
-        ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
-        : '—'
-    );
-}
-
-
-
-function updateIpmaCard(data) {
-    setText('ipmaTemp', data.temperature != null ? `${data.temperature.toFixed(1)}°C` : '—');
-    setText('ipmaTempMin', data.minTemp != null ? `${Number(data.minTemp).toFixed(1)}°C` : '—');
-    setText('ipmaTempMax', data.maxTemp != null ? `${Number(data.maxTemp).toFixed(1)}°C` : '—');
-    setText('ipmaFeelsLike', data.feelsLike != null ? `${data.feelsLike.toFixed(1)}°C` : '—');
-    setText('ipmaHumidity', data.humidity != null ? `${data.humidity.toFixed(1)}%` : '—');
-    setText('ipmaWind', data.windSpeed != null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
-    setText('ipmaWindDir', data.windDirectionCardinal ?? '—');
-    setText('ipmaPrecip', data.precipitation != null && Number(data.precipitation) !== -99
-        ? `${data.precipitation}%`
-        : '—'
-    );
-    setText('ipmaForecastTime', data.forecastTime !== '—'
-        ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
-        : '—'
-    );
-}
-
-
-function updateOpenMeteoCard(modelKey, data) {
-    const prefix = { icon: 'icon', ecmwf: 'ecmwf', arpege: 'arpege' }[modelKey];
-
-    setText(`${prefix}Temp`, data.temperature != null ? `${data.temperature.toFixed(1)}°C` : '—');
-    setText(`${prefix}MinMax`,
-        data.minTemp != null && data.maxTemp != null
-            ? `${data.minTemp.toFixed(1)}°C / ${data.maxTemp.toFixed(1)}°C`
-            : '— / —'
-    );
-    setText(`${prefix}Humidity`, data.humidity != null ? `${data.humidity}%` : '—');
-    setText(`${prefix}Pressure`, data.pressure != null ? `${data.pressure} hPa` : '—');
-    setText(`${prefix}Cloud`, data.cloudCover != null ? `${data.cloudCover}%` : '—');
-    setText(`${prefix}Visibility`, data.visibility != null ? `${data.visibility.toFixed(2)} km` : '—');
-    setText(`${prefix}Wind`, data.windSpeed != null ? `${data.windSpeed.toFixed(1)} km/h` : '—');
-    setText(`${prefix}Gust`, data.windGust != null ? `${data.windGust.toFixed(1)} km/h` : '—');
-    setText(`${prefix}WindDir`, data.windDirectionDegrees != null
-        ? `${Math.round(data.windDirectionDegrees)}° ${degreesToCardinal(data.windDirectionDegrees)}`
-        : '—'
-    );
-    setText(`${prefix}Precip`, data.precipitation != null ? `${data.precipitation} mm` : '—');
-    setText(`${prefix}Sunrise`, data.sunrise ?? '—');
-    setText(`${prefix}Sunset`, data.sunset ?? '—');
-
-    if (modelKey === 'icon') {
-        setText('openmeteoForecastTime', data.forecastTime !== '—'
-            ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
-            : '—'
-        );
-    }
-}
-
-
-
-
-
-async function fetchCurrentForecast() {
-    try {
-
-        const data = await getCurrentForecastRecords();
-
-        const currentData = {
-            icon: data.openmeteo?.icon
-                ? mapCurrentForecast(data.openmeteo.icon)
-                : null,
-
-            ecmwf: data.openmeteo?.ecmwf
-                ? mapCurrentForecast(data.openmeteo.ecmwf)
-                : null,
-
-            arpege: data.openmeteo?.arpege
-                ? mapCurrentForecast(data.openmeteo.arpege)
-                : null,
-
-            ipma: data.ipma
-                ? mapCurrentForecast(data.ipma)
-                : null,
-
-            openweather: data.openweather
-                ? mapCurrentForecast(data.openweather)
-                : null
-        };
-
-        appState.currentData = currentData;
-
-        if (currentData.openweather) {
-            updateOpenWeatherCard(currentData.openweather);
-        }
-
-        if (currentData.ipma) {
-            updateIpmaCard(currentData.ipma);
-        }
-
-        if (currentData.icon) {
-            updateOpenMeteoCard('icon', currentData.icon);
-        }
-
-        if (currentData.ecmwf) {
-            updateOpenMeteoCard('ecmwf', currentData.ecmwf);
-        }
-
-        if (currentData.arpege) {
-            updateOpenMeteoCard('arpege', currentData.arpege);
-        }
-
-        updateForecastAgreement();
-        updateForecastOperational();
-
-    } catch (error) {
-
-        console.error(
-            'Erro previsão terrestre:',
-            error
-        );
-    }
-}
-
-
-// ================================
-// UI Update Functions
-// ================================
-
-function updateLastUpdateTime() {
-    const contextUpdate = document.getElementById('contextUpdate');
-    if (contextUpdate) {
-        contextUpdate.textContent = new Date().toLocaleTimeString('pt-PT', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-}
-
-// ================================
-// Table Functions
-// ================================
-
-
-function initializeTable() {
-    renderTable();
-    renderPagination();
-}
-
-function renderTable() {
-    const tbody = document.getElementById('recordsTableBody');
-    if (!tbody) return;
-
-    const pageData = appState.tableData;
-
-    tbody.innerHTML = pageData.map(row => {
-        const sourceClass = row.source
-            .toLowerCase()
-            .replaceAll(' ', '')
-            .replaceAll('·', '')
-            .replaceAll('+', '')
-            .replaceAll('-', '');
-
-        return `
-            <tr>
-                <td>${row.date}</td>
-                <td>${row.time}</td>
-                <td><span class="source-badge ${sourceClass}">${row.source}</span></td>
-                <td>${row.variable}</td>
-                <td>${row.value}</td>
-                <td>${row.unit}</td>
-                <td>${row.lat}</td>
-                <td>${row.lng}</td>
-            </tr>
-        `;
-    }).join('');
-
-    const { currentPage, itemsPerPage, totalItems } = appState.pagination;
-
-    const start = totalItems
-        ? (currentPage - 1) * itemsPerPage + 1
-        : 0;
-
-    const end = Math.min(currentPage * itemsPerPage, totalItems);
-
-    setText(
-        'paginationInfo',
-        `Mostrando ${start}-${end} de ${totalItems} registos`
-    );
-
-    document.getElementById('prevPage').disabled = currentPage === 1;
-    document.getElementById('nextPage').disabled = end >= totalItems;
-
-    renderPagination();
-}
-function renderPagination() {
-    const totalPages = Math.ceil(appState.pagination.totalItems / appState.pagination.itemsPerPage);
-    const currentPage = appState.pagination.currentPage;
-    const pageNumbers = document.getElementById('pageNumbers');
-
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, currentPage + 2);
-
-    let html = '';
-    for (let i = startPage; i <= endPage; i++) {
-        html += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
-    }
-
-    pageNumbers.innerHTML = html;
-}
-
-function goToPage(page) {
-    loadRecordsData(page);
-}
-
-
-function exportToCsv() {
-    const headers = ['Data', 'Hora', 'Fonte/Modelo', 'Variável', 'Valor', 'Unidade', 'Latitude', 'Longitude'];
-    const csvContent = [
-        headers.join(','),
-        ...appState.tableData.map(row =>
-            [row.date, row.time, row.source, row.variable, row.value, row.unit, row.lat, row.lng].join(',')
-        )
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `weathersense_forecast_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-}
-
-window.goToPage = goToPage;
-
-// ================================
-// Forecast Agreement
-// ================================
 function calculateSpread(values) {
     if (!values.length) return null;
     return Math.max(...values) - Math.min(...values);
@@ -1017,8 +911,9 @@ function updateForecastAgreement() {
 }
 
 // ================================
-// Operational Cards
+// 10. Operational Analysis
 // ================================
+
 function getForecastModels() {
     return [
         appState.currentData.icon,
@@ -1151,9 +1046,12 @@ function updateForecastOperational() {
     updateForecastFireRisk();
 }
 
+
 // ================================
-// Forecast History Chart
-// ================================
+// 11. Historical Forecast Analysis
+// ===============================
+// 
+
 let forecastHistoryChart;
 
 function initializeForecastHistoryChart() {
@@ -1203,31 +1101,7 @@ async function loadHistoricalForecast() {
         );
     }
 }
-async function getHistoricalForecastData() {
 
-    const { lat, lng } = appState.selectedLocation;
-
-    const variable =
-        document.getElementById('forecastHistoryVariable')?.value
-        || 'temperature';
-
-    const range =
-        document.querySelector(
-            '.forecast-history-range-buttons .btn.active'
-        )?.dataset.range || '24h';
-
-    const response = await fetch(
-        `/data/forecast/terrestrial/history?lat=${lat}&lon=${lng}&variable=${variable}&range=${range}`
-    );
-
-    if (!response.ok) {
-        throw new Error(
-            `Erro HTTP ao carregar histórico previsão: ${response.status}`
-        );
-    }
-
-    return await response.json();
-}
 
 function updateHistoricalForecastChart(data) {
     if (!forecastHistoryChart) return;
@@ -1306,4 +1180,184 @@ function initializeForecastHistoryListeners() {
             console.log('Variável mudou:', document.getElementById('forecastHistoryVariable').value);
             loadHistoricalForecast();
         });
+}
+
+
+// ================================
+// 12. Records Table
+// ================================
+
+async function loadRecordsData(page = 1) {
+    try {
+        const data = await getForecastRecordsPage(page);
+
+        appState.tableData = data.rows;
+        appState.pagination.currentPage = data.page;
+        appState.pagination.itemsPerPage = data.pageSize;
+        appState.pagination.totalItems = data.total;
+
+        renderTable();
+
+    } catch (error) {
+        console.error('Erro ao carregar registos:', error);
+        appState.tableData = [];
+        appState.pagination.totalItems = 0;
+        renderTable();
+    }
+}
+
+function initializeTable() {
+    renderTable();
+    renderPagination();
+}
+
+function renderTable() {
+    const tbody = document.getElementById('recordsTableBody');
+    if (!tbody) return;
+
+    const pageData = appState.tableData;
+
+    tbody.innerHTML = pageData.map(row => {
+        const sourceClass = row.source
+            .toLowerCase()
+            .replaceAll(' ', '')
+            .replaceAll('·', '')
+            .replaceAll('+', '')
+            .replaceAll('-', '');
+
+        return `
+            <tr>
+                <td>${row.date}</td>
+                <td>${row.time}</td>
+                <td><span class="source-badge ${sourceClass}">${row.source}</span></td>
+                <td>${row.variable}</td>
+                <td>${row.value}</td>
+                <td>${row.unit}</td>
+                <td>${row.lat}</td>
+                <td>${row.lng}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const { currentPage, itemsPerPage, totalItems } = appState.pagination;
+
+    const start = totalItems
+        ? (currentPage - 1) * itemsPerPage + 1
+        : 0;
+
+    const end = Math.min(currentPage * itemsPerPage, totalItems);
+
+    setText(
+        'paginationInfo',
+        `Mostrando ${start}-${end} de ${totalItems} registos`
+    );
+
+    document.getElementById('prevPage').disabled = currentPage === 1;
+    document.getElementById('nextPage').disabled = end >= totalItems;
+
+    renderPagination();
+}
+function renderPagination() {
+    const totalPages = Math.ceil(appState.pagination.totalItems / appState.pagination.itemsPerPage);
+    const currentPage = appState.pagination.currentPage;
+    const pageNumbers = document.getElementById('pageNumbers');
+
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+
+    let html = '';
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+    }
+
+    pageNumbers.innerHTML = html;
+}
+
+function goToPage(page) {
+    loadRecordsData(page);
+}
+
+
+function exportToCsv() {
+    const headers = ['Data', 'Hora', 'Fonte/Modelo', 'Variável', 'Valor', 'Unidade', 'Latitude', 'Longitude'];
+    const csvContent = [
+        headers.join(','),
+        ...appState.tableData.map(row =>
+            [row.date, row.time, row.source, row.variable, row.value, row.unit, row.lat, row.lng].join(',')
+        )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `weathersense_forecast_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+}
+
+
+window.goToPage = goToPage;
+
+// ================================
+// 13. Event Listeners
+// ================================
+
+function initializeEventListeners() {
+
+
+    document.getElementById('prevPage')?.addEventListener('click', function () {
+        if (appState.pagination.currentPage > 1) {
+            loadRecordsData(appState.pagination.currentPage - 1);
+        }
+    });
+
+    document.getElementById('nextPage')?.addEventListener('click', function () {
+        const totalPages = Math.ceil(
+            appState.pagination.totalItems / appState.pagination.itemsPerPage
+        );
+
+        if (appState.pagination.currentPage < totalPages) {
+            loadRecordsData(appState.pagination.currentPage + 1);
+        }
+    });
+    document.getElementById('tableSearch')?.addEventListener('input', function () {
+        loadRecordsData(1);
+    });
+    document.getElementById('exportCsv')?.addEventListener('click', exportToCsv);
+
+
+
+    document.getElementById('nextPage')?.addEventListener('click', function () {
+        const totalPages = Math.ceil(
+            appState.pagination.totalItems / appState.pagination.itemsPerPage
+        );
+
+        if (appState.pagination.currentPage < totalPages) {
+            loadRecordsData(appState.pagination.currentPage + 1);
+        }
+    });
+}
+
+// ================================
+// 14. UI Updates
+// ================================
+
+
+async function refreshAfterLocationChange() {
+
+    await Promise.all([
+        fetchCurrentForecast(),
+        initializeTimeline(),
+        loadHistoricalForecast(),
+        loadRecordsData(1)
+    ]);
+}
+
+function updateLastUpdateTime() {
+    const contextUpdate = document.getElementById('contextUpdate');
+    if (contextUpdate) {
+        contextUpdate.textContent = new Date().toLocaleTimeString('pt-PT', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
 }
