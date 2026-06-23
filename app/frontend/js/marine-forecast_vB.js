@@ -12,7 +12,7 @@ const API_CONFIG = {
     endpoints: {
         marineCurrent: '/data/forecast/marine/current',
         marineTimeline: '/data/marine/timeline',
-        marineHistory: '/data/marine/history',
+        marineHistory: '/data/forecast/marine/history',
         marineRecords: '/data/marine/records'
     }
 };
@@ -46,6 +46,12 @@ const appState = {
     selectedVariable: 'waveHeight',
     selectedTimeRange: 24
 };
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.textContent = value;
+    }
+}
 
 // ================================
 // Mock Data for Development
@@ -127,14 +133,15 @@ document.addEventListener('DOMContentLoaded', function () {
     initializeMap();
     initializeCharts();
     initializeEventListeners();
-    loadInitialData();
     updateLastUpdateTime();
     initializeOperationalGauges();
     initializeTable();
     initializeMarineForecastTabs();
+    initializeMarineHistoryChart();
+    initializeMarineHistoryListeners();
 
+    loadInitialData();
 
-    // Auto-refresh every 5 minutes
     setInterval(refreshCurrentData, 300000);
 });
 
@@ -270,6 +277,7 @@ function addMarineMarkers() {
                 point.lat,
                 point.lng,
                 point.name
+
             );
         });
 
@@ -310,7 +318,6 @@ function selectLocation(lat, lng, name = null) {
         distanceToCoast: (Math.random() * 10 + 2).toFixed(1)
     };
 
-    // Update selected marker
     if (selectedMarker) {
         map.removeLayer(selectedMarker);
     }
@@ -331,383 +338,236 @@ function selectLocation(lat, lng, name = null) {
 
     selectedMarker = L.marker([lat, lng], { icon: selectedIcon }).addTo(map);
 
-    console.log("Marcador selecionado:", lat, lng, name);
-    // Update UI
-
     refreshCurrentData();
     initializeMarineTimeline();
+    loadMarineHistoricalForecast();
 }
 
 
 // ================================
 // Charts Initialization
 // ================================
-let evolutionChart;
+
 let historyChart;
 
 function initializeCharts() {
-    initializeEvolutionChart();
-    initializeHistoryChart();
+
 }
 
-function initializeEvolutionChart() {
-    const ctx = document.getElementById('evolutionChart').getContext('2d');
 
-    const gradient1 = ctx.createLinearGradient(0, 0, 0, 350);
-    gradient1.addColorStop(0, 'rgba(34, 211, 238, 0.3)');
-    gradient1.addColorStop(1, 'rgba(34, 211, 238, 0)');
 
-    const gradient2 = ctx.createLinearGradient(0, 0, 0, 350);
-    gradient2.addColorStop(0, 'rgba(20, 184, 166, 0.3)');
-    gradient2.addColorStop(1, 'rgba(20, 184, 166, 0)');
 
-    const mockEvolutionData = generateMockEvolutionData(24);
 
-    evolutionChart = new Chart(ctx, {
+
+let marineHistoryChart;
+
+function initializeMarineHistoryChart() {
+    const canvas = document.getElementById('historyChart');
+    if (!canvas) return;
+
+    marineHistoryChart = new Chart(canvas.getContext('2d'), {
         type: 'line',
         data: {
-            labels: mockEvolutionData.labels,
+            labels: [],
             datasets: [
                 {
-                    label: 'IPMA Marine',
-                    data: mockEvolutionData.ipma,
+                    label: 'IPMA',
+                    data: [],
                     borderColor: '#22d3ee',
-                    backgroundColor: gradient1,
+                    backgroundColor: 'transparent',
                     borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
+                    tension: 0.35,
                     pointRadius: 0,
-                    pointHoverRadius: 6,
-                    pointHoverBackgroundColor: '#22d3ee',
-                    pointHoverBorderColor: '#fff',
-                    pointHoverBorderWidth: 2
+                    spanGaps: true
                 },
                 {
-                    label: 'Open-Meteo Marine',
-                    data: mockEvolutionData.openmeteo,
+                    label: 'Open-Meteo',
+                    data: [],
                     borderColor: '#14b8a6',
-                    backgroundColor: gradient2,
+                    backgroundColor: 'transparent',
                     borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
+                    tension: 0.35,
                     pointRadius: 0,
-                    pointHoverRadius: 6,
-                    pointHoverBackgroundColor: '#14b8a6',
-                    pointHoverBorderColor: '#fff',
-                    pointHoverBorderWidth: 2
+                    spanGaps: true
+                },
+                {
+                    label: 'WorldWeatherOnline',
+                    data: [],
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.35,
+                    pointRadius: 0,
+                    spanGaps: true
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(26, 31, 46, 0.95)',
-                    titleColor: '#f8fafc',
-                    bodyColor: '#94a3b8',
-                    borderColor: 'rgba(148, 163, 184, 0.2)',
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: true,
-                    callbacks: {
-                        label: function (context) {
-                            return `${context.dataset.label}: ${context.parsed.y.toFixed(1)} m`;
-                        }
-                    }
-                }
-            },
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { display: false } },
             scales: {
                 x: {
-                    grid: {
-                        color: 'rgba(148, 163, 184, 0.1)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 11 },
-                        maxRotation: 0
-                    }
+                    ticks: { color: '#64748b' },
+                    grid: { color: 'rgba(148,163,184,0.1)' }
                 },
                 y: {
-                    grid: {
-                        color: 'rgba(148, 163, 184, 0.1)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 11 },
-                        callback: function (value) {
-                            return value + ' m';
-                        }
-                    }
+                    ticks: { color: '#64748b' },
+                    grid: { color: 'rgba(148,163,184,0.1)' }
                 }
             }
         }
     });
 }
 
-function initializeHistoryChart() {
-    const ctx = document.getElementById('historyChart').getContext('2d');
+async function getMarineHistoricalForecastData() {
+    const { lat, lng } = appState.selectedLocation;
 
-    const gradient1 = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient1.addColorStop(0, 'rgba(34, 211, 238, 0.4)');
-    gradient1.addColorStop(1, 'rgba(34, 211, 238, 0)');
+    const variable =
+        document.getElementById('historyVariable')?.value || 'waveHeight';
 
-    const gradient2 = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient2.addColorStop(0, 'rgba(20, 184, 166, 0.4)');
-    gradient2.addColorStop(1, 'rgba(20, 184, 166, 0)');
+    const range =
+        document.querySelector('.forecast-history-range-buttons .btn.active')?.dataset.range || '24h';
 
-    const mockHistoryData = generateMockHistoryData();
+    const response = await fetch(
+        `/data/forecast/marine/history?lat=${lat}&lon=${lng}&variable=${variable}&range=${range}`
+    );
 
-    historyChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: mockHistoryData.labels,
-            datasets: [
-                {
-                    label: 'IPMA Marine',
-                    data: mockHistoryData.ipma,
-                    borderColor: '#22d3ee',
-                    backgroundColor: gradient1,
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 0
-                },
-                {
-                    label: 'Open-Meteo Marine',
-                    data: mockHistoryData.openmeteo,
-                    borderColor: '#14b8a6',
-                    backgroundColor: gradient2,
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 0
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        color: '#94a3b8',
-                        font: { size: 11 },
-                        usePointStyle: true,
-                        pointStyle: 'circle'
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(148, 163, 184, 0.1)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 10 },
-                        maxRotation: 45
-                    }
-                },
-                y: {
-                    grid: {
-                        color: 'rgba(148, 163, 184, 0.1)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 10 }
-                    }
-                }
-            }
+    if (!response.ok) {
+        throw new Error(`Erro HTTP ao carregar histórico marítimo: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+async function loadMarineHistoricalForecast() {
+    try {
+        const data = await getMarineHistoricalForecastData();
+        updateMarineHistoricalChart(data);
+    } catch (error) {
+        console.error('Erro ao carregar histórico marítimo:', error);
+    }
+}
+
+function updateMarineHistoricalChart(data) {
+    if (!marineHistoryChart) return;
+
+    marineHistoryChart.data.labels = data.labels;
+    marineHistoryChart.data.datasets[0].data = data.ipma || [];
+    marineHistoryChart.data.datasets[1].data = data.openmeteo || [];
+    marineHistoryChart.data.datasets[2].data = data.worldweatheronline || [];
+
+    const unit = getMarineHistoryUnit(data.variable);
+
+    marineHistoryChart.options.scales.y.ticks.callback = value => `${value}${unit}`;
+
+    marineHistoryChart.options.plugins.tooltip = {
+        callbacks: {
+            label: context => context.raw != null
+                ? `${context.dataset.label}: ${context.raw}${unit}`
+                : `${context.dataset.label}: —`
         }
+    };
+
+    marineHistoryChart.update();
+
+    const allValues = [
+        ...(data.ipma || []),
+        ...(data.openmeteo || []),
+        ...(data.worldweatheronline || [])
+    ].filter(v => v != null && !Number.isNaN(Number(v)));
+
+    if (!allValues.length) {
+        setText('historyAvg', '—');
+        setText('historyMin', '—');
+        setText('historyMax', '—');
+        setText('historyTotal', '0');
+        return;
+    }
+
+    const numericValues = allValues.map(Number);
+    const avg = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+
+    setText('historyAvg', `${avg.toFixed(2)}${unit}`);
+    setText('historyMin', `${Math.min(...numericValues).toFixed(2)}${unit}`);
+    setText('historyMax', `${Math.max(...numericValues).toFixed(2)}${unit}`);
+    setText('historyTotal', numericValues.length.toLocaleString('pt-PT'));
+}
+
+function getMarineHistoryUnit(variable) {
+    const units = {
+        waveHeight: ' m',
+        wavePeriod: ' s',
+        waveDirection: '°',
+        swellHeight: ' m',
+        swellPeriod: ' s',
+        swellDirection: '°',
+        waterTemperature: '°C',
+        seaTemperature: '°C',
+        currentSpeed: ' m/s',
+        currentDirection: '°'
+    };
+
+    return units[variable] || '';
+}
+
+function initializeMarineHistoryListeners() {
+    document.addEventListener('click', function (e) {
+        const button = e.target.closest('.forecast-history-range-buttons button');
+        if (!button) return;
+
+        const container = button.closest('.forecast-history-range-buttons');
+
+        container.querySelectorAll('button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        button.classList.add('active');
+
+        console.log('Range histórico marítimo:', button.dataset.range);
+
+        loadMarineHistoricalForecast();
+    });
+
+    document.getElementById('historyVariable')?.addEventListener('change', () => {
+        console.log('Variável histórico marítimo:', document.getElementById('historyVariable').value);
+        loadMarineHistoricalForecast();
     });
 }
-
-function generateMockEvolutionData(hours) {
-    const labels = [];
-    const ipma = [];
-    const openmeteo = [];
-    const now = new Date();
-
-    for (let i = 0; i < hours; i += 3) {
-        const time = new Date(now.getTime() + i * 60 * 60 * 1000);
-        labels.push(time.getHours().toString().padStart(2, '0') + ':00');
-
-        const baseWave = 1.5 + Math.sin(i / 6) * 0.5;
-        ipma.push(baseWave + Math.random() * 0.3);
-        openmeteo.push(baseWave + Math.random() * 0.3 + 0.1);
-    }
-
-    return { labels, ipma, openmeteo };
-}
-
-function generateMockHistoryData() {
-    const labels = [];
-    const ipma = [];
-    const openmeteo = [];
-
-    for (let i = 7; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        labels.push(date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }));
-
-        const baseWave = 1.8 + Math.random() * 1.2;
-        ipma.push(baseWave);
-        openmeteo.push(baseWave + (Math.random() - 0.5) * 0.4);
-    }
-
-    return { labels, ipma, openmeteo };
-}
-
 // ================================
 // Event Listeners
 // ================================
 function initializeEventListeners() {
-    // Time range buttons
-    document.querySelectorAll('.time-range-buttons .btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            document.querySelectorAll('.time-range-buttons .btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            const range = parseInt(this.dataset.range);
-            updateEvolutionChart(range);
-        });
+
+    document.getElementById('historyVariable')?.addEventListener('change', function () {
+        loadMarineHistoricalForecast();
     });
 
-    // Variable selector
-    document.getElementById('chartVariable').addEventListener('change', function () {
-        appState.selectedVariable = this.value;
-        updateEvolutionChart(appState.selectedTimeRange);
-    });
-
-    // History variable selector
-    document.getElementById('historyVariable').addEventListener('change', function () {
-        updateHistoryChart(this.value);
-    });
-
-    // Table search
-    document.getElementById('tableSearch').addEventListener('input', function () {
+    document.getElementById('tableSearch')?.addEventListener('input', function () {
         filterTable(this.value);
     });
 
-    // Export CSV
-    document.getElementById('exportCsv').addEventListener('click', exportTableToCsv);
+    document.getElementById('exportCsv')?.addEventListener('click', exportTableToCsv);
+
 }
 
-function updateEvolutionChart(hours) {
-    appState.selectedTimeRange = hours;
-    const newData = generateMockEvolutionData(hours);
 
-    evolutionChart.data.labels = newData.labels;
-    evolutionChart.data.datasets[0].data = newData.ipma;
-    evolutionChart.data.datasets[1].data = newData.openmeteo;
-    evolutionChart.update();
 
-    // Update analytics
-    updateAnalytics(newData);
-}
 
-function updateHistoryChart(variable) {
-    const newData = generateMockHistoryData();
-    historyChart.data.labels = newData.labels;
-    historyChart.data.datasets[0].data = newData.ipma;
-    historyChart.data.datasets[1].data = newData.openmeteo;
-    historyChart.update();
 
-    updateHistorySummary(newData);
-}
 
-function updateAnalytics(data) {
-    const allValues = [...data.ipma, ...data.openmeteo];
-    const avg = allValues.reduce((a, b) => a + b, 0) / allValues.length;
-    const min = Math.min(...allValues);
-    const max = Math.max(...allValues);
-    const spread = max - min;
 
-    // Calculate agreement
-    let agreementSum = 0;
-    for (let i = 0; i < data.ipma.length; i++) {
-        const diff = Math.abs(data.ipma[i] - data.openmeteo[i]);
-        agreementSum += (1 - diff / max) * 100;
-    }
-    const agreement = agreementSum / data.ipma.length;
 
-    document.getElementById('avgForecastValue').textContent = avg.toFixed(2) + ' m';
-    document.getElementById('minForecastValue').textContent = min.toFixed(2) + ' m';
-    document.getElementById('maxForecastValue').textContent = max.toFixed(2) + ' m';
-    document.getElementById('spreadValue').textContent = spread.toFixed(2) + ' m';
-    document.getElementById('agreementValue').textContent = agreement.toFixed(0) + '%';
-    document.getElementById('recordsCount').textContent = data.ipma.length * 2;
-
-    // Update comparison bars
-    updateComparisonBars(data);
-}
-
-function updateComparisonBars(data) {
-    const waveHeightDiff = Math.abs(data.ipma[0] - data.openmeteo[0]);
-    document.getElementById('waveHeightDiff').style.width = Math.min(waveHeightDiff * 50, 100) + '%';
-    document.getElementById('waveHeightDiffValue').textContent = '±' + waveHeightDiff.toFixed(2) + ' m';
-
-    // Mock other differences
-    const mockDiffs = {
-        wavePeriod: (Math.random() * 2).toFixed(1),
-        swellHeight: (Math.random() * 0.5).toFixed(2),
-        windSpeed: Math.floor(Math.random() * 10),
-        seaTemp: (Math.random() * 1).toFixed(1)
-    };
-
-    document.getElementById('wavePeriodDiff').style.width = mockDiffs.wavePeriod * 25 + '%';
-    document.getElementById('wavePeriodDiffValue').textContent = '±' + mockDiffs.wavePeriod + ' s';
-
-    document.getElementById('swellHeightDiff').style.width = mockDiffs.swellHeight * 100 + '%';
-    document.getElementById('swellHeightDiffValue').textContent = '±' + mockDiffs.swellHeight + ' m';
-
-    document.getElementById('windSpeedDiff').style.width = mockDiffs.windSpeed * 5 + '%';
-    document.getElementById('windSpeedDiffValue').textContent = '±' + mockDiffs.windSpeed + ' km/h';
-
-    document.getElementById('seaTempDiff').style.width = mockDiffs.seaTemp * 50 + '%';
-    document.getElementById('seaTempDiffValue').textContent = '±' + mockDiffs.seaTemp + ' °C';
-
-    // Show disagreement alert if significant
-    const disagreementAlert = document.getElementById('disagreementAlert');
-    if (waveHeightDiff > 0.5 || parseFloat(mockDiffs.windSpeed) > 8) {
-        disagreementAlert.classList.add('visible');
-    } else {
-        disagreementAlert.classList.remove('visible');
-    }
-}
-
-function updateHistorySummary(data) {
-    const allValues = [...data.ipma, ...data.openmeteo];
-    const avg = allValues.reduce((a, b) => a + b, 0) / allValues.length;
-
-    document.getElementById('historyAvg').textContent = avg.toFixed(2) + ' m';
-    document.getElementById('historyMin').textContent = Math.min(...allValues).toFixed(2) + ' m';
-    document.getElementById('historyMax').textContent = Math.max(...allValues).toFixed(2) + ' m';
-    document.getElementById('historyTotal').textContent = allValues.length;
-}
 
 // ================================
 // Data Loading & Updates
 // ================================
 function loadInitialData() {
-    // Load mock data for development
     refreshCurrentData();
     initializeMarineTimeline();
-    updateEvolutionChart(24);
-    updateHistorySummary(generateMockHistoryData());
+
+    loadMarineHistoricalForecast();
     updateOperationalAnalysis();
     updateActivitySuitability();
 }
@@ -1203,7 +1063,7 @@ async function getMarineFutureForecastData() {
     const { lat, lng } = appState.selectedLocation;
 
     const response = await fetch(
-        `/data/forecast/marine/future?lat=${lat}&lon=${lng}`
+        `/data/forecast/marine/timeline?lat=${lat}&lon=${lng}`
     );
 
     if (!response.ok) {

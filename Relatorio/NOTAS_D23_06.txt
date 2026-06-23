@@ -1,0 +1,14 @@
+-> Le o relatório, anota o que não te fizer sentido;
+-> Poderá haver partes que não façam muito sentido ou que se tenham de corrigir/melhorar; (Não perdi tempo ainda a voltar a reler);
+
+-> Trata da parte da BD, lê com atenção o que já está sobre a BD no relatório, pode-me ter faltado cenas;
+-> Tabelas que consideras importantes para o relatório da BD.
+
+No relatório estou na etapa 4.4.3 Endpoints de Consulta Histórica;
+No projeto estou a finalizar o marítimo, de momento na parte do histórico marítimo, depois registos históricos, coerência entre as fontes e painel de operação.
+
+
+Quando tiveres aquilo da BD no relatório orientado passa para parte 1. Introdução; 2. Enquadramento Teórico; Conclusão.
+
+
+ 

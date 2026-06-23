@@ -57,7 +57,7 @@
     </nav>
 
     <main class="dashboard">
-       
+
         <!-- Maritime Map and Location Section -->
         <section class="main-marine-section">
             <div class="map-container glass-card">
@@ -456,44 +456,6 @@
             </div>
         </section>
 
-        <!-- Marine Forecast Evolution Chart -->
-        <section class="evolution-section">
-            <div class="chart-container glass-card">
-                <div class="card-header">
-                    <div class="chart-title">
-                        <h3><i class="fas fa-chart-line"></i> Evolução da Previsão Marítima</h3>
-                        <div class="chart-legend">
-                            <span class="legend-item ipma"><span class="legend-dot"></span> IPMA Marine</span>
-                            <span class="legend-item openmeteo"><span class="legend-dot"></span> Open-Meteo
-                                Marine</span>
-                        </div>
-                    </div>
-                    <div class="chart-controls">
-                        <div class="variable-selector">
-                            <label for="chartVariable">Variável:</label>
-                            <select id="chartVariable" class="control-select">
-                                <option value="waveHeight">Altura Onda</option>
-                                <option value="wavePeriod">Período Onda</option>
-                                <option value="swellHeight">Altura Swell</option>
-                                <option value="swellPeriod">Período Swell</option>
-                                <option value="seaTemp">Temp. Mar</option>
-                                <option value="windSpeed">Vento</option>
-                                <option value="windGust">Rajada</option>
-                            </select>
-                        </div>
-                        <div class="time-range-buttons">
-                            <button class="btn btn-sm active" data-range="24">24h</button>
-                            <button class="btn btn-sm" data-range="48">48h</button>
-                            <button class="btn btn-sm" data-range="72">72h</button>
-                            <button class="btn btn-sm" data-range="120">5 dias</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="chart-wrapper">
-                    <canvas id="evolutionChart"></canvas>
-                </div>
-            </div>
-        </section>
 
         <!-- Marine Forecast Comparison Analytics -->
         <section class="analytics-section">
@@ -742,29 +704,48 @@
         </section>
 
         <!-- Historical Marine Forecasts -->
+        <!-- Historical Marine Forecasts -->
         <section class="historical-section">
             <div class="section-header">
                 <h2><i class="fas fa-history"></i> Histórico de Previsões Marítimas</h2>
             </div>
 
             <div class="historical-grid">
+
                 <div class="history-chart-container glass-card">
+
                     <div class="card-header">
-                        <h3><i class="fas fa-chart-area"></i> Evolução Histórica</h3>
+
+                        <h3>
+                            <i class="fas fa-chart-area"></i>
+                            Evolução Histórica
+                        </h3>
+
                         <div class="history-controls">
+
                             <select id="historyVariable" class="control-select">
                                 <option value="waveHeight">Altura Onda</option>
                                 <option value="wavePeriod">Período Onda</option>
                                 <option value="swellHeight">Altura Swell</option>
                                 <option value="swellPeriod">Período Swell</option>
-                                <option value="seaTemp">Temp. Mar</option>
+                                <option value="seaTemperature">Temp. Mar</option>
                                 <option value="windSpeed">Vento</option>
                             </select>
+
+                            <div class="forecast-history-range-buttons">
+                                <button class="btn btn-sm active" data-range="24h">24h</button>
+                                <button class="btn btn-sm" data-range="7d">7d</button>
+                                <button class="btn btn-sm" data-range="30d">30d</button>
+                            </div>
+
                         </div>
+
                     </div>
+
                     <div class="chart-wrapper">
                         <canvas id="historyChart"></canvas>
                     </div>
+
                 </div>
 
                 <div class="history-summary-cards">
@@ -772,20 +753,25 @@
                         <span class="history-label">Média Histórica</span>
                         <span class="history-value" id="historyAvg">--</span>
                     </div>
+
                     <div class="history-summary-card glass-card">
                         <span class="history-label">Mínimo Histórico</span>
                         <span class="history-value" id="historyMin">--</span>
                     </div>
+
                     <div class="history-summary-card glass-card">
                         <span class="history-label">Máximo Histórico</span>
                         <span class="history-value" id="historyMax">--</span>
                     </div>
+
                     <div class="history-summary-card glass-card">
                         <span class="history-label">Total Registos</span>
                         <span class="history-value" id="historyTotal">--</span>
                     </div>
                 </div>
+
             </div>
+
         </section>
 
         <!-- Historical Marine Records Table -->

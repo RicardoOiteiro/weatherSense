@@ -1446,8 +1446,8 @@ def get_current_marine_forecast(lat: float, lon: float):
         conn.close()
 
 
-@app.get("/data/forecast/marine/future")
-def get_marine_forecast_future(lat: float, lon: float):
+@app.get("/data/forecast/marine/timeline")
+def get_marine_forecast_timeline(lat: float, lon: float):
     conn = get_connection()
 
     try:
@@ -1590,6 +1590,250 @@ def get_marine_forecast_future(lat: float, lon: float):
                 result[key].sort(key=lambda x: x["datetime"])
 
             return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        conn.close()
+
+@app.get("/data/forecast/marine/history")
+def get_marine_forecast_history(
+    lat: float,
+    lon: float,
+    variable: str = "waveHeight",
+    range: str = "24h"
+):
+    conn = get_connection()
+
+    variable_map = {
+        "waveHeight": "waveHeightM",
+        "wavePeriod": "wavePeriodS",
+        "waveDirection": "waveDirectionDegrees",
+        "seaTemperature": "waterTemperatureC",
+        "waterTemperature": "waterTemperatureC",
+        "windSpeed": "windSpeedKmh",
+        "windDirection": "windDirectionDegrees",
+        "swellHeight": "swellHeightM",
+        "swellPeriod": "swellPeriodS",
+        "swellDirection": "swellDirectionDegrees"
+    }
+
+    field_name = variable_map.get(variable)
+
+    if not field_name:
+        raise HTTPException(status_code=400, detail="Variável marítima inválida")
+
+    now = datetime.now(ZoneInfo("Europe/Lisbon")).replace(tzinfo=None)
+
+    if range == "24h":
+        start_date = now - timedelta(hours=24)
+    elif range == "7d":
+        start_date = now - timedelta(days=7)
+    elif range == "30d":
+        start_date = now - timedelta(days=30)
+    else:
+        raise HTTPException(status_code=400, detail="Range inválido")
+
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    sd.name AS source,
+                    sd.weather_model,
+                    cd_req.date,
+                    hd_req.full_time,
+                    mf.value,
+                    mf.value_text
+                FROM measurement_facts mf
+                JOIN source_dimension sd
+                    ON mf.id_source = sd.id_source
+                JOIN variable_dimension vd
+                    ON mf.id_variable = vd.id_variable
+                JOIN calendar_dimension cd_req
+                    ON mf.id_date_request = cd_req.id_date
+                JOIN hour_dimension hd_req
+                    ON mf.id_hour_request = hd_req.id_hour
+                WHERE mf.data_status = 'forecast'
+                  AND LOWER(sd.data_type) = 'marine'
+                  AND vd.field_name = %s
+                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
+                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                ORDER BY cd_req.date, hd_req.full_time
+                """,
+                (field_name, str(lat), str(lon))
+            )
+
+            rows = cursor.fetchall()
+            grouped = {}
+
+            for row in rows:
+                source = row[0].lower()
+                dt = datetime.combine(row[2], row[3])
+
+                if dt < start_date:
+                    continue
+
+                dt = dt.replace(minute=0, second=0, microsecond=0)
+                label = dt.strftime("%d/%m %H:%M")
+
+                value = row[4] if row[4] is not None else row[5]
+
+                try:
+                    value = float(value)
+                except:
+                    value = None
+
+                if value in (-99, -99.0):
+                    value = None
+
+                if source == "open-meteo":
+                    key = "openmeteo"
+                elif source == "worldweatheronline":
+                    key = "worldweatheronline"
+                elif source == "ipma":
+                    key = "ipma"
+                else:
+                    key = source.replace(" ", "").replace("-", "")
+
+                if label not in grouped:
+                    grouped[label] = {}
+
+                grouped[label][key] = value
+
+            labels = sorted(grouped.keys())
+
+            result = {
+                "labels": labels,
+                "ipma": [],
+                "openmeteo": [],
+                "worldweatheronline": [],
+                "variable": variable
+            }
+
+            for label in labels:
+                result["ipma"].append(grouped[label].get("ipma"))
+                result["openmeteo"].append(grouped[label].get("openmeteo"))
+                result["worldweatheronline"].append(grouped[label].get("worldweatheronline"))
+
+            return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        conn.close()
+
+
+@app.get("/data/forecast/marine/records")
+def get_marine_forecast_records(
+    lat: float,
+    lon: float,
+    page: int = 1,
+    page_size: int = 10,
+    search: str | None = None
+):
+    conn = get_connection()
+
+    page = max(page, 1)
+    page_size = min(max(page_size, 1), 100)
+    offset = (page - 1) * page_size
+
+    try:
+        with conn.cursor() as cursor:
+            params = [str(lat), str(lon)]
+
+            search_clause = ""
+
+            if search:
+                search_clause = """
+                    AND (
+                        LOWER(sd.name) LIKE LOWER(%s)
+                        OR LOWER(sd.weather_model) LIKE LOWER(%s)
+                        OR LOWER(vd.field_name) LIKE LOWER(%s)
+                        OR LOWER(vd.description) LIKE LOWER(%s)
+                    )
+                """
+                term = f"%{search}%"
+                params.extend([term, term, term, term])
+
+            cursor.execute(
+                f"""
+                SELECT COUNT(*)
+                FROM measurement_facts mf
+                JOIN source_dimension sd
+                    ON mf.id_source = sd.id_source
+                JOIN variable_dimension vd
+                    ON mf.id_variable = vd.id_variable
+                WHERE mf.data_status = 'forecast'
+                  AND LOWER(sd.data_type) = 'marine'
+                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
+                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                  {search_clause}
+                """,
+                tuple(params)
+            )
+
+            total = cursor.fetchone()[0]
+
+            cursor.execute(
+                f"""
+                SELECT
+                    cd_req.date,
+                    hd_req.full_time,
+                    sd.name,
+                    sd.weather_model,
+                    vd.field_name,
+                    vd.description,
+                    vd.unit,
+                    mf.value,
+                    mf.value_text,
+                    mf.raw_json->'requestedLocation'->>'latitude',
+                    mf.raw_json->'requestedLocation'->>'longitude'
+                FROM measurement_facts mf
+                JOIN source_dimension sd
+                    ON mf.id_source = sd.id_source
+                JOIN variable_dimension vd
+                    ON mf.id_variable = vd.id_variable
+                JOIN calendar_dimension cd_req
+                    ON mf.id_date_request = cd_req.id_date
+                JOIN hour_dimension hd_req
+                    ON mf.id_hour_request = hd_req.id_hour
+                WHERE mf.data_status = 'forecast'
+                  AND LOWER(sd.data_type) = 'marine'
+                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
+                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                  {search_clause}
+                ORDER BY cd_req.date DESC, hd_req.full_time DESC, mf.id_measurement DESC
+                LIMIT %s OFFSET %s
+                """,
+                tuple(params + [page_size, offset])
+            )
+
+            rows = cursor.fetchall()
+
+            return {
+                "rows": [
+                    {
+                        "date": str(row[0]),
+                        "time": str(row[1]),
+                        "source": (
+                            f"{row[2]} · {row[3]}"
+                            if row[3] else row[2]
+                        ),
+                        "variable": row[5] or row[4],
+                        "value": row[7] if row[7] is not None else row[8],
+                        "unit": row[6] or "",
+                        "lat": row[9],
+                        "lng": row[10]
+                    }
+                    for row in rows
+                ],
+                "page": page,
+                "pageSize": page_size,
+                "total": total
+            }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
