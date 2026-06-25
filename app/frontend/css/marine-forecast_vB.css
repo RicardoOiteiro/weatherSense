@@ -13,34 +13,34 @@
     --primary-purple: #a855f7;
     --primary-orange: #ff8c00;
     --primary-yellow: #facc15;
-    
+
     /* Marine-specific accents */
     --marine-deep: #0077b6;
     --marine-mid: #00b4d8;
     --marine-light: #90e0ef;
     --marine-foam: #caf0f8;
-    
+
     /* Background Colors */
     --bg-primary: #0a0e17;
     --bg-secondary: #111827;
     --bg-tertiary: #1a1f2e;
     --bg-card: rgba(17, 24, 39, 0.7);
     --bg-glass: rgba(26, 31, 46, 0.6);
-    
+
     /* Text Colors */
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    
+
     /* Border Colors */
     --border-color: rgba(148, 163, 184, 0.1);
     --border-glow: rgba(0, 212, 255, 0.3);
-    
+
     /* Status Colors */
     --success: #10b981;
     --warning: #f59e0b;
     --error: #ef4444;
-    
+
     /* Shadows */
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -50,12 +50,12 @@
     --shadow-glow-teal: 0 0 20px rgba(20, 184, 166, 0.2);
     --shadow-glow-green: 0 0 20px rgba(0, 255, 136, 0.2);
     --shadow-glow-purple: 0 0 20px rgba(168, 85, 247, 0.2);
-    
+
     /* Transitions */
     --transition-fast: 150ms ease;
     --transition-normal: 250ms ease;
     --transition-slow: 400ms ease;
-    
+
     /* Border Radius */
     --radius-sm: 6px;
     --radius-md: 10px;
@@ -66,7 +66,9 @@
 /* ================================
    Reset & Base Styles
    ================================ */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -94,7 +96,7 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
+    background:
         radial-gradient(ellipse at 20% 20%, rgba(0, 212, 255, 0.08) 0%, transparent 50%),
         radial-gradient(ellipse at 80% 80%, rgba(34, 211, 238, 0.06) 0%, transparent 50%),
         radial-gradient(ellipse at 50% 50%, rgba(20, 184, 166, 0.04) 0%, transparent 60%);
@@ -542,8 +544,15 @@ body::before {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
 }
 
 .location-details {
@@ -1903,16 +1912,16 @@ body::before {
     .marine-cards-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .historical-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .history-summary-cards {
         flex-direction: row;
         flex-wrap: wrap;
     }
-    
+
     .history-summary-card {
         flex: 1;
         min-width: 150px;
@@ -1923,15 +1932,15 @@ body::before {
     .main-marine-section {
         grid-template-columns: 1fr;
     }
-    
+
     .analytics-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .operational-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .status-grid {
         grid-template-columns: 1fr;
     }
@@ -1941,29 +1950,29 @@ body::before {
     .navbar-menu {
         display: none;
     }
-    
+
     .context-section {
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     .context-details {
         flex-wrap: wrap;
         gap: 16px;
     }
-    
+
     .marine-cards-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .future-cards-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .future-grid {
         grid-template-columns: repeat(3, 1fr);
     }
-    
+
     .summary-cards {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -1973,55 +1982,55 @@ body::before {
     .dashboard {
         padding: 16px;
     }
-    
+
     .navbar {
         padding: 0 16px;
     }
-    
+
     .chart-container .card-header {
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     .chart-controls {
         width: 100%;
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     .time-range-buttons {
         width: 100%;
         display: grid;
         grid-template-columns: repeat(4, 1fr);
     }
-    
+
     .section-header {
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     .table-actions {
         flex-direction: column;
         width: 100%;
     }
-    
+
     .search-box {
         width: 100%;
     }
-    
+
     .search-box input {
         width: 100%;
     }
-    
+
     .comparison-item {
         grid-template-columns: 1fr;
         gap: 6px;
     }
-    
+
     .activity-item {
         grid-template-columns: 36px 1fr 50px;
     }
-    
+
     .activity-bar {
         display: none;
     }
@@ -2031,31 +2040,31 @@ body::before {
     html {
         font-size: 13px;
     }
-    
+
     .navbar-brand {
         gap: 8px;
     }
-    
+
     .brand-badge {
         display: none;
     }
-    
+
     .marine-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .future-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .summary-cards {
         grid-template-columns: 1fr;
     }
-    
+
     .detail-row {
         grid-template-columns: 1fr;
     }
-    
+
     .data-table th:nth-child(n+6),
     .data-table td:nth-child(n+6) {
         display: none;
@@ -2070,14 +2079,14 @@ body::before {
         background: white;
         color: black;
     }
-    
+
     .navbar,
     .btn,
     .pagination,
     .search-box {
         display: none;
     }
-    
+
     .glass-card {
         background: white;
         border: 1px solid #ddd;
@@ -2278,11 +2287,11 @@ body::before {
     background: rgba(255, 255, 255, 0.18);
 }
 
-.timeline-day-temp-grid > div:first-child {
+.timeline-day-temp-grid>div:first-child {
     grid-column: 1;
 }
 
-.timeline-day-temp-grid > div:last-child {
+.timeline-day-temp-grid>div:last-child {
     grid-column: 3;
 }
 
@@ -2399,5 +2408,421 @@ body::before {
     width: 14px;
     color: var(--text-muted);
     font-size: 0.7rem;
+}
+
+
+/* ================================
+   Operational Analysis
+================================ */
+.forecast-operational-section {
+    margin-top: 20px;
+}
+
+.forecast-operational-section .analytics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+}
+
+.forecast-operational-section .analytics-card {
+    overflow: hidden;
+}
+
+.forecast-operational-section .analytics-card .card-header {
+    padding: 14px 18px;
+}
+
+.forecast-operational-section .analytics-card .card-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.forecast-operational-section .observation-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    padding: 1px;
+    background: var(--border-color);
+}
+
+.forecast-operational-section .obs-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px 8px;
+    min-height: 100px;
+    background: var(--bg-glass);
+}
+
+.forecast-operational-section .obs-item.primary {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.12), rgba(168, 85, 247, 0.08));
+}
+
+.forecast-operational-section .obs-item i {
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+.forecast-operational-section .obs-data {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.forecast-operational-section .obs-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.forecast-operational-section .obs-item.primary .obs-value {
+    font-size: 1.45rem;
+}
+
+.forecast-operational-section .obs-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.4px;
+}
+
+.forecast-operational-section .obs-value.safe {
+    color: var(--primary-green);
+}
+
+.forecast-operational-section .obs-value.warning {
+    color: var(--warning);
+}
+
+.forecast-operational-section .obs-value.danger {
+    color: var(--error);
+}
+
+.forecast-operational-section .status-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.forecast-operational-section .status-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 100%;
+    min-height: 220px;
+}
+
+.forecast-operational-section .status-side {
+    width: 100%;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    padding: 28px 24px;
+}
+
+.forecast-operational-section .status-side i {
+    font-size: 2rem;
+}
+
+.forecast-operational-section .status-side h4 {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.forecast-operational-section .status-side p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    max-width: 280px;
+}
+
+.forecast-operational-section .drone-side {
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+
+
+.forecast-operational-section .drone-warning,
+.forecast-operational-section .fire-warning {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.18), rgba(255, 193, 7, 0.08));
+}
+
+.forecast-operational-section .drone-danger,
+.forecast-operational-section .fire-danger {
+    background: linear-gradient(135deg, rgba(255, 80, 80, 0.18), rgba(255, 80, 80, 0.08));
+}
+
+.forecast-operational-section .drone-safe i,
+.forecast-operational-section .drone-safe h4,
+.forecast-operational-section .fire-safe i,
+.forecast-operational-section .fire-safe h4 {
+    color: var(--primary-green);
+}
+
+.forecast-operational-section .drone-warning i,
+.forecast-operational-section .drone-warning h4,
+.forecast-operational-section .fire-warning i,
+.forecast-operational-section .fire-warning h4 {
+    color: var(--warning);
+}
+
+.forecast-operational-section .drone-danger i,
+.forecast-operational-section .drone-danger h4,
+.forecast-operational-section .fire-danger i,
+.forecast-operational-section .fire-danger h4 {
+    color: var(--error);
+}
+
+.forecast-operational-section .drone-safe,
+.forecast-operational-section .sea-safe {
+    background: linear-gradient(
+        135deg,
+        rgba(0,255,136,0.18),
+        rgba(0,255,136,0.08)
+    );
+}
+
+.forecast-operational-section .drone-warning,
+.forecast-operational-section .sea-warning {
+    background: linear-gradient(
+        135deg,
+        rgba(255,193,7,0.18),
+        rgba(255,193,7,0.08)
+    );
+}
+
+.forecast-operational-section .drone-danger,
+.forecast-operational-section .sea-danger {
+    background: linear-gradient(
+        135deg,
+        rgba(255,80,80,0.18),
+        rgba(255,80,80,0.08)
+    );
+}
+
+
+.forecast-operational-section .drone-safe i,
+.forecast-operational-section .drone-safe h4,
+.forecast-operational-section .sea-safe i,
+.forecast-operational-section .sea-safe h4 {
+    color: var(--primary-green);
+}
+
+.forecast-operational-section .drone-warning i,
+.forecast-operational-section .drone-warning h4,
+.forecast-operational-section .sea-warning i,
+.forecast-operational-section .sea-warning h4 {
+    color: var(--warning);
+}
+
+.forecast-operational-section .drone-danger i,
+.forecast-operational-section .drone-danger h4,
+.forecast-operational-section .sea-danger i,
+.forecast-operational-section .sea-danger h4 {
+    color: var(--error);
+}
+
+/* =========================================
+   CONCORDÂNCIA MULTI-MODELO MARÍTIMA
+========================================= */
+
+.forecast-bottom-grid {
+    margin-top: 8px;
+}
+
+.comparison-card .card-header {
+    padding: 12px 16px;
+}
+
+.comparison-card .card-header h3 i {
+    color: #22d3ee;
+}
+
+.comparison-grid {
+
+    padding: 14px 16px;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fit, minmax(220px, 1fr));
+
+    gap: 8px;
+}
+
+
+.comparison-item {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 8px 10px;
+
+    background: rgba(0, 0, 0, 0.20);
+
+    border-radius: var(--radius-md);
+
+}
+
+
+.comp-label {
+
+    font-size: 0.68rem;
+
+    color: var(--text-muted);
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.4px;
+
+}
+
+
+.comp-values {
+
+    display: flex;
+    align-items: center;
+
+    gap: 6px;
+
+}
+
+
+.comp-diff {
+
+    font-size: 0.82rem;
+    font-weight: 700;
+
+    font-family: 'JetBrains Mono', monospace;
+
+    min-width: 55px;
+
+    text-align: right;
+
+}
+
+
+.comp-indicator {
+
+    width: 18px;
+    height: 18px;
+
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 0.58rem;
+
+}
+
+
+.comp-indicator.higher {
+
+    background: rgba(16, 185, 129, 0.20);
+
+    color: var(--success);
+
+}
+
+
+.comp-indicator.lower {
+
+    background: rgba(239, 68, 68, 0.20);
+
+    color: var(--error);
+
+}
+
+
+.comp-indicator.equal {
+
+    background: rgba(148, 163, 184, 0.20);
+
+    color: var(--text-muted);
+
+}
+
+
+.comparison-summary {
+
+    padding: 0 16px 14px;
+
+}
+
+
+.summary-item {
+
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+}
+
+
+.summary-label {
+
+    font-size: 0.75rem;
+
+    color: var(--text-muted);
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.3px;
+
+    white-space: nowrap;
+
+}
+
+
+.summary-value {
+
+    min-width: 50px;
+
+    font-size: 0.85rem;
+    font-weight: 600;
+
+    color: #22d3ee;
+
+}
+
+
+.progress-bar {
+
+    flex: 1;
+
+    height: 6px;
+
+    background: rgba(255,255,255,0.10);
+
+    border-radius: 3px;
+
+    overflow: hidden;
+
+}
+
+
+.progress-fill {
+
+    height: 100%;
+
+    width: 0;
+
+    border-radius: 3px;
+
+    background: linear-gradient(
+        90deg,
+        #0ea5e9,
+        #22d3ee
+    );
+
+    transition: width 0.4s ease;
+
 }
 

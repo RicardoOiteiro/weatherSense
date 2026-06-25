@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WeatherSense — Previsão Marítima | Leiria</title>
-    <link rel="stylesheet" href="css/marine-forecast_vB.css">
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/marine-forecast_vB.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -458,248 +459,255 @@
 
 
         <!-- Marine Forecast Comparison Analytics -->
-        <section class="analytics-section">
+        <section class="forecast-bottom-grid" aria-label="Análise multi-modelo">
+
             <div class="section-header">
-                <h2><i class="fas fa-chart-bar"></i> Análise Comparativa de Previsões</h2>
+                <h2>
+                    <i class="fas fa-cubes"></i>
+                    Análise
+                </h2>
             </div>
 
-            <div class="analytics-grid">
-                <!-- Summary Cards -->
-                <div class="summary-cards">
-                    <div class="summary-card glass-card">
-                        <div class="summary-icon avg">
-                            <i class="fas fa-calculator"></i>
-                        </div>
-                        <div class="summary-content">
-                            <span class="summary-label">Média Previsão</span>
-                            <span class="summary-value" id="avgForecastValue">--</span>
-                        </div>
-                    </div>
-                    <div class="summary-card glass-card">
-                        <div class="summary-icon min">
-                            <i class="fas fa-arrow-down"></i>
-                        </div>
-                        <div class="summary-content">
-                            <span class="summary-label">Mínimo</span>
-                            <span class="summary-value" id="minForecastValue">--</span>
-                        </div>
-                    </div>
-                    <div class="summary-card glass-card">
-                        <div class="summary-icon max">
-                            <i class="fas fa-arrow-up"></i>
-                        </div>
-                        <div class="summary-content">
-                            <span class="summary-label">Máximo</span>
-                            <span class="summary-value" id="maxForecastValue">--</span>
-                        </div>
-                    </div>
-                    <div class="summary-card glass-card">
-                        <div class="summary-icon spread">
-                            <i class="fas fa-arrows-left-right"></i>
-                        </div>
-                        <div class="summary-content">
-                            <span class="summary-label">Dispersão</span>
-                            <span class="summary-value" id="spreadValue">--</span>
-                        </div>
-                    </div>
-                    <div class="summary-card glass-card">
-                        <div class="summary-icon agreement">
-                            <i class="fas fa-handshake"></i>
-                        </div>
-                        <div class="summary-content">
-                            <span class="summary-label">Concordância</span>
-                            <span class="summary-value" id="agreementValue">--%</span>
-                        </div>
-                    </div>
-                    <div class="summary-card glass-card">
-                        <div class="summary-icon records">
-                            <i class="fas fa-database"></i>
-                        </div>
-                        <div class="summary-content">
-                            <span class="summary-label">Registos</span>
-                            <span class="summary-value" id="recordsCount">--</span>
-                        </div>
-                    </div>
+            <div class="comparison-card glass-card">
+
+                <div class="card-header">
+                    <h3>
+                        <i class="fas fa-layer-group"></i>
+                        Concordância Multi-Modelo
+                    </h3>
                 </div>
 
-                <!-- Comparison Panel -->
-                <div class="comparison-panel glass-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-balance-scale"></i> Diferenças entre Fontes</h3>
-                    </div>
-                    <div class="comparison-grid">
-                        <div class="comparison-item">
-                            <span class="comparison-label">Altura Onda</span>
-                            <div class="comparison-bar">
-                                <div class="bar-fill" id="waveHeightDiff" style="width: 0%"></div>
-                            </div>
-                            <span class="comparison-value" id="waveHeightDiffValue">±0.0 m</span>
-                        </div>
-                        <div class="comparison-item">
-                            <span class="comparison-label">Período Onda</span>
-                            <div class="comparison-bar">
-                                <div class="bar-fill" id="wavePeriodDiff" style="width: 0%"></div>
-                            </div>
-                            <span class="comparison-value" id="wavePeriodDiffValue">±0.0 s</span>
-                        </div>
-                        <div class="comparison-item">
-                            <span class="comparison-label">Altura Swell</span>
-                            <div class="comparison-bar">
-                                <div class="bar-fill" id="swellHeightDiff" style="width: 0%"></div>
-                            </div>
-                            <span class="comparison-value" id="swellHeightDiffValue">±0.0 m</span>
-                        </div>
-                        <div class="comparison-item">
-                            <span class="comparison-label">Velocidade Vento</span>
-                            <div class="comparison-bar">
-                                <div class="bar-fill" id="windSpeedDiff" style="width: 0%"></div>
-                            </div>
-                            <span class="comparison-value" id="windSpeedDiffValue">±0 km/h</span>
-                        </div>
-                        <div class="comparison-item">
-                            <span class="comparison-label">Temp. Mar</span>
-                            <div class="comparison-bar">
-                                <div class="bar-fill" id="seaTempDiff" style="width: 0%"></div>
-                            </div>
-                            <span class="comparison-value" id="seaTempDiffValue">±0.0 °C</span>
+                <div class="comparison-grid">
+
+                    <div class="comparison-item">
+                        <span class="comp-label">Altura Onda</span>
+                        <div class="comp-values">
+                            <span class="comp-diff" id="marineWaveSpread">—</span>
+                            <span class="comp-indicator equal" id="marineWaveIndicator">
+                                <i class="fas fa-equals"></i>
+                            </span>
                         </div>
                     </div>
-                    <div class="disagreement-alert" id="disagreementAlert">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span>Desacordo significativo detetado entre fontes</span>
+
+
+                    <div class="comparison-item">
+                        <span class="comp-label">Período Onda</span>
+
+                        <div class="comp-values">
+                            <span class="comp-diff" id="marinePeriodSpread">—</span>
+                            <span class="comp-indicator equal" id="marinePeriodIndicator">
+                                <i class="fas fa-equals"></i>
+                            </span>
+                        </div>
                     </div>
+
+
+
+                    <div class="comparison-item">
+                        <span class="comp-label">Altura Swell</span>
+
+                        <div class="comp-values">
+                            <span class="comp-diff" id="marineSwellSpread">—</span>
+                            <span class="comp-indicator equal" id="marineSwellIndicator">
+                                <i class="fas fa-equals"></i>
+                            </span>
+                        </div>
+                    </div>
+
+
+
+
+                    <div class="comparison-item">
+                        <span class="comp-label">Período Swell</span>
+
+                        <div class="comp-values">
+                            <span class="comp-diff" id="marineSwellPeriodSpread">—</span>
+                            <span class="comp-indicator equal" id="marineSwellPeriodIndicator">
+                                <i class="fas fa-equals"></i>
+                            </span>
+                        </div>
+                    </div>
+
+
+
+
+                    <div class="comparison-item">
+
+                        <span class="comp-label">Temperatura Mar</span>
+
+                        <div class="comp-values">
+                            <span class="comp-diff" id="marineTempSpread">—</span>
+
+                            <span class="comp-indicator equal" id="marineTempIndicator">
+                                <i class="fas fa-equals"></i>
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="comparison-item">
+
+                        <span class="comp-label">Vento</span>
+
+                        <div class="comp-values">
+
+                            <span class="comp-diff" id="marineWindSpread">—</span>
+
+                            <span class="comp-indicator equal" id="marineWindIndicator">
+                                <i class="fas fa-equals"></i>
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+
                 </div>
+
+
+                <div class="comparison-summary">
+
+                    <div class="summary-item">
+
+                        <span class="summary-label">
+
+                            Concordância Geral
+
+                        </span>
+
+
+                        <div class="progress-bar">
+
+                            <div class="progress-fill" id="marineAgreementProgress">
+
+                            </div>
+
+                        </div>
+
+
+                        <span id="marineAgreementValue">
+
+                            —
+
+                        </span>
+
+                    </div>
+
+
+                </div>
+
             </div>
+
         </section>
 
         <!-- Operational Maritime Analysis -->
-        <section class="operational-section">
+        <section class="forecast-operational-section" aria-label="Análise operacional marítima">
             <div class="section-header">
-                <h2><i class="fas fa-ship"></i> Análise Operacional Marítima</h2>
+                <h2><i class="fas fa-chart-pie"></i> Análise Operacional Marítima</h2>
             </div>
 
-            <div class="operational-grid">
-                <!-- Navigation Conditions -->
-                <div class="operational-card glass-card">
+            <div class="analytics-grid">
+
+                <div class="analytics-card drone-card glass-card">
                     <div class="card-header">
-                        <h3><i class="fas fa-compass"></i> Condições de Navegação</h3>
-                        <span class="operational-status good" id="navStatus">Bom</span>
+                        <h3><i class="fas fa-helicopter"></i> Condições para Drone Marítimo</h3>
                     </div>
-                    <div class="operational-gauge">
-                        <svg viewBox="0 0 120 120" class="gauge-svg">
-                            <circle cx="60" cy="60" r="50" class="gauge-bg" />
-                            <circle cx="60" cy="60" r="50" class="gauge-fill" id="navGaugeFill" />
-                            <text x="60" y="55" class="gauge-value" id="navGaugeValue">--%</text>
-                            <text x="60" y="75" class="gauge-label">Operacional</text>
-                        </svg>
-                    </div>
-                    <div class="operational-details">
-                        <div class="detail-item">
-                            <span class="detail-label">Fator Limitante</span>
-                            <span class="detail-value" id="navLimitingFactor">--</span>
+
+                    <div class="observation-grid operational-grid">
+                        <div class="obs-item primary">
+                            <i class="fas fa-signal"></i>
+                            <div class="obs-data">
+                                <span class="obs-value" id="marineDroneScore">—</span>
+                            </div>
+                            <span class="obs-label" id="marineDroneStatusText">—</span>
                         </div>
-                        <div class="detail-row">
-                            <div class="detail-mini">
-                                <span>Altura Onda</span>
-                                <span id="navWaveHeight">-- m</span>
-                            </div>
-                            <div class="detail-mini">
-                                <span>Período</span>
-                                <span id="navWavePeriod">-- s</span>
-                            </div>
+
+                        <div class="obs-item">
+                            <i class="fas fa-wind"></i>
+                            <div class="obs-data"><span class="obs-value" id="marineDroneWind">—</span></div>
+                            <span class="obs-label">Vento</span>
                         </div>
-                        <div class="detail-row">
-                            <div class="detail-mini">
-                                <span>Vento</span>
-                                <span id="navWindSpeed">-- km/h</span>
-                            </div>
-                            <div class="detail-mini">
-                                <span>Visibilidade</span>
-                                <span id="navVisibility">-- km</span>
-                            </div>
+
+                        <div class="obs-item">
+                            <i class="fas fa-burst"></i>
+                            <div class="obs-data"><span class="obs-value" id="marineDroneGust">—</span></div>
+                            <span class="obs-label">Rajada</span>
+                        </div>
+
+                        <div class="obs-item">
+                            <i class="fas fa-water"></i>
+                            <div class="obs-data"><span class="obs-value" id="marineDroneWave">—</span></div>
+                            <span class="obs-label">Altura Onda</span>
+                        </div>
+
+                        <div class="obs-item">
+                            <i class="fas fa-clock"></i>
+                            <div class="obs-data"><span class="obs-value" id="marineDronePeriod">—</span></div>
+                            <span class="obs-label">Período</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Marine Activity Suitability -->
-                <div class="operational-card glass-card">
+                <div class="analytics-card sea-card glass-card">
                     <div class="card-header">
-                        <h3><i class="fas fa-ship"></i> Adequação para Atividades</h3>
+                        <h3><i class="fas fa-water"></i> Estabilidade da Superfície Marítima</h3>
                     </div>
-                    <div class="activity-grid">
-                        <div class="activity-item">
-                            <div class="activity-icon">
-                                <i class="fas fa-sailboat"></i>
-                            </div>
-                            <span class="activity-name">Navegação Recreativa</span>
-                            <div class="activity-bar">
-                                <div class="bar-fill good" id="recreationalBar" style="width: 0%"></div>
-                            </div>
-                            <span class="activity-percent" id="recreationalPercent">--%</span>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-icon">
-                                <i class="fas fa-fish"></i>
-                            </div>
-                            <span class="activity-name">Pesca</span>
-                            <div class="activity-bar">
-                                <div class="bar-fill moderate" id="fishingBar" style="width: 0%"></div>
-                            </div>
-                            <span class="activity-percent" id="fishingPercent">--%</span>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-icon">
-                                <i class="fas fa-person-swimming"></i>
-                            </div>
-                            <span class="activity-name">Surf</span>
-                            <div class="activity-bar">
-                                <div class="bar-fill excellent" id="surfBar" style="width: 0%"></div>
-                            </div>
-                            <span class="activity-percent" id="surfPercent">--%</span>
-                        </div>
-                        <div class="activity-item">
-                            <div class="activity-icon">
-                                <i class="fas fa-anchor"></i>
-                            </div>
-                            <span class="activity-name">Operações Costeiras</span>
-                            <div class="activity-bar">
-                                <div class="bar-fill warning" id="coastalBar" style="width: 0%"></div>
-                            </div>
-                            <span class="activity-percent" id="coastalPercent">--%</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
 
-        <!-- Marine Status Panel -->
-        <section class="status-section">
-            <div class="status-grid">
-                <div class="status-card glass-card nav-status">
-                    <div class="status-header">
-                        <i class="fas fa-ship"></i>
-                        <h3>Estado de Navegação</h3>
+                    <div class="observation-grid operational-grid">
+                        <div class="obs-item primary">
+                            <i class="fas fa-signal"></i>
+                            <div class="obs-data">
+                                <span class="obs-value" id="marineSurfaceScore">—</span>
+                            </div>
+                            <span class="obs-label" id="marineSurfaceStatusText">—</span>
+                        </div>
+
+                        <div class="obs-item">
+                            <i class="fas fa-water"></i>
+                            <div class="obs-data"><span class="obs-value" id="marineSurfaceWave">—</span></div>
+                            <span class="obs-label">Altura Onda</span>
+                        </div>
+
+                        <div class="obs-item">
+                            <i class="fas fa-water"></i>
+                            <div class="obs-data"><span class="obs-value" id="marineSurfaceSwell">—</span></div>
+                            <span class="obs-label">Swell</span>
+                        </div>
+
+                        <div class="obs-item">
+                            <i class="fas fa-compass"></i>
+                            <div class="obs-data"><span class="obs-value" id="marineSurfaceDirection">—</span></div>
+                            <span class="obs-label">Direção</span>
+                        </div>
+
+                        <div class="obs-item">
+                            <i class="fas fa-temperature-half"></i>
+                            <div class="obs-data"><span class="obs-value" id="marineSurfaceTemp">—</span></div>
+                            <span class="obs-label">Temp. Mar</span>
+                        </div>
                     </div>
-                    <div class="status-indicator" id="navStatusIndicator">
-                        <span class="status-level safe">Seguro</span>
-                    </div>
-                    <p class="status-recommendation" id="navRecommendation">
-                        Condições favoráveis para navegação costeira e recreativa.
-                    </p>
                 </div>
 
-                <div class="status-card glass-card sea-status">
-                    <div class="status-header">
-                        <i class="fas fa-water"></i>
-                        <h3>Estado do Mar</h3>
+                <div class="analytics-card glass-card status-card">
+                    <div class="status-split">
+                        <div class="status-side drone-side" id="marineDroneStatusSide">
+                            <i class="fas fa-helicopter"></i>
+                            <h4>Drone Marítimo</h4>
+                            <p id="marineOperationalDroneText">—</p>
+                        </div>
+
+                        <div class="status-side sea-side" id="marineSurfaceStatusSide">
+                            <i class="fas fa-water"></i>
+                            <h4>Superfície Marítima</h4>
+                            <p id="marineOperationalSurfaceText">—</p>
+                        </div>
                     </div>
-                    <div class="status-indicator" id="seaStatusIndicator">
-                        <span class="status-level moderate">Moderado</span>
-                    </div>
-                    <p class="status-recommendation" id="seaRecommendation">
-                        Mar com ondulação moderada. Adequado para embarcações de médio e grande porte.
-                    </p>
                 </div>
+
             </div>
         </section>
 
@@ -795,8 +803,7 @@
                         <tr>
                             <th>Data</th>
                             <th>Hora</th>
-                            <th>Fonte</th>
-                            <th>Modelo</th>
+                            <th>Fonte / Modelo</th>
                             <th>Variável</th>
                             <th>Valor</th>
                             <th>Unidade</th>
