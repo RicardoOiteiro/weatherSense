@@ -22,10 +22,6 @@
             <span class="brand-badge">LEIRIA</span>
         </div>
         <div class="navbar-menu">
-            <a href="#" class="nav-item">
-                <i class="fas fa-map-marked-alt"></i>
-                <span>Mapa / APIs</span>
-            </a>
             <a href="observations_vB.html" class="nav-item">
                 <i class="fas fa-eye"></i>
                 <span>Observações</span>
@@ -37,10 +33,6 @@
             <a href="terrestrial-forecast_vB.html" class="nav-item">
                 <i class="fas fa-mountain-sun"></i>
                 <span>Previsão Terrestre</span>
-            </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-chart-line"></i>
-                <span>Dados e Análises</span>
             </a>
         </div>
         <div class="navbar-actions">
@@ -80,15 +72,7 @@
                 <div class="map-legend">
                     <div class="legend-item">
                         <span class="legend-marker ipma-marine"></span>
-                        <span>IPMA Marine</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-marker openmeteo-marine"></span>
-                        <span>Open-Meteo Marine</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-marker wwo-marine"></span>
-                        <span>WorldWeatherOnline</span>
+                        <span>Pontos a selecionar</span>
                     </div>
                     <div class="legend-item">
                         <span class="legend-marker selected"></span>
@@ -99,7 +83,7 @@
 
             <div class="location-panel glass-card">
                 <div class="card-header">
-                    <h3><i class="fas fa-location-dot"></i> Ponto Marítimo Selecionado</h3>
+                    <h3><i class="fas fa-location-dot"></i> Previsões Marítimas - Pontos Específicos</h3>
                     <span class="status-badge online">
                         <i class="fas fa-circle"></i> Online
                     </span>
@@ -110,18 +94,8 @@
                             <i class="fas fa-anchor"></i>
                         </div>
                         <div class="location-info">
-                            <h4 id="selectedLocationName">Costa de Nazaré</h4>
-                            <p id="selectedLocationCoords">39.6011° N, 9.0711° W</p>
-                        </div>
-                    </div>
-                    <div class="location-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">Distância à Costa</span>
-                            <span class="stat-value" id="distanceToCoast">5.2 km</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Horizonte de Previsão</span>
-                            <span class="stat-value">72 horas</span>
+                            <h4 id="selectedLocationName">-</h4>
+                            <p id="selectedLocationCoords">-</p>
                         </div>
                     </div>
                 </div>
@@ -132,8 +106,11 @@
                             <i class="fas fa-water"></i>
                         </div>
                         <div class="source-info">
-                            <span class="source-name">IPMA Marine</span>
-                            <span class="source-desc">Previsão institucional</span>
+                            <span class="source-name">IPMA (ECMWF + AROME)</span>
+                            <span class="source-desc">
+                                <i class="fas fa-calendar-days"></i>
+                                Diário
+                            </span>
                         </div>
                         <span class="source-status active">
                             <i class="fas fa-check-circle"></i>
@@ -144,8 +121,11 @@
                             <i class="fas fa-wave-square"></i>
                         </div>
                         <div class="source-info">
-                            <span class="source-name">Open-Meteo Marine</span>
-                            <span class="source-desc">Multi-variável</span>
+                            <span class="source-name">Open-Meteo (DWD EWAM)</span>
+                            <span class="source-desc">
+                                <i class="fas fa-clock"></i>
+                                Horária
+                            </span>
                         </div>
                         <span class="source-status active">
                             <i class="fas fa-check-circle"></i>
@@ -156,11 +136,14 @@
                             <i class="fas fa-globe"></i>
                         </div>
                         <div class="source-info">
-                            <span class="source-name">WorldWeatherOnline</span>
-                            <span class="source-desc">Atual apenas</span>
+                            <span class="source-name">WorldWeatherOnline (WWO)</span>
+                            <span class="source-desc source-desc-limited">
+                                <i class="fas fa-triangle-exclamation"></i>
+                                100 req/dia
+                            </span>
                         </div>
-                        <span class="source-status limited">
-                            <i class="fas fa-exclamation-circle"></i>
+                        <span class="source-status active">
+                            <i class="fas fa-check-circle"></i>
                         </span>
                     </div>
                 </div>
@@ -182,9 +165,9 @@
                     <div class="card-header">
                         <div class="source-badge ipma-marine">
                             <i class="fas fa-water"></i>
-                            <span>IPMA Marine</span>
+                            <span>IPMA</span>
                         </div>
-                        <span class="observation-time" id="ipmaCurrentTime">Diário</span>
+                        <span class="observation-time" id="ipmaCurrentTime">--:--</span>
                     </div>
                     <div class="marine-grid">
                         <div class="marine-item primary">
@@ -258,6 +241,13 @@
                             <span class="marine-label">Rajada</span>
                         </div>
                     </div>
+                    <div class="card-footer">
+                        <span class="distance-info">
+                            <i class="fas fa-route"></i>
+                            Distância:
+                            <span id="ipmaCardDistance">—</span>
+                        </span>
+                    </div>
                 </div>
 
                 <!-- Open-Meteo Marine Card -->
@@ -265,7 +255,7 @@
                     <div class="card-header">
                         <div class="source-badge openmeteo-marine">
                             <i class="fas fa-wave-square"></i>
-                            <span>Open-Meteo Marine</span>
+                            <span>Open-Meteo</span>
                         </div>
                         <span class="observation-time" id="openmeteoCurrentTime">--:--</span>
                     </div>
@@ -341,6 +331,13 @@
                             <span class="marine-label">Rajada</span>
                         </div>
                     </div>
+                    <div class="card-footer">
+                        <span class="distance-info">
+                            <i class="fas fa-route"></i>
+                            Distância:
+                            <span id="openmeteoCardDistance">—</span>
+                        </span>
+                    </div>
                 </div>
 
                 <!-- WorldWeatherOnline Card (Current Only) -->
@@ -350,7 +347,7 @@
                             <i class="fas fa-globe"></i>
                             <span>WorldWeatherOnline</span>
                         </div>
-                        <span class="current-only-badge">Atual apenas</span>
+                        <span class="observation-time" id="wwoCurrentTime">--:--</span>
                     </div>
                     <div class="marine-grid">
                         <div class="marine-item primary">
@@ -424,7 +421,13 @@
                             </div>
                             <span class="marine-label">Rajada</span>
                         </div>
-
+                    </div>
+                    <div class="card-footer">
+                        <span class="distance-info">
+                            <i class="fas fa-route"></i>
+                            Distância:
+                            <span id="wwoCardDistance">—</span>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -435,15 +438,15 @@
         <!-- ========================================= -->
         <section class="timeline-section" aria-label="Previsões marítimas futuras">
             <div class="section-header">
-                <h2><i class="fas fa-timeline" aria-hidden="true"></i> Previsões Futuras Marítimas</h2>
+                <h2><i class="fas fa-timeline" aria-hidden="true"></i> Previsões Futuras Marítimas (24H)</h2>
             </div>
 
             <div class="forecast-model-tabs" role="tablist" aria-label="Fornecedor de previsão marítima">
                 <button class="forecast-model-tab active" data-provider="ipma" role="tab" aria-selected="true">
-                    IPMA Marine
+                    IPMA
                 </button>
                 <button class="forecast-model-tab" data-provider="openmeteo" role="tab" aria-selected="false">
-                    Open-Meteo Marine
+                    Open-Meteo
                 </button>
                 <button class="forecast-model-tab" data-provider="worldweatheronline" role="tab" aria-selected="false">
                     WorldWeatherOnline
@@ -473,7 +476,7 @@
                 <div class="card-header">
                     <h3>
                         <i class="fas fa-layer-group"></i>
-                        Concordância Multi-Modelo
+                        Concordância entre fontes
                     </h3>
                 </div>
 
@@ -614,7 +617,7 @@
 
                 <div class="analytics-card drone-card glass-card">
                     <div class="card-header">
-                        <h3><i class="fas fa-helicopter"></i> Condições para Drone Marítimo</h3>
+                        <h3><i class="fas fa-helicopter"></i> Condições para Drone </h3>
                     </div>
 
                     <div class="observation-grid operational-grid">
@@ -654,7 +657,7 @@
 
                 <div class="analytics-card sea-card glass-card">
                     <div class="card-header">
-                        <h3><i class="fas fa-water"></i> Estabilidade da Superfície Marítima</h3>
+                        <h3><i class="fas fa-water"></i> Condições do Mar</h3>
                     </div>
 
                     <div class="observation-grid operational-grid">
@@ -757,24 +760,36 @@
                 </div>
 
                 <div class="history-summary-cards">
-                    <div class="history-summary-card glass-card">
-                        <span class="history-label">Média Histórica</span>
-                        <span class="history-value" id="historyAvg">--</span>
+                    <div class="summary-card glass-card">
+                        <div class="summary-icon avg"><i class="fas fa-calculator"></i></div>
+                        <div class="summary-content">
+                            <span class="summary-label">Média</span>
+                            <span class="summary-value" id="historyAvg">—</span>
+                        </div>
                     </div>
 
-                    <div class="history-summary-card glass-card">
-                        <span class="history-label">Mínimo Histórico</span>
-                        <span class="history-value" id="historyMin">--</span>
+                    <div class="summary-card glass-card">
+                        <div class="summary-icon min"><i class="fas fa-arrow-down"></i></div>
+                        <div class="summary-content">
+                            <span class="summary-label">Mínimo</span>
+                            <span class="summary-value" id="historyMin">—</span>
+                        </div>
                     </div>
 
-                    <div class="history-summary-card glass-card">
-                        <span class="history-label">Máximo Histórico</span>
-                        <span class="history-value" id="historyMax">--</span>
+                    <div class="summary-card glass-card">
+                        <div class="summary-icon max"><i class="fas fa-arrow-up"></i></div>
+                        <div class="summary-content">
+                            <span class="summary-label">Máximo</span>
+                            <span class="summary-value" id="historyMax">—</span>
+                        </div>
                     </div>
 
-                    <div class="history-summary-card glass-card">
-                        <span class="history-label">Total Registos</span>
-                        <span class="history-value" id="historyTotal">--</span>
+                    <div class="summary-card glass-card">
+                        <div class="summary-icon records"><i class="fas fa-database"></i></div>
+                        <div class="summary-content">
+                            <span class="summary-label">Registos</span>
+                            <span class="summary-value" id="historyTotal">—</span>
+                        </div>
                     </div>
                 </div>
 
@@ -791,6 +806,25 @@
                         <i class="fas fa-search"></i>
                         <input type="text" id="tableSearch" placeholder="Pesquisar registos...">
                     </div>
+                    <select id="historyTableVariable" class="control-select">
+
+                        <option value="">Todas</option>
+
+                        <option value="waveHeight">Altura Onda</option>
+                        <option value="wavePeriod">Período Onda</option>
+
+                        <option value="swellHeight">Altura Swell</option>
+                        <option value="swellPeriod">Período Swell</option>
+
+                        <option value="seaTemperature">Temp. Mar</option>
+
+                        <option value="windSpeed">Vento</option>
+
+                        <option value="windGust">Rajada</option>
+
+                        <option value="currentSpeed">Corrente</option>
+
+                    </select>
                     <button class="btn btn-secondary" id="exportCsv">
                         <i class="fas fa-download"></i> Exportar CSV
                     </button>

@@ -15,7 +15,7 @@ VALUES
 
 INSERT INTO source_dimension (name, base_url, weather_model, update_interval_hour, data_nature, data_type)
 VALUES
-('worldweatheronline', 'https://api.worldweatheronline.com/premium/v1/marine.ashx', 'Proprietary Model - WWO', NULL, 'forecast', 'marine'),
+('worldweatheronline', 'https://api.worldweatheronline.com/premium/v1/marine.ashx', 'WWO', NULL, 'forecast', 'marine'),
 ('open-meteo', 'https://api.open-meteo.com/v1/forecast', 'ECMWF', 6, 'forecast', 'terrestrial'),
 ('open-meteo', 'https://api.open-meteo.com/v1/forecast', 'ICON', 3, 'forecast', 'terrestrial'),
 ('open-meteo', 'https://api.open-meteo.com/v1/forecast', 'ARPEGE & AROME', 6, 'forecast', 'terrestrial'),
@@ -23,7 +23,7 @@ VALUES
 ('ipma', 'https://api.ipma.pt/public-data/forecast/aggregate/{global_id}.json', 'ECMWF + AROME', 12, 'forecast', 'terrestrial'),
 ('ipma', 'https://api.ipma.pt/open-data/forecast/oceanography/daily/hp-daily-sea-forecast-day{id_day}.json', 'ECMWF + AROME', 12, 'forecast', 'marine'),
 ('ipma', 'https://api.ipma.pt/open-data/observation/meteorology/stations/observations.json', NULL, 1, 'observation', 'terrestrial'),
-('openweather', 'https://api.openweathermap.org/data/2.5/forecast', 'Proprietary Model - OpenWeather', NULL, 'forecast', 'terrestrial'),
+('openweather', 'https://api.openweathermap.org/data/2.5/forecast', 'OpenWeather', NULL, 'forecast', 'terrestrial'),
 ('foreca', 'https://pfa.foreca.com/api/v1/observation/latest/{lon},{lat}', NULL, NULL, 'observation', 'terrestrial');
 
 
