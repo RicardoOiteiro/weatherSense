@@ -4,7 +4,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.services.observation.foreca_observation_service import get_foreca_observation
 from app.services.observation.ipma_observation_service import get_ipma_observation
-from app.utils.excel_storage import guardar_json_normalizado_em_excel
 from app.services.marine.worldweather_service import get_wwo_marine
 from app.services.marine.openmeteo_marine_service import get_openmeteo_marine
 from app.services.marine.ipma_marine_service import get_ipma_marine_daily
@@ -51,8 +50,7 @@ def get_weather_observation(lat: float, lon: float):
             "foreca": foreca_data,
             "ipma": ipma_data
         }
-    
-        #guardar_json_normalizado_em_excel(resultado_final)
+
 
         return resultado_final
 
