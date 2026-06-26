@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initializeMarineHistoryChart();
     initializeMarineHistoryListeners();
 
-    loadInitialData();
+    //loadInitialData();
 
     setInterval(refreshCurrentData, 300000);
 });
@@ -673,8 +673,13 @@ function updateCurrentConditions(data) {
 
 function updateLastUpdateTime() {
     const now = new Date();
-    const timeStr = now.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-    document.getElementById('currentUpdateTime').textContent = timeStr;
+
+    const timeStr = now.toLocaleTimeString('pt-PT', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    setText('currentUpdateTime', timeStr);
 }
 
 // ================================

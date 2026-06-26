@@ -726,8 +726,15 @@ body::before {
 
 .distance-info i {
     font-size: 0.9rem;
+
     color: var(--primary-cyan);
 }
+
+#ipmaCardDistance,
+#forecaCardDistance {
+    color: var(--text-primary);
+}
+
 
 /* ================================
    Comparação
@@ -1423,4 +1430,41 @@ body::before {
     .observation-grid {
         grid-template-columns: 1fr;
     }
+}
+
+.ipma .source-name {
+    color: var(--success);
+}
+
+.foreca .source-name {
+    color: var(--primary-cyan);
+}
+
+.source-desc {
+    align-self: flex-start;
+
+    margin-top: 4px;
+
+    padding: 2px 6px;
+
+    border-radius: 6px;
+
+    background: rgba(34, 211, 238, 0.10);
+    border: 1px solid rgba(34, 211, 238, 0.20);
+
+    color: var(--primary-cyan);
+
+    font-size: 0.72rem;
+}
+
+
+.table-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.table-variable-filter {
+    width: 200px;
+    flex-shrink: 0;
 }

@@ -201,7 +201,8 @@ function mapCurrentForecast(data) {
         sunset: values.sunsetH?.value ?? null,
         forecastTime: data.time ?? '—',
         forecastDate: data.date ?? '—',
-        model: data.model ?? '—'
+        model: data.model ?? '—',
+        distanceKm: data.distanceKm ?? null,
     };
 }
 
@@ -242,6 +243,8 @@ async function getForecastRecordsPage(page = 1) {
     const { lat, lng } = appState.selectedLocation;
     const pageSize = appState.pagination.itemsPerPage;
     const search = document.getElementById('tableSearch')?.value.trim() || '';
+    const variable =
+        document.getElementById('forecastTableVariable')?.value || '';
 
     const params = new URLSearchParams({
         lat,
@@ -252,6 +255,10 @@ async function getForecastRecordsPage(page = 1) {
 
     if (search) {
         params.append('search', search);
+    }
+
+    if (variable) {
+        params.append('variable', variable);
     }
 
     const response = await fetch(`/data/forecast/terrestrial/records?${params.toString()}`);
@@ -297,13 +304,13 @@ async function getHistoricalForecastData() {
 document.addEventListener('DOMContentLoaded', function () {
     initializeMap();
     initializeEventListeners();
-    loadInitialData();
+   
     initializeTable();
     updateLastUpdateTime();
     initializeForecastTabs();
     initializeForecastHistoryChart();
     initializeForecastHistoryListeners();
-    refreshAfterLocationChange();
+    //refreshAfterLocationChange();
 
     // Auto-refresh every 10 minutes
     // setInterval(refreshForecastData, 600000);
@@ -353,6 +360,8 @@ function initializeMap() {
     document.getElementById('centerMap')?.addEventListener('click', () => {
         map.setView([39.7436, -8.8071], 8);
     });
+
+    selectLocation(39.735122, -8.821217, 'ESTG Leiria');
 }
 
 function addDistrictBoundary() {
@@ -501,6 +510,7 @@ async function fetchCurrentForecast() {
         };
 
         appState.currentData = currentData;
+        updateForecastDistance();
 
         if (currentData.openweather) {
             updateOpenWeatherCard(currentData.openweather);
@@ -549,9 +559,11 @@ function updateOpenWeatherCard(data) {
         : '—'
     );
     setText('owPrecip', data.precipitation != null ? `${data.precipitation}%` : '—');
-    setText('owForecastTime', data.forecastTime !== '—'
-        ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
-        : '—'
+    setText(
+        'openweatherForecastTime',
+        data.forecastTime
+            ? data.forecastTime.substring(0, 5)
+            : '—'
     );
 }
 
@@ -567,9 +579,11 @@ function updateIpmaCard(data) {
         ? `${data.precipitation}%`
         : '—'
     );
-    setText('ipmaForecastTime', data.forecastTime !== '—'
-        ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
-        : '—'
+    setText(
+        'ipmaForecastTime',
+        data.forecastTime
+            ? data.forecastTime.substring(0, 5)
+            : '—'
     );
 }
 
@@ -598,7 +612,7 @@ function updateOpenMeteoCard(modelKey, data) {
 
     if (modelKey === 'icon') {
         setText('openmeteoForecastTime', data.forecastTime !== '—'
-            ? `${data.forecastDate} ${data.forecastTime.slice(0, 5)}`
+            ? `${data.forecastTime.slice(0, 5)}`
             : '—'
         );
     }
@@ -662,7 +676,7 @@ async function initializeTimeline() {
 
             html = renderTimelineModelRow({
                 provider: 'OpenWeather',
-                model: 'OWM',
+                model: 'OW',
                 frequency: '3H',
                 data: timelineData
             });
@@ -1323,6 +1337,13 @@ function initializeEventListeners() {
         loadRecordsData(1);
     });
     document.getElementById('exportCsv')?.addEventListener('click', exportToCsv);
+    document.getElementById('forecastTableVariable')
+        ?.addEventListener('change', function () {
+            loadRecordsData(1);
+        });
+        
+
+
 
 
 
@@ -1360,4 +1381,41 @@ function updateLastUpdateTime() {
             minute: '2-digit'
         });
     }
+}
+
+function updateForecastDistance() {
+    setText(
+        'iconCardDistance',
+        appState.currentData.icon?.distanceKm != null
+            ? `${appState.currentData.icon.distanceKm.toFixed(2)} km`
+            : '—'
+    );
+
+    setText(
+        'ecmwfCardDistance',
+        appState.currentData.ecmwf?.distanceKm != null
+            ? `${appState.currentData.ecmwf.distanceKm.toFixed(2)} km`
+            : '—'
+    );
+
+    setText(
+        'arpegeCardDistance',
+        appState.currentData.arpege?.distanceKm != null
+            ? `${appState.currentData.arpege.distanceKm.toFixed(2)} km`
+            : '—'
+    );
+
+    setText(
+        'ipmaCardDistance',
+        appState.currentData.ipma?.distanceKm != null
+            ? `${appState.currentData.ipma.distanceKm.toFixed(2)} km`
+            : '—'
+    );
+
+    setText(
+        'openweatherCardDistance',
+        appState.currentData.openweather?.distanceKm != null
+            ? `${appState.currentData.openweather.distanceKm.toFixed(2)} km`
+            : '—'
+    );
 }

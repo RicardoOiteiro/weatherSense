@@ -384,9 +384,23 @@ def get_observations_table(
     lon: float,
     page: int = 1,
     page_size: int = 25,
-    search: str | None = None
+    search: str | None = None,
+    variable: str | None = None
 ):
     conn = get_connection()
+
+    variable_map = {
+        "temperature": "temperatureC",
+        "humidity": "humidityPercent",
+        "pressure": "pressureHpa",
+        "visibility": "visibilityKm",
+        "windSpeed": "windSpeedKmh",
+        "windGust": "windGustKmh",
+        "windDirection": "windDirectionDegrees",
+        "windDirectionCardinal": "windDirectionCardinal",
+        "precipitation": "precipitationMm",
+        "precipitationPeriod": "precipitationPeriod"
+    }
 
     try:
         page = max(page, 1)
@@ -395,6 +409,7 @@ def get_observations_table(
 
         with conn.cursor() as cursor:
             params = [str(lat), str(lon)]
+            selected_variable = variable_map.get(variable)
 
             where_clause = """
                 WHERE mf.data_status = 'observation'
@@ -413,6 +428,12 @@ def get_observations_table(
                 """
                 term = f"%{search.lower()}%"
                 params.extend([term, term, term, term])
+
+            if selected_variable:
+                where_clause += """
+                    AND vd.field_name = %s
+                """
+                params.append(selected_variable)
 
             count_sql = f"""
                 SELECT COUNT(*)
@@ -965,26 +986,46 @@ def get_terrestrial_forecast_history(
     finally:
         conn.close()
 
+
 @app.get("/data/forecast/terrestrial/records")
 def get_terrestrial_forecast_records(
     lat: float,
     lon: float,
     page: int = 1,
     page_size: int = 10,
-    search: str | None = None
+    search: str | None = None,
+    variable: str | None = None
 ):
     conn = get_connection()
 
+    page = max(page, 1)
+    page_size = min(max(page_size, 1), 100)
     offset = (page - 1) * page_size
+
+    variable_map = {
+        "temperature": "temperatureC",
+        "temperatureMin": "temperatureMinC",
+        "temperatureMax": "temperatureMaxC",
+        "feelsLike": "feelsLikeTemperatureC",
+        "humidity": "humidityPercent",
+        "pressure": "pressureHpa",
+        "cloudCover": "cloudCoverPercent",
+        "visibility": "visibilityKm",
+        "windSpeed": "windSpeedKmh",
+        "windGust": "windGustKmh",
+        "windDirection": "windDirectionDegrees",
+        "precipitation": "precipitationMm",
+        "precipitationProbability": "precipitationProbabilityPercent"
+    }
+
+    selected_variable = variable_map.get(variable)
 
     try:
         with conn.cursor() as cursor:
-            params = [
-                str(lat),
-                str(lon)
-            ]
+            params = [str(lat), str(lon)]
 
             search_clause = ""
+            variable_clause = ""
 
             if search:
                 search_clause = """
@@ -998,7 +1039,11 @@ def get_terrestrial_forecast_records(
                 term = f"%{search}%"
                 params.extend([term, term, term, term])
 
-            count_params = tuple(params)
+            if selected_variable:
+                variable_clause = """
+                    AND vd.field_name = %s
+                """
+                params.append(selected_variable)
 
             cursor.execute(
                 f"""
@@ -1013,13 +1058,12 @@ def get_terrestrial_forecast_records(
                   AND mf.raw_json->'requestedLocation'->>'latitude' = %s
                   AND mf.raw_json->'requestedLocation'->>'longitude' = %s
                   {search_clause}
+                  {variable_clause}
                 """,
-                count_params
+                tuple(params)
             )
 
             total = cursor.fetchone()[0]
-
-            params.extend([page_size, offset])
 
             cursor.execute(
                 f"""
@@ -1049,10 +1093,11 @@ def get_terrestrial_forecast_records(
                   AND mf.raw_json->'requestedLocation'->>'latitude' = %s
                   AND mf.raw_json->'requestedLocation'->>'longitude' = %s
                   {search_clause}
+                  {variable_clause}
                 ORDER BY cd_req.date DESC, hd_req.full_time DESC, mf.id_measurement DESC
                 LIMIT %s OFFSET %s
                 """,
-                tuple(params)
+                tuple(params + [page_size, offset])
             )
 
             rows = cursor.fetchall()
@@ -1068,7 +1113,7 @@ def get_terrestrial_forecast_records(
                         ),
                         "variable": row[5] or row[4],
                         "value": row[7] if row[7] is not None else row[8],
-                        "unit": row[6],
+                        "unit": row[6] or "",
                         "lat": row[9],
                         "lng": row[10]
                     }
@@ -1084,7 +1129,6 @@ def get_terrestrial_forecast_records(
 
     finally:
         conn.close()
-
 
 @app.get("/data/forecast/terrestrial/timeline")
 def get_terrestrial_forecast_timeline(
@@ -1725,7 +1769,6 @@ def get_marine_forecast_history(
     finally:
         conn.close()
 
-
 @app.get("/data/forecast/marine/records")
 def get_marine_forecast_records(
     lat: float,
@@ -1742,14 +1785,17 @@ def get_marine_forecast_records(
     offset = (page - 1) * page_size
 
     variable_map = {
-        "waveHeight": "Wave height",
-        "wavePeriod": "Wave period",
-        "swellHeight": "Swell height",
-        "swellPeriod": "Swell period",
-        "seaTemperature": "Sea water temperature",
-        "windSpeed": "Wind speed",
-        "windGust": "Wind gust speed",
-        "currentSpeed": "Sea current speed"
+        "waveHeight": "waveHeightM",
+        "wavePeriod": "wavePeriodS",
+        "swellHeight": "swellHeightM",
+        "swellPeriod": "swellPeriodS",
+        "seaTemperature": "waterTemperatureC",
+        "windSpeed": "windSpeedKmh",
+        "windGust": "windGustKmh",
+        "waveDirection": "waveDirectionDegrees",
+        "swellDirection": "swellDirectionDegrees",
+        "currentDirection": "currentDirectionDegrees",
+        "currentSpeed": "currentSpeedMs"
     }
 
     selected_variable = variable_map.get(variable)
@@ -1762,7 +1808,6 @@ def get_marine_forecast_records(
             search_clause = ""
             variable_clause = ""
 
-            # Pesquisa textual
             if search:
                 search_clause = """
                     AND (
@@ -1776,212 +1821,110 @@ def get_marine_forecast_records(
                 term = f"%{search}%"
                 params.extend([term, term, term, term])
 
-
-            # Filtro por variável
             if selected_variable:
-
                 variable_clause = """
-                    AND COALESCE(vd.description, vd.field_name) = %s
+                    AND vd.field_name = %s
                 """
-
                 params.append(selected_variable)
 
-
-
-            ####################################
-            # Total
-            ####################################
+            count_params = tuple(params)
 
             cursor.execute(
                 f"""
                 SELECT COUNT(*)
-
                 FROM measurement_facts mf
-
                 JOIN source_dimension sd
                     ON mf.id_source = sd.id_source
-
                 JOIN variable_dimension vd
                     ON mf.id_variable = vd.id_variable
-
-
-                WHERE mf.data_status='forecast'
-
-                AND LOWER(sd.data_type)='marine'
-
-                AND mf.raw_json->'requestedLocation'->>'latitude'=%s
-
-                AND mf.raw_json->'requestedLocation'->>'longitude'=%s
-
-
-                {search_clause}
-
-                {variable_clause}
-
+                WHERE mf.data_status = 'forecast'
+                  AND LOWER(sd.data_type) = 'marine'
+                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
+                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                  {search_clause}
+                  {variable_clause}
                 """,
-
-                tuple(params)
-
+                count_params
             )
 
             total = cursor.fetchone()[0]
 
-
-            ####################################
-            # Registos
-            ####################################
+            params.extend([page_size, offset])
 
             cursor.execute(
                 f"""
                 SELECT
-
                     cd_req.date,
-
                     hd_req.full_time,
-
                     sd.name,
-
                     sd.weather_model,
-
                     vd.field_name,
-
                     vd.description,
-
                     vd.unit,
-
                     mf.value,
-
                     mf.value_text,
-
                     mf.raw_json->'requestedLocation'->>'latitude',
-
                     mf.raw_json->'requestedLocation'->>'longitude'
 
-
-
                 FROM measurement_facts mf
-
 
                 JOIN source_dimension sd
                     ON mf.id_source = sd.id_source
 
-
                 JOIN variable_dimension vd
                     ON mf.id_variable = vd.id_variable
-
 
                 JOIN calendar_dimension cd_req
                     ON mf.id_date_request = cd_req.id_date
 
-
                 JOIN hour_dimension hd_req
                     ON mf.id_hour_request = hd_req.id_hour
 
-
-
-                WHERE mf.data_status='forecast'
-
-                AND LOWER(sd.data_type)='marine'
-
-                AND mf.raw_json->'requestedLocation'->>'latitude'=%s
-
-                AND mf.raw_json->'requestedLocation'->>'longitude'=%s
-
-
-                {search_clause}
-
-                {variable_clause}
-
+                WHERE mf.data_status = 'forecast'
+                  AND LOWER(sd.data_type) = 'marine'
+                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
+                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                  {search_clause}
+                  {variable_clause}
 
                 ORDER BY
-
                     cd_req.date DESC,
-
                     hd_req.full_time DESC,
-
                     mf.id_measurement DESC
 
-
-                LIMIT %s
-
-                OFFSET %s
-
+                LIMIT %s OFFSET %s
                 """,
-
-                tuple(params + [page_size, offset])
-
+                tuple(params)
             )
-
 
             rows = cursor.fetchall()
 
-
             return {
-
                 "rows": [
-
                     {
-
                         "date": str(row[0]),
-
                         "time": str(row[1]),
-
-
                         "source": (
-
                             f"{row[2]} · {row[3]}"
-
-                            if row[3]
-
-                            else row[2]
-
+                            if row[3] else row[2]
                         ),
-
-
                         "variable": row[5] or row[4],
-
-
-                        "value": (
-
-                            row[7]
-
-                            if row[7] is not None
-
-                            else row[8]
-
-                        ),
-
-
+                        "value": row[7] if row[7] is not None else row[8],
                         "unit": row[6] or "",
-
-
                         "lat": row[9],
-
                         "lng": row[10]
-
                     }
-
                     for row in rows
-
                 ],
-
-
                 "page": page,
-
                 "pageSize": page_size,
-
                 "total": total
-
             }
 
     except Exception as e:
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
-
+        raise HTTPException(status_code=500, detail=str(e))
 
     finally:
-
         conn.close()
+
+

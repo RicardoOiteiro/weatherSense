@@ -219,6 +219,9 @@ async function getTableObservationData(page = 1) {
     const pageSize = appState.pagination.itemsPerPage;
     const search = getEl('tableSearch')?.value.trim() || '';
 
+    const variable =
+        getEl('historyTableVariable')?.value || '';
+
     const params = new URLSearchParams({
         lat,
         lon: lng,
@@ -228,6 +231,10 @@ async function getTableObservationData(page = 1) {
 
     if (search) {
         params.append('search', search);
+    }
+
+    if (variable) {
+        params.append('variable', variable);
     }
 
     const response = await fetch(`/data/observations/records?${params.toString()}`);
@@ -246,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeMap();
     initializeCharts();
     initializeEventListeners();
-    loadInitialData();
+   
     updateLastUpdateTime();
 
     setInterval(refreshCurrentData, 300000);
@@ -339,6 +346,7 @@ function initializeMap() {
     getEl('centerMap')?.addEventListener('click', () => {
         map.setView([39.7436, -8.8071], 8);
     });
+    selectLocation(39.735122, -8.821217, 'ESTG Leiria');
 }
 
 function addDistrictBoundary() {
@@ -1048,4 +1056,12 @@ function initializeEventListeners() {
     getEl('tableSearch')?.addEventListener('input', searchTable);
     getEl('prevPage')?.addEventListener('click', () => changePage(-1));
     getEl('nextPage')?.addEventListener('click', () => changePage(1));
+    getEl('historyTableVariable')
+        ?.addEventListener('change', () => {
+
+            appState.pagination.currentPage = 1;
+
+            loadTableData(1);
+
+        });
 }

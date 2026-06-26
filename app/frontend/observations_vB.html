@@ -24,11 +24,6 @@
         </div>
 
         <div class="navbar-menu">
-            <a href="#" class="nav-item">
-                <i class="fas fa-map-marked-alt" aria-hidden="true"></i>
-                <span>Mapa / APIs</span>
-            </a>
-
             <a href="observations_vB.html" class="nav-item active" aria-current="page">
                 <i class="fas fa-cloud-sun" aria-hidden="true"></i>
                 <span>Observações</span>
@@ -42,11 +37,6 @@
             <a href="terrestrial-forecast_vB.html" class="nav-item">
                 <i class="fas fa-mountain-sun" aria-hidden="true"></i>
                 <span>Previsão Terrestre</span>
-            </a>
-
-            <a href="#" class="nav-item">
-                <i class="fas fa-chart-line" aria-hidden="true"></i>
-                <span>Dados e Análises</span>
             </a>
         </div>
 
@@ -76,7 +66,8 @@
                     </h3>
 
                     <div class="map-controls" aria-label="Controlos do mapa">
-                        <button class="btn-icon" id="zoomIn" type="button" title="Aproximar" aria-label="Aproximar mapa">
+                        <button class="btn-icon" id="zoomIn" type="button" title="Aproximar"
+                            aria-label="Aproximar mapa">
                             <i class="fas fa-plus" aria-hidden="true"></i>
                         </button>
 
@@ -128,53 +119,45 @@
                             <p id="selectedLocationCoords">39.7436° N, 8.8071° W</p>
                         </div>
                     </div>
-
-                    <div class="location-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">Altitude</span>
-                            <span class="stat-value" id="locationAltitude">50 m</span>
-                        </div>
-
-                        <div class="stat-item">
-                            <span class="stat-label">Distrito</span>
-                            <span class="stat-value">Leiria</span>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="sources-panel">
                     <h4>
-                        <i class="fas fa-satellite-dish" aria-hidden="true"></i>
+                        <i class="fas fa-satellite-dish"></i>
                         Fontes/Estações Disponíveis
                     </h4>
 
                     <div class="source-item">
                         <div class="source-icon ipma">
-                            <i class="fas fa-cloud" aria-hidden="true"></i>
+                            <i class="fas fa-cloud"></i>
                         </div>
 
                         <div class="source-info">
-                            <span class="source-name" id="ipmaStationName">IPMA</span>
-                            <span class="source-distance" id="ipmaDistance">—</span>
+                            <span class="source-name">IPMA</span>
+                            <span class="source-desc" id="ipmaStationName">
+                                Leiria (Aeródromo)
+                            </span>
                         </div>
 
-                        <span class="source-status active" title="Fonte ativa">
-                            <i class="fas fa-check-circle" aria-hidden="true"></i>
+                        <span class="source-status active">
+                            <i class="fas fa-check-circle"></i>
                         </span>
                     </div>
 
                     <div class="source-item">
                         <div class="source-icon foreca">
-                            <i class="fas fa-wind" aria-hidden="true"></i>
+                            <i class="fas fa-wind"></i>
                         </div>
 
                         <div class="source-info">
-                            <span class="source-name" id="forecaStationName">Foreca</span>
-                            <span class="source-distance" id="forecaDistance">—</span>
+                            <span class="source-name">Foreca</span>
+                            <span class="source-desc" id="forecaStationName">
+                                Monte Real
+                            </span>
                         </div>
 
-                        <span class="source-status active" title="Fonte ativa">
-                            <i class="fas fa-check-circle" aria-hidden="true"></i>
+                        <span class="source-status active">
+                            <i class="fas fa-check-circle"></i>
                         </span>
                     </div>
                 </div>
@@ -187,12 +170,6 @@
                     <i class="fas fa-broadcast-tower" aria-hidden="true"></i>
                     Observações Atuais
                 </h2>
-
-                <span class="last-update">
-                    <i class="fas fa-sync-alt" aria-hidden="true"></i>
-                    Última atualização:
-                    <span id="lastUpdateTime">--:--</span>
-                </span>
             </div>
 
             <div class="observations-grid">
@@ -391,7 +368,8 @@
                             <span class="comp-label">Temperatura</span>
                             <div class="comp-values">
                                 <span class="comp-diff" id="tempDiff">—</span>
-                                <span class="comp-indicator" id="tempIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
+                                <span class="comp-indicator" id="tempIndicator"><i class="fas fa-minus"
+                                        aria-hidden="true"></i></span>
                             </div>
                         </div>
 
@@ -399,7 +377,8 @@
                             <span class="comp-label">Humidade</span>
                             <div class="comp-values">
                                 <span class="comp-diff" id="humidityDiff">—</span>
-                                <span class="comp-indicator" id="humidityIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
+                                <span class="comp-indicator" id="humidityIndicator"><i class="fas fa-minus"
+                                        aria-hidden="true"></i></span>
                             </div>
                         </div>
 
@@ -407,7 +386,8 @@
                             <span class="comp-label">Vento</span>
                             <div class="comp-values">
                                 <span class="comp-diff" id="windDiff">—</span>
-                                <span class="comp-indicator" id="windIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
+                                <span class="comp-indicator" id="windIndicator"><i class="fas fa-minus"
+                                        aria-hidden="true"></i></span>
                             </div>
                         </div>
 
@@ -415,7 +395,8 @@
                             <span class="comp-label">Precipitação</span>
                             <div class="comp-values">
                                 <span class="comp-diff" id="precipDiff">—</span>
-                                <span class="comp-indicator" id="precipIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
+                                <span class="comp-indicator" id="precipIndicator"><i class="fas fa-minus"
+                                        aria-hidden="true"></i></span>
                             </div>
                         </div>
 
@@ -423,7 +404,8 @@
                             <span class="comp-label">Pressão</span>
                             <div class="comp-values">
                                 <span class="comp-diff" id="pressureDiff">—</span>
-                                <span class="comp-indicator" id="pressureIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
+                                <span class="comp-indicator" id="pressureIndicator"><i class="fas fa-minus"
+                                        aria-hidden="true"></i></span>
                             </div>
                         </div>
 
@@ -431,7 +413,8 @@
                             <span class="comp-label">Visibilidade</span>
                             <div class="comp-values">
                                 <span class="comp-diff" id="visibilityDiff">—</span>
-                                <span class="comp-indicator" id="visibilityIndicator"><i class="fas fa-minus" aria-hidden="true"></i></span>
+                                <span class="comp-indicator" id="visibilityIndicator"><i class="fas fa-minus"
+                                        aria-hidden="true"></i></span>
                             </div>
                         </div>
                     </div>
@@ -568,7 +551,8 @@
                     </div>
                 </article>
 
-                <article class="analytics-card glass-card status-card" id="operationalStatusCard" aria-labelledby="statusTitle">
+                <article class="analytics-card glass-card status-card" id="operationalStatusCard"
+                    aria-labelledby="statusTitle">
                     <h3 id="statusTitle" class="sr-only">Estado operacional resumido</h3>
 
                     <div class="status-split">
@@ -623,7 +607,8 @@
 
                         <div class="chart-legend">
                             <span class="legend-item ipma"><i class="fas fa-circle" aria-hidden="true"></i> IPMA</span>
-                            <span class="legend-item foreca"><i class="fas fa-circle" aria-hidden="true"></i> Foreca</span>
+                            <span class="legend-item foreca"><i class="fas fa-circle" aria-hidden="true"></i>
+                                Foreca</span>
                         </div>
                     </div>
 
@@ -682,17 +667,36 @@
                     <i class="fas fa-table" aria-hidden="true"></i>
                     Registos Históricos
                 </h2>
-
                 <div class="table-actions">
+                    <select id="historyTableVariable" class="filter-input table-variable-filter">
+
+                        <option value="">Todas</option>
+
+                        <option value="temperature">Temperatura</option>
+
+                        <option value="humidity">Humidade</option>
+
+                        <option value="pressure">Pressão</option>
+
+                        <option value="visibility">Visibilidade</option>
+
+                        <option value="windSpeed">Vento</option>
+
+                        <option value="windGust">Rajada</option>
+
+                        <option value="windDirection">Direção do vento</option>
+
+                        <option value="precipitation">Precipitação</option>
+
+                        <option value="precipitationPeriod">Período precipitação</option>
+
+                    </select>
+
                     <button class="btn btn-secondary" id="exportCSV" type="button">
                         <i class="fas fa-file-csv" aria-hidden="true"></i>
                         Exportar CSV
                     </button>
 
-                    <button class="btn btn-secondary" id="refreshTable" type="button">
-                        <i class="fas fa-sync-alt" aria-hidden="true"></i>
-                        Atualizar
-                    </button>
                 </div>
             </div>
 
