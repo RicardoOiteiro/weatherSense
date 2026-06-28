@@ -475,34 +475,6 @@ body::before {
     color: var(--text-secondary);
 }
 
-.location-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    padding: 16px;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: var(--radius-md);
-}
-
-.stat-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.stat-label {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.stat-value {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
 .sources-panel {
     padding: 0 20px 20px;
 }
@@ -567,10 +539,6 @@ body::before {
     font-size: 0.9rem;
 }
 
-.source-distance {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
 
 .source-status {
     color: var(--success);
@@ -580,17 +548,9 @@ body::before {
 /* ================================
    Observações Atuais
 ================================ */
-.current-observations .last-update {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
 
-.last-update i {
-    color: var(--primary-green);
-}
+
+
 
 .observations-grid {
     display: grid;
@@ -1423,10 +1383,6 @@ body::before {
         flex-wrap: wrap;
     }
 
-    .location-stats {
-        grid-template-columns: 1fr;
-    }
-
     .observation-grid {
         grid-template-columns: 1fr;
     }
@@ -1455,13 +1411,6 @@ body::before {
     color: var(--primary-cyan);
 
     font-size: 0.72rem;
-}
-
-
-.table-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
 }
 
 .table-variable-filter {

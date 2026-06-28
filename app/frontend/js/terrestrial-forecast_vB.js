@@ -65,7 +65,6 @@ const appState = {
         name: 'Leiria',
         lat: 39.7436,
         lng: -8.8071,
-        altitude: 50
     },
     currentData: {
         icon: null,
@@ -304,28 +303,16 @@ async function getHistoricalForecastData() {
 document.addEventListener('DOMContentLoaded', function () {
     initializeMap();
     initializeEventListeners();
-   
+
     initializeTable();
-    updateLastUpdateTime();
+
     initializeForecastTabs();
     initializeForecastHistoryChart();
     initializeForecastHistoryListeners();
     //refreshAfterLocationChange();
 
-    // Auto-refresh every 10 minutes
-    // setInterval(refreshForecastData, 600000);
+
 });
-
-async function loadInitialData() {
-    await loadRecordsData(1);
-    updateLastUpdateTime();
-}
-
-function refreshForecastData() {
-    refreshAfterLocationChange();
-    updateLastUpdateTime();
-}
-
 
 // ================================
 // 6. Map Management
@@ -435,7 +422,6 @@ function selectLocation(lat, lng, name = null) {
         lat,
         lng,
         name: name || `${lat.toFixed(4)}°N, ${Math.abs(lng).toFixed(4)}°W`,
-        altitude: Math.floor(Math.random() * 200) + 10
     };
 
     if (selectedMarker) map.removeLayer(selectedMarker);
@@ -456,7 +442,6 @@ function selectLocation(lat, lng, name = null) {
     selectedMarker = L.marker([lat, lng], { icon: selectedIcon }).addTo(map);
 
     updateLocationPanel();
-    updateContextSection();
     refreshAfterLocationChange();
 }
 
@@ -465,18 +450,8 @@ function updateLocationPanel() {
     setText('selectedLocationName', loc.name);
     document.getElementById('selectedLocationCoords').textContent =
         `${loc.lat.toFixed(4)}° N, ${Math.abs(loc.lng).toFixed(4)}° W`;
-    setText('locationAltitude', `${loc.altitude} m`);
 }
 
-function updateContextSection() {
-    const loc = appState.selectedLocation;
-    const contextLocation = document.getElementById('contextLocation');
-    const contextCoords = document.getElementById('contextCoords');
-
-    if (contextLocation) contextLocation.textContent = loc.name;
-    if (contextCoords) contextCoords.textContent =
-        `${loc.lat.toFixed(4)}° N, ${Math.abs(loc.lng).toFixed(4)}° W`;
-}
 
 // ================================
 // 7. Current Forecast Management
@@ -1191,11 +1166,9 @@ function initializeForecastHistoryListeners() {
     document
         .getElementById('forecastHistoryVariable')
         ?.addEventListener('change', () => {
-            console.log('Variável mudou:', document.getElementById('forecastHistoryVariable').value);
             loadHistoricalForecast();
         });
 }
-
 
 // ================================
 // 12. Records Table
@@ -1240,17 +1213,19 @@ function renderTable() {
             .replaceAll('-', '');
 
         return `
-            <tr>
-                <td>${row.date}</td>
-                <td>${row.time}</td>
-                <td><span class="source-badge ${sourceClass}">${row.source}</span></td>
-                <td>${row.variable}</td>
-                <td>${row.value}</td>
-                <td>${row.unit}</td>
-                <td>${row.lat}</td>
-                <td>${row.lng}</td>
-            </tr>
-        `;
+    <tr>
+        <td>${row.requestDate}</td>
+        <td>${row.requestTime}</td>
+        <td>${row.forecastDate}</td>
+        <td>${row.forecastTime}</td>
+        <td><span class="source-badge ${sourceClass}">${row.source}</span></td>
+        <td>${row.variable}</td>
+        <td>${row.value}</td>
+        <td>${row.unit}</td>
+        <td>${row.lat}</td>
+        <td>${row.lng}</td>
+    </tr>
+`;
     }).join('');
 
     const { currentPage, itemsPerPage, totalItems } = appState.pagination;
@@ -1341,21 +1316,6 @@ function initializeEventListeners() {
         ?.addEventListener('change', function () {
             loadRecordsData(1);
         });
-        
-
-
-
-
-
-    document.getElementById('nextPage')?.addEventListener('click', function () {
-        const totalPages = Math.ceil(
-            appState.pagination.totalItems / appState.pagination.itemsPerPage
-        );
-
-        if (appState.pagination.currentPage < totalPages) {
-            loadRecordsData(appState.pagination.currentPage + 1);
-        }
-    });
 }
 
 // ================================
@@ -1371,16 +1331,6 @@ async function refreshAfterLocationChange() {
         loadHistoricalForecast(),
         loadRecordsData(1)
     ]);
-}
-
-function updateLastUpdateTime() {
-    const contextUpdate = document.getElementById('contextUpdate');
-    if (contextUpdate) {
-        contextUpdate.textContent = new Date().toLocaleTimeString('pt-PT', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
 }
 
 function updateForecastDistance() {

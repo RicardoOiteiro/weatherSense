@@ -461,66 +461,6 @@ body::before {
     font-size: 0.875rem;
 }
 
-.location-stats {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
-}
-
-.stat-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 12px;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: var(--radius-md);
-}
-
-.stat-label {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.stat-value {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--primary-cyan);
-}
-
-.available-models {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.model-badge {
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 6px 10px;
-    border-radius: var(--radius-sm);
-}
-
-.model-badge.openmeteo {
-    background: rgba(14, 165, 233, 0.15);
-    color: var(--color-openmeteo);
-    border: 1px solid rgba(14, 165, 233, 0.3);
-}
-
-.model-badge.ipma-badge {
-    background: rgba(0, 255, 136, 0.15);
-    color: var(--color-ipma);
-    border: 1px solid rgba(0, 255, 136, 0.3);
-}
-
-.model-badge.openweather-badge {
-    background: rgba(168, 85, 247, 0.15);
-    color: var(--color-openweather);
-    border: 1px solid rgba(168, 85, 247, 0.3);
-}
-
 /* ================================
    Model Cards
 ================================ */
@@ -1723,10 +1663,6 @@ body::before {
     color: var(--text-muted);
 }
 
-.footer-version {
-    color: var(--text-secondary);
-}
-
 /* ================================
    Leaflet
 ================================ */
@@ -1846,10 +1782,6 @@ body::before {
 @media (max-width: 768px) {
     .dashboard {
         padding: 16px;
-    }
-
-    .location-stats {
-        grid-template-columns: 1fr;
     }
 
     .model-standalone-data {
@@ -2054,15 +1986,14 @@ body::before {
 
 
 .search-box input,
-.table-variable-filter{
+.table-variable-filter {
 
-    height:40px;
+    height: 40px;
 
-    font-size:0.85rem;
+    font-size: 0.85rem;
 
 }
 
-.table-variable-filter{
-    width:180px;
+.table-variable-filter {
+    width: 180px;
 }
-

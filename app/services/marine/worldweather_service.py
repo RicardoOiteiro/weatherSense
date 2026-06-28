@@ -1,4 +1,3 @@
-
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -7,10 +6,8 @@ import requests
 from fastapi import HTTPException
 
 from app.normalizers.marine_normalizer import normalize_wwo_marine
-from app.utils.distance import haversine_km
 from app.db.database import get_connection
 from app.db.save_marine_forecast import save_marine_forecast
-
 
 # =====================================================
 # CONFIG
@@ -18,29 +15,6 @@ from app.db.save_marine_forecast import save_marine_forecast
 
 
 WWO_URL = "https://api.worldweatheronline.com/premium/v1/marine.ashx"
-
-# =====================================================
-# HELPERS
-# =====================================================
-
-def get_nearest_wwo_hour_block(hourly: list[dict]) -> dict:
-    now = datetime.now()
-
-    def block_datetime(block):
-        # Na WWO, o campo "time" costuma vir como: "0", "100", "200", ..., "2300"
-        raw_time = str(block.get("time", "0")).zfill(4)
-
-        hour = int(raw_time[:2])
-        minute = int(raw_time[2:])
-
-        return now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-
-    return min(
-        hourly,
-        key=lambda block: abs(block_datetime(block) - now)
-    )
-
-
 
 # =====================================================
 # SERVICES
@@ -56,7 +30,7 @@ def get_wwo_marine(lat: float, lon: float):
             detail="API key da WorldWeatherOnline não definida"
         )
 
-    #REQUEST À API
+    # Pedido à API
     params = {
         "key": api_key,
         "q": f"{lat},{lon}",
@@ -70,7 +44,7 @@ def get_wwo_marine(lat: float, lon: float):
 
     data = response.json()
 
-    # EXTRAIR DADOS
+    # Extração dos dados
     weather = data.get("data", {}).get("weather", [])
 
     if not weather:
@@ -114,19 +88,11 @@ def get_wwo_marine(lat: float, lon: float):
                 "hourly": bloco
             })
 
-    
-
-    if not hourly:
+    if not hourly_filtrado:
         raise HTTPException(
             status_code=404,
-            detail="Sem dados horários WWO"
+             detail="Sem dados horários WWO nas próximas 24 horas"
         )
-
-    
-
-    api_lat = lat
-    api_lon = lon
-    distance_km = round(haversine_km(lat, lon, api_lat, api_lon), 2)
 
     resultados = []
 
@@ -147,13 +113,6 @@ def get_wwo_marine(lat: float, lon: float):
 
         resultados.append(resultado)
     
-    resultado["requestedLocation"] = {
-    "latitude": lat,
-    "longitude": lon
-    }
-    #print("WWO NORMALIZED:", resultado)
-    #print("WWO META:", resultado.get("meta"))
-    print("ANTES DE GRAVAR WWO MARINE NA BD")
 
     conn = get_connection()
 
@@ -161,8 +120,6 @@ def get_wwo_marine(lat: float, lon: float):
         request_id = datetime.now(
             ZoneInfo("Europe/Lisbon")
         ).strftime("FOR_M-%y%m%d-%H%M")
-
-        total_inserted = 0
 
         for resultado in resultados:
 
@@ -173,12 +130,7 @@ def get_wwo_marine(lat: float, lon: float):
                 context_type="coastal"
             )
 
-            total_inserted += inserted_count
-
-        print(f"WWO MARINE GRAVADO: {inserted_count} medições")
-
     finally:
         conn.close()
         
-
     return resultados

@@ -1,15 +1,13 @@
-import requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+import requests
 from fastapi import HTTPException
 
-from app.normalizers.marine_normalizer import normalize_openmeteo_marine
 from app.db.database import get_connection
 from app.db.save_marine_forecast import save_marine_forecast
+from app.normalizers.marine_normalizer import normalize_openmeteo_marine
 from app.utils.distance import haversine_km
-
-
 
 # =====================================================
 # CONFIG
@@ -20,15 +18,15 @@ OPENMETEO_MARINE_URL = "https://marine-api.open-meteo.com/v1/marine"
 # =====================================================
 # HELPERS
 # =====================================================
-def get_nearest_hour_index(times: list[str]) -> int:
+def get_next_hour_index(times: list[str]) -> int:
     now = datetime.now()
     times_dt = [datetime.fromisoformat(t) for t in times]
 
-    return min(
-        range(len(times_dt)),
-        key=lambda i: abs(times_dt[i] - now)
-    )
+    for i, forecast_time in enumerate(times_dt):
+        if forecast_time >= now:
+            return i
 
+    return len(times_dt) - 1
 
 # =====================================================
 # SERVICES
@@ -67,7 +65,7 @@ def get_openmeteo_marine(lat: float, lon: float):
             detail="Sem dados marine devolvidos pelo Open-Meteo."
         )
     
-    index = get_nearest_hour_index(hourly["time"])
+    index = get_next_hour_index(hourly["time"])
 
     api_lat = data.get("latitude", lat)
     api_lon = data.get("longitude", lon)
@@ -92,8 +90,7 @@ def get_openmeteo_marine(lat: float, lon: float):
         }
 
         resultados.append(resultado)
-    print("ANTES DE GRAVAR OPENMETEO MARINE NA BD")
-
+    
     conn = get_connection()
 
     try:
@@ -101,20 +98,13 @@ def get_openmeteo_marine(lat: float, lon: float):
             ZoneInfo("Europe/Lisbon")
         ).strftime("FOR_M-%y%m%d-%H%M")
 
-        total_inserted = 0
-
         for resultado in resultados:
-
-            inserted_count = save_marine_forecast(
+            save_marine_forecast(
                 conn=conn,
                 normalized_data=resultado,
                 request_id=request_id,
                 context_type="coastal"
             )
-
-            total_inserted += inserted_count
-
-        print(f"OPENMETEO MARINE GRAVADO: {inserted_count} medições")
 
     finally:
         conn.close()

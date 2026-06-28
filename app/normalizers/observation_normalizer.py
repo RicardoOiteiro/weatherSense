@@ -62,15 +62,13 @@ def normalize_foreca_observation(obs: dict):
     return {
         "source": "foreca",
         "meta": {
-            "dataNature": "Observation",
-            "temporalResolution": "Hourly",
+            "dataNature": "observation",
+            "temporalResolution": "hourly",
 
         },
         "station": {
             "name": obs.get("station"),
-            #"id": None,
             "distanceKm": extrair_distancia_km(obs.get("distance")),
-            #"distanceKm": None,
             "latitude": obs.get("latitude"),
             "longitude": obs.get("longitude"),
             "elevationM": obs.get("elevation"),
@@ -110,7 +108,6 @@ def normalize_ipma_observation(estacao: dict, observacao: dict, direcao_cardinal
         },
         "station": {
             "name": estacao.get("station_name") if estacao else None,
-            #"id": estacao.get("station_id") if estacao else None,
             "distanceKm": estacao.get("distance_km") if estacao else None,
             "latitude": estacao.get("station_latitude") if estacao else None,
             "longitude": estacao.get("station_longitude") if estacao else None,
@@ -121,7 +118,6 @@ def normalize_ipma_observation(estacao: dict, observacao: dict, direcao_cardinal
             "hour": hour,
         },
         "observation": {
-            #"dataHora": observacao.get("time") if observacao else None,
             "temperatureC": valor_ipma(dados.get("temperatura")),
             "windSpeedKmh": valor_ipma(dados.get("intensidadeVentoKM")),
             "windDirectionDegrees": None,

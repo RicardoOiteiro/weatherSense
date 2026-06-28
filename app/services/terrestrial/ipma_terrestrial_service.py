@@ -16,8 +16,6 @@ IPMA_LOCATIONS_URL = "https://api.ipma.pt/open-data/distrits-islands.json"
 IPMA_FORECAST_URL = "https://api.ipma.pt/open-data/forecast/meteorology/cities/daily/{global_id}.json"
 IPMA_AGGREGATE_URL = "https://api.ipma.pt/public-data/forecast/aggregate/{global_id}.json"
 
-
-
 # =====================================================
 # HELPERS
 # =====================================================
@@ -193,9 +191,6 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
 
         resultados.append(resultado)
         
-    
-
-    print("ANTES DE GRAVAR IPMA TERRESTRIAL NA BD")
 
     conn = get_connection()
 
@@ -203,23 +198,15 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
 
         request_id = datetime.now().strftime("FOR_T-%y%m%d-%H%M")
 
-        total_inserted = 0
 
         for resultado in resultados:
 
-            inserted_count = save_terrestrial_forecast(
+            save_terrestrial_forecast(
                 conn=conn,
                 normalized_data=resultado,
                 request_id=request_id,
                 context_type="drone"
             )
-
-            total_inserted += inserted_count
-
-        print(
-            f"IPMA TERRESTRIAL GRAVADO: "
-            f"{total_inserted} medições"
-        )
 
     finally:
         conn.close()

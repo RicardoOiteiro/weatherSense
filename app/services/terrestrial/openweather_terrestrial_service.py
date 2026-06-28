@@ -37,7 +37,6 @@ def get_openweather_terrestrial(lat: float, lon: float):
             detail="API key da OpenWeather não definida"
         )
 
-    # 🔹 REQUEST
     params = {
         "lat": lat,
         "lon": lon,
@@ -58,16 +57,14 @@ def get_openweather_terrestrial(lat: float, lon: float):
             detail="Sem dados OpenWeather"
         )
 
-    # BLOCO MAIS PRÓXIMO
-    #bloco = get_nearest_openweather_block(lista)
-
     resultados = []
 
     for bloco in lista[:24]:
 
         data_for_normalizer = {
             **data,
-            "current_block": bloco
+            "current_block": bloco,
+            "full_list": lista
         }
 
         resultado = normalize_openweather_terrestrial(
@@ -83,31 +80,18 @@ def get_openweather_terrestrial(lat: float, lon: float):
 
         resultados.append(resultado)
 
-    print("ANTES DE GRAVAR OPENWEATHER TERRESTRIAL NA BD")
-
     conn = get_connection()
 
     try:
 
         request_id = datetime.now().strftime("FOR_T-%y%m%d-%H%M")
-
-        total_inserted = 0
-
         for resultado in resultados:
-
-            inserted_count = save_terrestrial_forecast(
+            save_terrestrial_forecast(
                 conn=conn,
                 normalized_data=resultado,
                 request_id=request_id,
                 context_type="drone"
             )
-
-            total_inserted += inserted_count
-
-        print(
-            f"OPENWEATHER TERRESTRIAL GRAVADO: "
-            f"{total_inserted} medições"
-        )
 
     finally:
         conn.close()

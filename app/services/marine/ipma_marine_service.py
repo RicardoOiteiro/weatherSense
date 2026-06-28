@@ -1,4 +1,4 @@
-import math
+
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from app.normalizers.marine_normalizer import normalize_ipma_marine
 from app.db.database import get_connection
 from app.db.save_marine_forecast import save_marine_forecast
+from app.utils.distance import haversine_km
 
 # =====================================================
 # CONFIG
@@ -19,29 +20,8 @@ IPMA_SEA_FORECAST_URL = "https://api.ipma.pt/open-data/forecast/oceanography/dai
 # =====================================================
 # HELPERS
 # =====================================================
-def calculate_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    earth_radius_km = 6371
 
-    lat1_rad = math.radians(lat1)
-    lon1_rad = math.radians(lon1)
-    lat2_rad = math.radians(lat2)
-    lon2_rad = math.radians(lon2)
 
-    dlat = lat2_rad - lat1_rad
-    dlon = lon2_rad - lon1_rad
-
-    a = (
-        math.sin(dlat / 2) ** 2
-        + math.cos(lat1_rad)
-        * math.cos(lat2_rad)
-        * math.sin(dlon / 2) ** 2
-    )
-
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-    return earth_radius_km * c
-
- 
 def km_to_nm(km: float) -> float:
     return km / 1.852
 
@@ -63,7 +43,7 @@ def get_nearest_ipma_sea_location(lat: float, lon: float) -> dict:
 
     nearest_location = min(
         locations,
-        key=lambda location: calculate_distance_km(
+        key=lambda location: haversine_km(
             lat,
             lon,
             float(location.get("latitude")),
@@ -74,7 +54,7 @@ def get_nearest_ipma_sea_location(lat: float, lon: float) -> dict:
     lat_loc = float(nearest_location.get("latitude"))
     lon_loc = float(nearest_location.get("longitude"))
 
-    distance_km = calculate_distance_km(lat, lon, lat_loc, lon_loc)
+    distance_km = haversine_km(lat, lon, lat_loc, lon_loc)
 
     nearest_location["distanceKm"] = round(distance_km, 2)
     nearest_location["distanceNm"] = round(km_to_nm(distance_km), 2)
@@ -96,9 +76,6 @@ def get_ipma_marine_3_days(lat: float, lon: float) -> list[dict]:
 
         resultados.append(resultado)
 
-
-    print("ANTES DE GRAVAR IPMA MARINE NA BD")
-
     conn = get_connection()
 
     try:
@@ -119,12 +96,6 @@ def get_ipma_marine_3_days(lat: float, lon: float) -> list[dict]:
             )
 
             total_inserted += inserted_count
-
-        print(
-            f"IPMA MARINE GRAVADO: "
-            f"{total_inserted} medições"
-        )
-
     finally:
         conn.close()
 
@@ -178,7 +149,4 @@ def get_ipma_marine_daily(lat: float, lon: float, id_day: int = 0) -> dict:
         id_day=id_day
     )
     
-
     return resultado
-
-

@@ -60,34 +60,26 @@ def get_foreca_observation(lat: float, lon: float):
     obs = min(
         observations,
         key=lambda item: extrair_distancia_km(item.get("distance"))
-)
+    )
     normalized = normalize_foreca_observation(obs)
 
     normalized["requestedLocation"] = {
         "latitude": lat,
         "longitude": lon
-}
-    print("REQUESTED LOCATION:", lat, lon)
-    print("NORMALIZED REQUESTED:", normalized["requestedLocation"])
-    
-    print("ANTES DE GRAVAR FORECA NA BD")
+    }
     conn = get_connection()
 
     try:
-        inserted_count = save_observation(
+        save_observation(
             conn=conn,
             normalized_data=normalized,
             request_id =datetime.now(ZoneInfo("Europe/Lisbon")).strftime("OBS-%y%m%d-%H%M"),
             context_type="drone"
         )
 
-        print(f"FORECA GRAVADA: {inserted_count} medições")
+
 
     finally:
         conn.close()
 
-    
     return normalized
-
-
-    

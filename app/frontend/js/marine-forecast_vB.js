@@ -3,20 +3,6 @@
  * JavaScript Module for Marine Forecast Page
  * Prepared for FastAPI integration
  */
-
-// ================================
-// Configuration & API Endpoints
-// ================================
-const API_CONFIG = {
-    baseUrl: '', // Will be set to FastAPI backend URL
-    endpoints: {
-        marineCurrent: '/data/forecast/marine/current',
-        marineTimeline: '/data/marine/timeline',
-        marineHistory: '/data/forecast/marine/history',
-        marineRecords: '/data/marine/records'
-    }
-};
-
 // ================================
 // State Management
 // ================================
@@ -60,13 +46,12 @@ function setText(id, value) {
 document.addEventListener('DOMContentLoaded', function () {
     initializeMap();
     initializeEventListeners();
-    updateLastUpdateTime();
     initializeTable();
     initializeMarineForecastTabs();
     initializeMarineHistoryChart();
     initializeMarineHistoryListeners();
 
-    //loadInitialData();
+
 
     setInterval(refreshCurrentData, 300000);
 });
@@ -205,31 +190,6 @@ function addMarineMarkers() {
 
         markers.push(marker);
     });
-}
-
-function createMarinePopupContent(point) {
-    let sourceColor;
-    if (point.source === 'ipma') {
-        sourceColor = '#22d3ee';
-    } else if (point.source === 'openmeteo') {
-        sourceColor = '#14b8a6';
-    } else {
-        sourceColor = '#ff8c00';
-    }
-
-    return `
-        <div style="color: #f8fafc; padding: 8px;">
-            <h4 style="margin: 0 0 8px 0; color: ${sourceColor};">
-                ${point.name}
-            </h4>
-            <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                Fonte: ${point.source.toUpperCase()}
-            </p>
-            <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">
-                ${point.lat.toFixed(4)}°N, ${Math.abs(point.lng).toFixed(4)}°W
-            </p>
-        </div>
-    `;
 }
 
 function selectLocation(lat, lng, name = null) {
@@ -456,16 +416,11 @@ function initializeMarineHistoryListeners() {
         container.querySelectorAll('button').forEach(btn => {
             btn.classList.remove('active');
         });
-
         button.classList.add('active');
-
-        console.log('Range histórico marítimo:', button.dataset.range);
-
         loadMarineHistoricalForecast();
     });
 
     document.getElementById('historyVariable')?.addEventListener('change', () => {
-        console.log('Variável histórico marítimo:', document.getElementById('historyVariable').value);
         loadMarineHistoricalForecast();
     });
 }
@@ -498,21 +453,11 @@ function initializeEventListeners() {
 // ================================
 // Data Loading & Updates
 // ================================
-function loadInitialData() {
-    refreshCurrentData();
-    initializeMarineTimeline();
-
-    loadMarineHistoricalForecast();
-    loadMarineRecordsData(1);
-}
 
 async function refreshCurrentData() {
     try {
 
         const { lat, lng } = appState.selectedLocation;
-
-        console.log("A pedir dados para:", lat, lng);
-
         const response = await fetch(
             `/data/forecast/marine/current?lat=${lat}&lon=${lng}`
         );
@@ -522,9 +467,6 @@ async function refreshCurrentData() {
         }
 
         const data = await response.json();
-
-        console.log("Dados recebidos:", data);
-
         appState.currentData = {
             ipma: mapMarineCurrent(data.ipma),
             openmeteo: mapMarineCurrent(data.openmeteo),
@@ -534,7 +476,6 @@ async function refreshCurrentData() {
         updateCurrentConditions(appState.currentData);
         updateMarineDistance();
         updateMarineOperationalAnalysis();
-        updateLastUpdateTime();
         updateMarineAgreement();
 
     } catch (error) {
@@ -671,146 +612,6 @@ function updateCurrentConditions(data) {
     }
 }
 
-function updateLastUpdateTime() {
-    const now = new Date();
-
-    const timeStr = now.toLocaleTimeString('pt-PT', {
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-
-    setText('currentUpdateTime', timeStr);
-}
-
-// ================================
-// Timeline Generation
-// ================================
-
-
-function createTimelineBlock(time, hourOffset) {
-    const block = document.createElement('div');
-    block.className = 'timeline-block';
-
-    const dateStr = time.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
-    const hourStr = time.getHours().toString().padStart(2, '0') + ':00';
-
-    // Mock data
-    const waveHeight = (1.5 + Math.sin(hourOffset / 6) * 0.5 + Math.random() * 0.3).toFixed(1);
-    const wavePeriod = (8 + Math.random() * 3).toFixed(1);
-    const swellHeight = (2.0 + Math.random() * 0.5).toFixed(1);
-    const swellPeriod = (11 + Math.random() * 3).toFixed(0);
-    const seaTemp = (17 + Math.random() * 2).toFixed(1);
-    const windSpeed = Math.floor(18 + Math.random() * 15);
-    const windDir = ['N', 'NE', 'NW', 'W'][Math.floor(Math.random() * 4)];
-
-    // Weather icon based on conditions
-    let weatherIcon = 'fa-water';
-    if (parseFloat(waveHeight) > 2.5) {
-        weatherIcon = 'fa-water';
-    } else if (windSpeed > 30) {
-        weatherIcon = 'fa-wind';
-    }
-
-    block.innerHTML = `
-        <div class="timeline-header">
-            <span class="timeline-date">${dateStr}</span>
-            <span class="timeline-hour">${hourStr}</span>
-        </div>
-        <div class="timeline-icon">
-            <i class="fas ${weatherIcon}"></i>
-        </div>
-        <div class="timeline-data">
-            <div class="timeline-row">
-                <span class="timeline-row-label">Onda</span>
-                <span class="timeline-row-value">${waveHeight} m</span>
-            </div>
-            <div class="timeline-row">
-                <span class="timeline-row-label">Período</span>
-                <span class="timeline-row-value">${wavePeriod} s</span>
-            </div>
-            <div class="timeline-row">
-                <span class="timeline-row-label">Swell</span>
-                <span class="timeline-row-value">${swellHeight} m</span>
-            </div>
-            <div class="timeline-row">
-                <span class="timeline-row-label">Temp.</span>
-                <span class="timeline-row-value">${seaTemp} °C</span>
-            </div>
-            <div class="timeline-row">
-                <span class="timeline-row-label">Vento</span>
-                <span class="timeline-row-value">${windSpeed} ${windDir}</span>
-            </div>
-        </div>
-        <div class="timeline-source">
-            <span class="timeline-source-badge ipma">IPMA</span>
-            <span class="timeline-source-badge openmeteo">OM</span>
-        </div>
-    `;
-
-    return block;
-}
-
-// ================================
-// Operational Analysis
-// ================================
-function initializeOperationalGauges() {
-    updateNavigationGauge(75);
-}
-
-function updateNavigationGauge(percentage) {
-    const gaugeFill = document.getElementById('navGaugeFill');
-    const gaugeValue = document.getElementById('navGaugeValue');
-
-    // Calculate stroke-dashoffset (314 is full circle, 0 is empty)
-    const offset = 314 - (314 * percentage / 100);
-    gaugeFill.style.strokeDashoffset = offset;
-    gaugeValue.textContent = percentage + '%';
-
-    // Update status
-    const statusEl = document.getElementById('navStatus');
-    if (percentage >= 80) {
-        statusEl.textContent = 'Excelente';
-        statusEl.className = 'operational-status excellent';
-        gaugeFill.style.stroke = '#10b981';
-    } else if (percentage >= 60) {
-        statusEl.textContent = 'Bom';
-        statusEl.className = 'operational-status good';
-        gaugeFill.style.stroke = '#22d3ee';
-    } else if (percentage >= 40) {
-        statusEl.textContent = 'Moderado';
-        statusEl.className = 'operational-status moderate';
-        gaugeFill.style.stroke = '#f59e0b';
-    } else {
-        statusEl.textContent = 'Mau';
-        statusEl.className = 'operational-status poor';
-        gaugeFill.style.stroke = '#ef4444';
-    }
-}
-
-function updateOperationalAnalysis() {
-    // Mock operational data
-    document.getElementById('navLimitingFactor').textContent = 'Altura Onda';
-    document.getElementById('navWaveHeight').textContent = '1.8 m';
-    document.getElementById('navWavePeriod').textContent = '8.5 s';
-    document.getElementById('navWindSpeed').textContent = '22 km/h';
-    document.getElementById('navVisibility').textContent = '15 km';
-}
-
-function updateActivitySuitability() {
-    const activities = [
-        { id: 'recreational', percent: 85, status: 'good' },
-        { id: 'fishing', percent: 70, status: 'moderate' },
-        { id: 'surf', percent: 92, status: 'excellent' },
-        { id: 'coastal', percent: 55, status: 'warning' }
-    ];
-
-    activities.forEach(activity => {
-        document.getElementById(activity.id + 'Bar').style.width = activity.percent + '%';
-        document.getElementById(activity.id + 'Bar').className = 'bar-fill ' + activity.status;
-        document.getElementById(activity.id + 'Percent').textContent = activity.percent + '%';
-    });
-}
-
 // ================================
 // Table Management
 // ================================
@@ -825,17 +626,19 @@ function renderTable() {
     const pageData = appState.tableData;
 
     tbody.innerHTML = pageData.map(record => `
-        <tr>
-            <td>${record.date}</td>
-            <td>${record.time}</td>
-            <td>${record.source}</td>
-            <td>${record.variable}</td>
-            <td>${record.value}</td>
-            <td>${record.unit}</td>
-            <td>${record.lat}</td>
-            <td>${record.lng}</td>
-        </tr>
-    `).join('');
+    <tr>
+        <td>${record.requestDate}</td>
+        <td>${record.requestTime}</td>
+        <td>${record.forecastDate}</td>
+        <td>${record.forecastTime}</td>
+        <td>${record.source}</td>
+        <td>${record.variable}</td>
+        <td>${record.value}</td>
+        <td>${record.unit}</td>
+        <td>${record.lat}</td>
+        <td>${record.lng}</td>
+    </tr>
+`).join('');
 
     updateTableInfo();
     renderPagination();
@@ -885,14 +688,35 @@ function changePage(page) {
     loadMarineRecordsData(page);
 }
 
-function filterTable() {
-    loadMarineRecordsData(1);
-}
+
 
 function exportTableToCsv() {
-    const headers = ['Data', 'Hora', 'Fonte', 'Modelo', 'Variável', 'Valor', 'Unidade', 'Latitude', 'Longitude'];
+    const headers = [
+        'Data Pedido',
+        'Hora Pedido',
+        'Data Previsão',
+        'Hora Previsão',
+        'Fonte',
+        'Variável',
+        'Valor',
+        'Unidade',
+        'Latitude',
+        'Longitude'
+    ];
+
     const rows = appState.tableData.map(r =>
-        [r.date, r.time, r.source, r.model, r.variable, r.value, r.unit, r.lat, r.lng].join(',')
+        [
+            r.requestDate,
+            r.requestTime,
+            r.forecastDate,
+            r.forecastTime,
+            r.source,
+            r.variable,
+            r.value,
+            r.unit,
+            r.lat,
+            r.lng
+        ].join(',')
     );
 
     const csv = [headers.join(','), ...rows].join('\n');
@@ -1293,8 +1117,6 @@ async function getMarineForecastRecordsPage(page = 1) {
 async function loadMarineRecordsData(page = 1) {
     try {
         const data = await getMarineForecastRecordsPage(page);
-        console.log('Página recebida:', data.page, 'Total:', data.total, 'Linhas:', data.rows);
-
         appState.tableData = data.rows;
         appState.pagination.currentPage = data.page;
         appState.pagination.itemsPerPage = data.pageSize;

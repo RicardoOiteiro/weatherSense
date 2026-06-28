@@ -35,14 +35,15 @@ OPENMETEO_MODELS = [
 # =====================================================
 
 
-def get_nearest_hour_index(times: list[str]) -> int:
+def get_next_hour_index(times: list[str]) -> int:
     now = datetime.now()
     times_dt = [datetime.fromisoformat(t) for t in times]
 
-    return min(
-        range(len(times_dt)),
-        key=lambda i: abs(times_dt[i] - now)
-    )
+    for i, forecast_time in enumerate(times_dt):
+        if forecast_time >= now:
+            return i
+
+    return len(times_dt) - 1
 
 
 # =====================================================
@@ -93,7 +94,7 @@ def get_openmeteo_terrestrial(lat: float, lon: float, model: dict):
             detail=f"Sem dados terrestres devolvidos pelo Open-Meteo para o modelo {model}."
         )
 
-    current_index = get_nearest_hour_index(hourly["time"])
+    current_index = get_next_hour_index(hourly["time"])
 
     api_lat = data.get("latitude", lat)
     api_lon = data.get("longitude", lon)
@@ -133,31 +134,18 @@ def get_openmeteo_terrestrial_all_models(lat: float, lon: float):
 
     for model in OPENMETEO_MODELS:
         resultado = get_openmeteo_terrestrial(lat, lon, model)
-
-        print(f"ANTES DE GRAVAR OPENMETEO {model['db_model']} NA BD")
-
         conn = get_connection()
 
         try:
             request_id = datetime.now().strftime("FOR_T-%y%m%d-%H%M")
-
-            total_inserted = 0
-
             for previsao in resultado:
 
-                inserted_count = save_terrestrial_forecast(
+                save_terrestrial_forecast(
                     conn=conn,
                     normalized_data=previsao,
                     request_id=request_id,
                     context_type="drone"
                 )
-
-                total_inserted += inserted_count
-
-            print(
-                f"OPENMETEO {model['db_model']} GRAVADO: "
-                f"{total_inserted} medições"
-            )
 
         finally:
             conn.close()

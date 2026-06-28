@@ -8,8 +8,6 @@ from app.db.database import get_connection
 from app.db.save_observation import save_observation
 from app.utils.distance import haversine_km
 
-
-
 # =====================================================
 # CONFIG
 # =====================================================
@@ -35,7 +33,6 @@ def direcao_ipma_texto(id_direcc_vento):
         9: "N",
     }
     return mapa.get(id_direcc_vento)
-    #return mapa.get(id_direcc_vento, None)
 # =====================================================
 # SERVICES
 # =====================================================
@@ -114,22 +111,16 @@ def get_ipma_observation(lat: float, lon: float):
         "latitude": lat,
         "longitude": lon    
 } 
-    print("REQUESTED LOCATION:", lat, lon)
-    print("NORMALIZED REQUESTED:", normalized["requestedLocation"])
-
-    print("ANTES DE GRAVAR IPMA NA BD")
-
+    
     conn = get_connection()
 
     try:
-        inserted_count = save_observation(
+        save_observation(
             conn=conn,
             normalized_data=normalized,
             request_id =datetime.now(ZoneInfo("Europe/Lisbon")).strftime("OBS-%y%m%d-%H%M"),
             context_type="drone"
         )
-
-        print(f"IPMA GRAVADA: {inserted_count} medições")
 
     finally:
         conn.close()

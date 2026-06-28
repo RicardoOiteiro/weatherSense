@@ -64,7 +64,6 @@ def normalize_wwo_marine(lat: float, lon: float, distance_km: float, date: str, 
             "distanceKm": distance_km,
         },
         "time": {
-            #"dataHora": juntar_data_hora_wwo(date, hourly.get("time")),
             "date": date,
             "hour": hour,
         },
@@ -101,7 +100,7 @@ def normalize_wwo_marine(lat: float, lon: float, distance_km: float, date: str, 
     }
 
 
-def normalize_openmeteo_marine(lat: float, lon: float, distance_km: float, hourly: dict, index: int, model: str = None):
+def normalize_openmeteo_marine(lat: float, lon: float, distance_km: float, hourly: dict, index: int):
     data_hora = hourly.get("time", [None])[index]
     date, hour = split_date_hour(data_hora)
     return {
@@ -118,7 +117,6 @@ def normalize_openmeteo_marine(lat: float, lon: float, distance_km: float, hourl
             "distanceKm": distance_km,
         },
         "time": {
-            #"dataHora": hourly.get("time", [None])[index],
             "date": date,
             "hour": hour,
         },
@@ -155,30 +153,23 @@ def normalize_openmeteo_marine(lat: float, lon: float, distance_km: float, hourl
     }
 
 def normalize_ipma_marine(requested_lat, requested_lon, location, forecast, daily, id_day):
-    update_date, update_hour = split_date_hour(forecast.get("dataUpdate"))
     forecast_date = (
         datetime.now() + timedelta(days=id_day)
     ).strftime("%Y-%m-%d")
     return {
         "source": "ipma",
-        "meta":{
+        "meta": {
             "model": "ECMWF + AROME",
             "dataNature": "forecast",
             "temporalResolution": "diaria",
             "updateIntervalHours": "2x/dia -> 12h"
         },
         "location": {
-            #"requestedLatitude": requested_lat,
-            #"requestedLongitude": requested_lon,
             "latitude": para_float(location.get("latitude")),
             "longitude": para_float(location.get("longitude")),
-            #"local": location.get("local"),
-            #"globalIdLocal": location.get("globalIdLocal"),
             "distanceKm": location.get("distanceKm"),
             "distanceNm": location.get("distanceNm"),
             "name": location.get("local"),
-            
-
         },
         "time": {
             "date": forecast_date,

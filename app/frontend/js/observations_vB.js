@@ -16,10 +16,6 @@
 //     - Comunicação com o backend FastAPI
 //     - Carregamento de observações e histórico
 //
-//  4. Initialization
-//     - Inicialização da aplicação
-//     - Carregamento inicial dos dados
-//
 //  5. Map
 //     - Mapa Leaflet
 //     - Pontos de observação
@@ -61,7 +57,6 @@ const appState = {
         name: 'Leiria',
         lat: 39.7436,
         lng: -8.8071,
-        altitude: 50
     },
     currentData: {
         ipma: null,
@@ -253,26 +248,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeMap();
     initializeCharts();
     initializeEventListeners();
-   
-    updateLastUpdateTime();
 
     setInterval(refreshCurrentData, 300000);
 });
-
-async function loadInitialData() {
-    try {
-        await Promise.all([
-            loadCurrentObservations(),
-            loadHistoricalObservations(),
-            loadTableData(1)
-        ]);
-
-        updateLastUpdateTime();
-
-    } catch (error) {
-        console.error('Erro ao carregar dados iniciais:', error);
-    }
-}
 
 async function refreshCurrentData() {
     try {
@@ -281,7 +259,6 @@ async function refreshCurrentData() {
             loadHistoricalObservations()
         ]);
 
-        updateLastUpdateTime();
 
     } catch (error) {
         console.error('Erro ao atualizar observações:', error);
@@ -296,21 +273,13 @@ async function refreshAllData() {
             loadTableData(1)
         ]);
 
-        updateLastUpdateTime();
 
     } catch (error) {
         console.error('Erro ao atualizar todos os dados:', error);
     }
 }
 
-function updateLastUpdateTime() {
-    const timeStr = new Date().toLocaleTimeString('pt-PT', {
-        hour: '2-digit',
-        minute: '2-digit'
-    });
 
-    setText('lastUpdateTime', timeStr);
-}
 
 // ================================
 // 5. Map
@@ -418,7 +387,6 @@ async function selectLocation(lat, lng, name = null) {
         lat,
         lng,
         name: name || `${lat.toFixed(4)}°N, ${Math.abs(lng).toFixed(4)}°W`,
-        altitude: Math.floor(Math.random() * 200) + 10
     };
 
     if (selectedMarker) {
@@ -449,10 +417,9 @@ async function selectLocation(lat, lng, name = null) {
 
 function updateLocationPanel() {
     const loc = appState.selectedLocation;
-
     setText('selectedLocationName', loc.name);
     setText('selectedLocationCoords', `${loc.lat.toFixed(4)}° N, ${Math.abs(loc.lng).toFixed(4)}° W`);
-    setText('locationAltitude', `${loc.altitude} m`);
+
 }
 
 // ================================
@@ -519,7 +486,6 @@ function updateObservationProviderCard(prefix, data) {
     setText(`${prefix}CloudCover`, formatValue(data.cloudCover));
     setText(`${prefix}ObsTime`, formatValue(data.observationTime));
     setText(`${prefix}CardDistance`, data.distance !== null ? `${data.distance} km` : '—');
-    setText(`${prefix}Distance`, data.distance !== null ? `${data.distance} km` : '—');
     setText(`${prefix}StationName`, data.station ?? '—');
 }
 
@@ -678,7 +644,12 @@ function initializeHistoryChart() {
                         font: { size: 11 },
                         callback(value) {
                             const unit = getHistoricalUnit(appState.historicalData.variable);
-                            return value + unit;
+
+                            if (value === null || value === undefined || Number.isNaN(Number(value))) {
+                                return '—';
+                            }
+
+                            return `${Number(value).toFixed(1)}${unit}`;
                         }
                     }
                 }
@@ -1052,7 +1023,6 @@ function initializeEventListeners() {
 
     getEl('historyVariable')?.addEventListener('change', loadHistoricalObservations);
     getEl('exportCSV')?.addEventListener('click', exportToCSV);
-    getEl('refreshTable')?.addEventListener('click', refreshAllData);
     getEl('tableSearch')?.addEventListener('input', searchTable);
     getEl('prevPage')?.addEventListener('click', () => changePage(-1));
     getEl('nextPage')?.addEventListener('click', () => changePage(1));

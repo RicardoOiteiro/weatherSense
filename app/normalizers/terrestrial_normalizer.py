@@ -1,3 +1,4 @@
+from datetime import datetime
 # =====================================================
 # HELPERS
 # =====================================================
@@ -101,7 +102,7 @@ def normalize_openmeteo_terrestrial(lat: float, lon: float, distance_km: float, 
         "location": {
             "latitude": lat,
             "longitude": lon,
-            "distanceKm" : distance_km
+            "distanceKm": distance_km
         },
         "time": {
             "date": date,
@@ -112,7 +113,6 @@ def normalize_openmeteo_terrestrial(lat: float, lon: float, distance_km: float, 
             "temperatureC": para_float(get_lista_valor(hourly, "temperature_2m", index)),
             "temperatureMinC": para_float(get_lista_valor(daily, "temperature_2m_min", daily_index)) if daily_index is not None else None,
             "temperatureMaxC": para_float(get_lista_valor(daily, "temperature_2m_max", daily_index)) if daily_index is not None else None,
-            #"feelsLikeTemperatureC": para_float(get_lista_valor(hourly, "apparent_temperature", index)),
             "humidityPercent": para_int(get_lista_valor(hourly, "relative_humidity_2m", index)),
             "pressureHpa": para_float(get_lista_valor(hourly, "pressure_msl", index)),
             "cloudCoverPercent": para_int(get_lista_valor(hourly, "cloud_cover", index)),
@@ -121,7 +121,6 @@ def normalize_openmeteo_terrestrial(lat: float, lon: float, distance_km: float, 
                 if get_lista_valor(hourly, "visibility", index) is not None
                 else None
             ),
-            #"codigoTempo": para_int(get_lista_valor(hourly, "weather_code", index)),
         },
         "wind": {
             "windSpeedKmh": para_float(get_lista_valor(hourly, "wind_speed_10m", index)),
@@ -152,7 +151,6 @@ def normalize_ipma_terrestrial(
     location: dict,
     aggregate_current: dict,
     data_update: str,
-    global_id
 ):
     
     data_hora = aggregate_current.get("dataPrev")
@@ -167,12 +165,8 @@ def normalize_ipma_terrestrial(
             "updateIntervalHours": "12"
         },
         "location": {
-            #"requestedLatitude": requested_lat,
-            #"requestedLongitude": requested_lon,
             "latitude": para_float(location.get("latitude")),
             "longitude": para_float(location.get("longitude")),
-            #"local": location.get("local"),
-            #"globalIdLocal": global_id,
             "distanceKm": round(para_float(location.get("distanceKm")),2),
         },
         "time": {
@@ -191,7 +185,6 @@ def normalize_ipma_terrestrial(
             "visibilityKm": None,
         },
         "wind": {
-            #"precipitationMm": para_float(aggregate_current.get("ffVento")),
             "windSpeedKmh": para_float(aggregate_current.get("ffVento")),
             "windGustKmh": None,
             "windDirectionDegrees": None,
@@ -204,11 +197,6 @@ def normalize_ipma_terrestrial(
             "precipitationProbabilityPercent": para_float(
                 aggregate_current.get("probabilidadePrecipita")
             ),
-            #"intensidadePrecipitacao": (
-            #    aggregate_current.get("idIntensidadePrecipita")
-            #    or forecast.get("idIntensidadePrecipita")
-            #    or forecast.get("classPrecInt")
-            #),
         },
         "sun": {
             "sunrise": None,
@@ -217,34 +205,14 @@ def normalize_ipma_terrestrial(
     }
 
 
-from datetime import datetime
-
-def get_nearest_openweather_block(lista: list[dict]) -> dict:
-    now = datetime.now()
-
-    def block_datetime(block):
-        dt_txt = block.get("dt_txt")
-
-        if not dt_txt:
-            return now
-
-        return datetime.fromisoformat(dt_txt)
-
-    return min(
-        lista,
-        key=lambda block: abs(block_datetime(block) - now)
-    )
 def normalize_openweather_terrestrial(lat, lon, data):
 
-    lista = data.get("list", [])
+    lista = data.get("full_list", data.get("list", []))
     city = data.get("city", {})
 
     if not lista:
         return None
 
-    # Bloco atual / mais próximo
-    # Mais tarde podes trocar por:
-    # bloco = get_nearest_openweather_block(lista)
 
     bloco = data.get("current_block") or lista[0]
 
@@ -303,9 +271,6 @@ def normalize_openweather_terrestrial(lat, lon, data):
 
     wind_speed = para_float(wind.get("speed"))
     wind_gust = para_float(wind.get("gust"))
-    #print("OPENWEATHER len(lista):", len(lista))
-    #print("OPENWEATHER temperaturas_dia:", temperaturas_dia)
-    #print("OPENWEATHER temp_min/temp_max:", temp_min, temp_max)
     return {
         "source": "openweather",
 
