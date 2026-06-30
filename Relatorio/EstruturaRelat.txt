@@ -63,16 +63,19 @@ tudo corrido..
 		4.3.2 Processo de Armazenamento;
 
 	4.4 Endpoints e Disponibilização dos Dados
-    		4.4.1 Endpoints de Observações 	[TRATADO]
-    		4.4.2 Endpoints de Previsões	[TRATADO]
-    		4.4.3 Endpoints de Consulta Histórica
+    		4.4.1 Observações Meteorológicas [TRATADO] vF
+    		4.4.2 Previsões Terrestres 	[TRATADO] vF
+    		4.4.3 Previsões Marítimas  	[TRATADO] vF
 	
 	4.4 Frontend
-		4.4.1 Mapa Interativo;
-		4.4.2 Observações Meteorológicas;
+		4.4.1 Mapa Interativo; [TRATADO] vF
+		4.4.2 Observações Meteorológicas; [TRATADO] vF
    		4.4.3 Previsões Terrestres;
     		4.4.4 Previsões Marítimas;
     		4.4.5 Consulta Histórica;
+		4.4.6 Concordancia entre fontes
+		4.4.7 Análise Operacional	
+		4.4.6 Histórico e Registos
 
 5. Resultados e Validação
 	5.1 Ambiente de Testes
@@ -109,6 +112,19 @@ Onde vai estar o script onde vai estar a trabalhar;
 Backend -> 
 Desenhar apiss externas;
 
+Notas 29/06 
+4.1.1 -> Porque a separação em módulos facilitou a manutenção e a integração de novas APIs.
+4.2.2 -> Porque foi necessário procurar a estação/localização mais próxima?
+	Explicar que a API não permite consultar diretamente por coordenadas?
+
+SERVICES
+
+	
+
+Um mapa foi criado para facilitar a visualização e os pedidos dos pontos das coordenadas.
+O utilizador clicar e mostrar os dados.
+Os marcadores representam os pontos geográficos (latitude/longitude)
+Ao clicar num marcador muda os dados.
 
 
 
