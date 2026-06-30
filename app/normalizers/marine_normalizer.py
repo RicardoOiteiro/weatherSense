@@ -97,6 +97,7 @@ def normalize_wwo_marine(lat: float, lon: float, distance_km: float, date: str, 
             "currentSpeedMs": None,
             "currentDirectionDegrees": None,
         },
+        
     }
 
 

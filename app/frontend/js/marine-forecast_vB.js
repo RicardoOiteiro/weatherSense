@@ -79,7 +79,7 @@ function initializeMap() {
     addCoastalBoundary();
     addMarineMarkers();
 
-    selectLocation(39.93, -9.12, "Vieira / Pedrógão ");
+    selectLocation(39.9300, -9.1200, "Vieira / Pedrógão ");
     map.on('click', function (e) {
         selectLocation(e.latlng.lat, e.latlng.lng);
     });
@@ -137,13 +137,13 @@ function addCoastalBoundary() {
 function addMarineMarkers() {
 
     const marinePoints = [
-        { name: "Figueira da Foz", lat: 40.12, lng: -9.05 },
-        { name: "Vieira / Pedrógão ", lat: 39.93, lng: -9.12 },
-        { name: "São Pedro de Moel", lat: 39.73, lng: -9.18 },
-        { name: "Nazaré Costa", lat: 39.60, lng: -9.20 },
-        { name: "Nazaré Desfiladeiro", lat: 39.52, lng: -9.35 },
-        { name: "Peniche Costa ", lat: 39.30, lng: -9.45 },
-        { name: "Berlenga ", lat: 39.41, lng: -9.52 }
+        { name: "Figueira da Foz", lat: 40.1234, lng: -9.0556 },
+        { name: "Vieira / Pedrógão", lat: 39.9300, lng: -9.1200 },
+        { name: "São Pedro de Moel", lat: 39.7300, lng: -9.1800 },
+        { name: "Nazaré Costa", lat: 39.6000, lng: -9.2000 },
+        { name: "Nazaré Desfiladeiro", lat: 39.5200, lng: -9.3500 },
+        { name: "Peniche Costa", lat: 39.3000, lng: -9.4500 },
+        { name: "Berlenga", lat: 39.4100, lng: -9.5200 }
     ];
 
     marinePoints.forEach(point => {
@@ -315,7 +315,7 @@ async function getMarineHistoricalForecastData() {
         document.querySelector('.forecast-history-range-buttons .btn.active')?.dataset.range || '24h';
 
     const response = await fetch(
-        `/data/forecast/marine/history?lat=${lat}&lon=${lng}&variable=${variable}&range=${range}`
+        `/data/forecast/marine/history?lat=${Number(lat).toFixed(4)}&lon=${Number(lng).toFixed(4)}&variable=${variable}&range=${range}`
     );
 
     if (!response.ok) {
@@ -459,7 +459,7 @@ async function refreshCurrentData() {
 
         const { lat, lng } = appState.selectedLocation;
         const response = await fetch(
-            `/data/forecast/marine/current?lat=${lat}&lon=${lng}`
+            `/data/forecast/marine/current?lat=${Number(lat).toFixed(4)}&lon=${Number(lng).toFixed(4)}`
         );
 
         if (!response.ok) {
@@ -740,7 +740,7 @@ async function getMarineFutureForecastData() {
     const { lat, lng } = appState.selectedLocation;
 
     const response = await fetch(
-        `/data/forecast/marine/timeline?lat=${lat}&lon=${lng}`
+        `/data/forecast/marine/timeline?lat=${Number(lat).toFixed(4)}&lon=${Number(lng).toFixed(4)}`
     );
 
     if (!response.ok) {
@@ -1081,13 +1081,14 @@ async function getMarineForecastRecordsPage(page = 1) {
 
 
     const params = new URLSearchParams({
-
-        lat,
-        lon: lng,
+        lat: Number(lat).toFixed(4),
+        lon: Number(lng).toFixed(4),
         page,
-        page_size: pageSize
-
+        page_size: pageSize,
+        search,
+        variable
     });
+
 
 
     if (search) {

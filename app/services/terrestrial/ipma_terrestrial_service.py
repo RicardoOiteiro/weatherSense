@@ -181,7 +181,6 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
             location=location,
             aggregate_current=aggregate_forecast,
             data_update=data.get("dataUpdate"),
-            global_id=data.get("globalIdLocal", global_id),
         )
 
         resultado["requestedLocation"] = {

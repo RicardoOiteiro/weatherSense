@@ -292,8 +292,8 @@ def get_observations_table(
                     mf.value_text,
                     vd.unit,
                     mf.distance_km,
-                    ld.latitude,
-                    ld.longitude
+                    mf.raw_json->'requestedLocation'->>'latitude',
+                    mf.raw_json->'requestedLocation'->>'longitude'
                 FROM measurement_facts mf
                 JOIN source_dimension sd 
                     ON mf.id_source = sd.id_source
@@ -1016,6 +1016,7 @@ def get_terrestrial_forecast_timeline(
 # =============================================================================
 @app.get("/data/forecast/marine/current")
 def get_current_marine_forecast(lat: float, lon: float):
+    
     conn = get_connection()
 
     try:
@@ -1032,8 +1033,8 @@ def get_current_marine_forecast(lat: float, lon: float):
                         ON mf.id_source = sd.id_source
                     WHERE mf.data_status = 'forecast'
                       AND LOWER(sd.data_type) = 'marine'
-                      AND mf.raw_json->'requestedLocation'->>'latitude' = %s
-                      AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                      AND (mf.raw_json->'requestedLocation'->>'latitude')::numeric = %s
+                      AND (mf.raw_json->'requestedLocation'->>'longitude')::numeric = %s
                     ORDER BY sd.name, sd.weather_model, mf.request_id DESC
                 )
                 SELECT
@@ -1071,11 +1072,11 @@ def get_current_marine_forecast(lat: float, lon: float):
                    )
                 WHERE mf.data_status = 'forecast'
                   AND LOWER(sd.data_type) = 'marine'
-                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
-                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                  AND (mf.raw_json->'requestedLocation'->>'latitude')::numeric = %s
+                  AND (mf.raw_json->'requestedLocation'->>'longitude')::numeric = %s
                 ORDER BY sd.name, sd.weather_model, cd.date, hd.full_time, vd.field_name
                 """,
-                (str(lat), str(lon), str(lat), str(lon))
+                (lat, lon, lat, lon)
             )
 
             rows = cursor.fetchall()
@@ -1190,8 +1191,8 @@ def get_marine_forecast_timeline(lat: float, lon: float):
                         ON mf.id_source = sd.id_source
                     WHERE mf.data_status = 'forecast'
                       AND LOWER(sd.data_type) = 'marine'
-                      AND mf.raw_json->'requestedLocation'->>'latitude' = %s
-                      AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                      AND (mf.raw_json->'requestedLocation'->>'latitude')::numeric = %s   
+                      AND (mf.raw_json->'requestedLocation'->>'longitude')::numeric = %s
                     ORDER BY sd.name, sd.weather_model, mf.request_id DESC
                 )
                 SELECT
@@ -1228,11 +1229,11 @@ def get_marine_forecast_timeline(lat: float, lon: float):
                    )
                 WHERE mf.data_status = 'forecast'
                   AND LOWER(sd.data_type) = 'marine'
-                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
-                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                  AND(mf.raw_json->'requestedLocation'->>'latitude')::numeric = %s
+                  AND (mf.raw_json->'requestedLocation'->>'longitude')::numeric = %s
                 ORDER BY sd.name, sd.weather_model, cd.date, hd.full_time, vd.field_name
                 """,
-                (str(lat), str(lon), str(lat), str(lon))
+                (lat, lon, lat, lon)
             )
 
             rows = cursor.fetchall()
@@ -1384,11 +1385,11 @@ def get_marine_forecast_history(
                 WHERE mf.data_status = 'forecast'
                   AND LOWER(sd.data_type) = 'marine'
                   AND vd.field_name = %s
-                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
-                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                  AND (mf.raw_json->'requestedLocation'->>'latitude')::numeric = %s
+                  AND (mf.raw_json->'requestedLocation'->>'longitude')::numeric = %s
                 ORDER BY cd_req.date, hd_req.full_time
                 """,
-                (field_name, str(lat), str(lon))
+                (field_name, lat, lon)
             )
 
             rows = cursor.fetchall()
@@ -1485,7 +1486,7 @@ def get_marine_forecast_records(
     try:
         with conn.cursor() as cursor:
 
-            params = [str(lat), str(lon)]
+            params = [lat, lon]
 
             search_clause = ""
             variable_clause = ""
@@ -1521,8 +1522,8 @@ def get_marine_forecast_records(
                     ON mf.id_variable = vd.id_variable
                 WHERE mf.data_status = 'forecast'
                   AND LOWER(sd.data_type) = 'marine'
-                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
-                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                  AND (mf.raw_json->'requestedLocation'->>'latitude')::numeric = %s
+                  AND (mf.raw_json->'requestedLocation'->>'longitude')::numeric = %s
                   {search_clause}
                   {variable_clause}
                 """,
@@ -1549,6 +1550,7 @@ def get_marine_forecast_records(
                     mf.value_text,
                     mf.raw_json->'requestedLocation'->>'latitude',
                     mf.raw_json->'requestedLocation'->>'longitude'
+                    
 
                 FROM measurement_facts mf
 
@@ -1572,8 +1574,8 @@ def get_marine_forecast_records(
 
                 WHERE mf.data_status = 'forecast'
                   AND LOWER(sd.data_type) = 'marine'
-                  AND mf.raw_json->'requestedLocation'->>'latitude' = %s
-                  AND mf.raw_json->'requestedLocation'->>'longitude' = %s
+                  AND (mf.raw_json->'requestedLocation'->>'latitude')::numeric = %s
+                  AND (mf.raw_json->'requestedLocation'->>'longitude')::numeric = %s
                   {search_clause}
                   {variable_clause}
 

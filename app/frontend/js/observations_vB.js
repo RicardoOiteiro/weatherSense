@@ -82,18 +82,18 @@ let selectedMarker;
 let historyChart;
 
 const OBSERVATION_LOCATIONS = [
-    { name: 'São Pedro de Moel', lat: 39.766853, lng: -9.019775 },
+    { name: 'São Pedro de Moel', lat: 39.7669, lng: -9.0198 },
     { name: 'Figueira da Foz', lat: 40.1508, lng: -8.8618 },
-    { name: 'Nazaré / Alcobaça', lat: 39.601, lng: -9.07 },
-    { name: 'Peniche / Cabo Carvoeiro', lat: 39.361378, lng: -9.387817 },
-    { name: 'Óbidos', lat: 39.360421, lng: -9.157214 },
-    { name: 'Bidoeira de Cima', lat: 39.842572, lng: -8.743315 },
-    { name: 'ESTG Leiria', lat: 39.735122, lng: -8.821217 },
+    { name: 'Nazaré / Alcobaça', lat: 39.6010, lng: -9.0700 },
+    { name: 'Peniche / Cabo Carvoeiro', lat: 39.3614, lng: -9.3878 },
+    { name: 'Óbidos', lat: 39.3604, lng: -9.1572 },
+    { name: 'Bidoeira de Cima', lat: 39.8426, lng: -8.7433 },
+    { name: 'ESTG Leiria', lat: 39.7351, lng: -8.8212 },
     { name: 'Pinhal de Leiria', lat: 39.8225, lng: -8.9450 },
-    { name: 'Pedrógão Grande', lat: 39.919392, lng: -8.133316 },
-    { name: 'Ansião', lat: 39.910834, lng: -8.434238 },
-    { name: 'Castanheira de Pêra', lat: 40.002723, lng: -8.205671 },
-    { name: 'Caranguejeira', lat: 39.744706, lng: -8.691161 }
+    { name: 'Pedrógão Grande', lat: 39.9194, lng: -8.1333 },
+    { name: 'Ansião', lat: 39.9108, lng: -8.4342 },
+    { name: 'Castanheira de Pêra', lat: 40.0027, lng: -8.2057 },
+    { name: 'Caranguejeira', lat: 39.7447, lng: -8.6912 }
 ];
 
 // ================================

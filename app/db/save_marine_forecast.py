@@ -96,10 +96,10 @@ def get_location_id(cursor, location):
     longitude = location.get("longitude")
 
     if latitude is not None:
-        latitude = round(float(latitude), 2)
+        latitude = round(float(latitude), 4)
     
     if longitude is not None:
-        longitude = round(float(longitude), 2)
+        longitude = round(float(longitude), 4)
 
 
     if latitude is None or longitude is None:
@@ -145,9 +145,6 @@ def get_source_id(cursor, normalized_data):
 
     data_nature = meta.get("dataNature")
     data_type = "marine"
-
-    requested_location = normalized_data.get("requestedLocation", {})
-    
 
     #print("DEBUG NORMALIZED META:", meta)
     #print("DEBUG SOURCE NAME:", repr(source_name))
@@ -225,6 +222,12 @@ def save_marine_forecast(conn, normalized_data, request_id, context_type="coasta
     current = normalized_data.get("current", {})
 
     requested_location = normalized_data.get("requestedLocation", {})
+
+    if requested_location.get("latitude") is not None:
+        requested_location["latitude"] = f"{float(requested_location['latitude']):.4f}"
+
+    if requested_location.get("longitude") is not None:
+        requested_location["longitude"] = f"{float(requested_location['longitude']):.4f}"
     requested_lat = str(requested_location.get("latitude"))
     requested_lon = str(requested_location.get("longitude"))
 
