@@ -1173,9 +1173,19 @@ def get_current_marine_forecast(lat: float, lon: float):
         conn.close()
 
 
+
 @app.get("/data/forecast/marine/timeline")
-def get_marine_forecast_timeline(lat: float, lon: float):
+def get_marine_forecast_timeline(
+    lat: float,
+    lon: float,
+    provider: str = "openmeteo",
+    hours: int = 24
+):
     conn = get_connection()
+
+    now = datetime.now(ZoneInfo("Europe/Lisbon")).replace(tzinfo=None)
+    end_date = now + timedelta(hours=hours)
+    provider = provider.lower()
 
     try:
         with conn.cursor() as cursor:
@@ -1191,7 +1201,7 @@ def get_marine_forecast_timeline(lat: float, lon: float):
                         ON mf.id_source = sd.id_source
                     WHERE mf.data_status = 'forecast'
                       AND LOWER(sd.data_type) = 'marine'
-                      AND (mf.raw_json->'requestedLocation'->>'latitude')::numeric = %s   
+                      AND (mf.raw_json->'requestedLocation'->>'latitude')::numeric = %s
                       AND (mf.raw_json->'requestedLocation'->>'longitude')::numeric = %s
                     ORDER BY sd.name, sd.weather_model, mf.request_id DESC
                 )
@@ -1229,7 +1239,7 @@ def get_marine_forecast_timeline(lat: float, lon: float):
                    )
                 WHERE mf.data_status = 'forecast'
                   AND LOWER(sd.data_type) = 'marine'
-                  AND(mf.raw_json->'requestedLocation'->>'latitude')::numeric = %s
+                  AND (mf.raw_json->'requestedLocation'->>'latitude')::numeric = %s
                   AND (mf.raw_json->'requestedLocation'->>'longitude')::numeric = %s
                 ORDER BY sd.name, sd.weather_model, cd.date, hd.full_time, vd.field_name
                 """,
@@ -1237,7 +1247,6 @@ def get_marine_forecast_timeline(lat: float, lon: float):
             )
 
             rows = cursor.fetchall()
-
             grouped = {}
 
             for row in rows:
@@ -1256,7 +1265,18 @@ def get_marine_forecast_timeline(lat: float, lon: float):
 
                 forecast_dt = datetime.combine(forecast_date, forecast_time)
 
+                if forecast_dt < now or forecast_dt > end_date:
+                    continue
+
                 source_lower = source.lower()
+
+                if provider != "all":
+                    if provider == "openmeteo" and source_lower != "open-meteo":
+                        continue
+                    if provider == "ipma" and source_lower != "ipma":
+                        continue
+                    if provider == "worldweatheronline" and source_lower != "worldweatheronline":
+                        continue
 
                 if source_lower == "open-meteo":
                     source_key = "openmeteo"
@@ -1306,17 +1326,19 @@ def get_marine_forecast_timeline(lat: float, lon: float):
 
                 if source_lower == "ipma":
                     result["ipma"].append(item)
-
                 elif source_lower == "open-meteo":
                     result["openmeteo"].append(item)
-
                 elif source_lower == "worldweatheronline":
                     result["worldweatheronline"].append(item)
 
             for key in result:
                 result[key].sort(key=lambda x: x["datetime"])
 
-            return result
+            return {
+                "provider": provider,
+                "hours": hours,
+                "forecasts": result
+            }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

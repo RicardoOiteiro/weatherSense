@@ -740,7 +740,7 @@ async function getMarineFutureForecastData() {
     const { lat, lng } = appState.selectedLocation;
 
     const response = await fetch(
-        `/data/forecast/marine/timeline?lat=${Number(lat).toFixed(4)}&lon=${Number(lng).toFixed(4)}`
+        `/data/forecast/marine/timeline?lat=${Number(lat).toFixed(4)}&lon=${Number(lng).toFixed(4)}&provider=${currentMarineForecastProvider}&hours=24`
     );
 
     if (!response.ok) {
@@ -749,6 +749,8 @@ async function getMarineFutureForecastData() {
 
     return await response.json();
 }
+
+
 let currentMarineForecastProvider = 'ipma';
 async function initializeMarineTimeline() {
     const container = document.getElementById('timelineScroll');
@@ -764,7 +766,7 @@ async function initializeMarineTimeline() {
                 provider: 'IPMA ',
                 model: 'ECMWF + AROME',
                 type: 'Diário',
-                data: data.ipma || []
+                data: data.forecasts?.ipma || []
             });
         }
 
@@ -773,7 +775,7 @@ async function initializeMarineTimeline() {
                 provider: 'Open-Meteo ',
                 model: 'DWD EWAM',
                 type: 'Horário',
-                data: data.openmeteo || []
+                data: data.forecasts?.openmeteo || []
             });
         }
 
@@ -782,7 +784,7 @@ async function initializeMarineTimeline() {
                 provider: 'WorldWeatherOnline',
                 model: 'WWO',
                 type: 'Horário',
-                data: data.worldweatheronline || []
+                data: data.forecasts?.worldweatheronline || []
             });
         }
 
@@ -1633,7 +1635,6 @@ function updateMarineDistance() {
 
     );
 
-
     setText(
 
         'openmeteoCardDistance',
@@ -1645,8 +1646,6 @@ function updateMarineDistance() {
             : '—'
 
     );
-
-
     setText(
 
         'wwoCardDistance',
@@ -1660,7 +1659,6 @@ function updateMarineDistance() {
     );
 
 }
-
 function degreesToCardinal(degrees) {
 
     if (degrees == null) return '—';
