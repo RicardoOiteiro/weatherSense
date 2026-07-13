@@ -9,7 +9,7 @@ TRUNCATE TABLE context_dimension RESTART IDENTITY CASCADE;
 
 INSERT INTO context_dimension (type, drone_wind_limit_kmh, drone_gust_limit_kmh, drone_precipitation_limit, coastal_wave_limit_m, coastal_wind_limit_kmh)
 VALUES
-('drone', 25, 30, 2, NULL, NULL),
+('drone', 43, 43, 2, NULL, NULL),
 ('coastal', NULL, NULL, NULL, 7, 80);
 
 
@@ -149,4 +149,3 @@ SELECT
     END
 FROM generate_series(0,23) h,
      generate_series(0,59) m;
-

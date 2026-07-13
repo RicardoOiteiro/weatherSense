@@ -14,11 +14,11 @@ LOCATIONS = [
 ]
 
 MARINE_LOCATIONS = [
-    {"name": "Figueira Offshore", "lat": 40.1234, "lon": -9.0556},
-    {"name": "Vieira / Pedrógão Offshore", "lat": 39.9300, "lon": -9.1200},
-    {"name": "São Pedro Offshore", "lat": 39.7300, "lon": -9.1800},
-    {"name": "Nazaré Nearshore", "lat": 39.6000, "lon": -9.2000},
-    {"name": "Nazaré Canyon", "lat": 39.5200, "lon": -9.3500},
-    {"name": "Peniche Offshore", "lat": 39.3000, "lon": -9.4500},
-    {"name": "Berlenga Offshore", "lat": 39.4100, "lon": -9.5200},
+    {"name": "Figueira da Foz", "lat": 40.1234, "lon": -9.0556},
+    {"name": "Vieira / Pedrógão", "lat": 39.9300, "lon": -9.1200},
+    {"name": "São Pedro de Moel", "lat": 39.7300, "lon": -9.1800},
+    {"name": "Nazaré Costa", "lat": 39.6000, "lon": -9.2000},
+    {"name": "Nazaré Desfiladeiro", "lat": 39.5200, "lon": -9.3500},
+    {"name": "Berlenga", "lat": 39.3000, "lon": -9.4500},
+    {"name": "Peniche  ", "lat": 39.4100, "lon": -9.5200},
 ]

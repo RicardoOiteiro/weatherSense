@@ -1010,6 +1010,9 @@ function exportToCSV() {
 // ================================
 // 11. UI events
 // ================================
+
+
+
 function initializeEventListeners() {
     document.querySelectorAll('.time-range-buttons .btn').forEach(btn => {
         btn.addEventListener('click', function () {

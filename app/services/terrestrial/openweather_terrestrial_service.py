@@ -59,7 +59,7 @@ def get_openweather_terrestrial(lat: float, lon: float):
 
     resultados = []
 
-    for bloco in lista[:24]:
+    for bloco in lista:
 
         data_for_normalizer = {
             **data,

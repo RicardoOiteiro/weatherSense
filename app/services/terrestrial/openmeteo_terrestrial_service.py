@@ -106,7 +106,7 @@ def get_openmeteo_terrestrial(lat: float, lon: float, model: dict):
         current_index,
         min(current_index + 24, len(hourly["time"]))
     ):
-
+    
         resultado = normalize_openmeteo_terrestrial(
             lat=api_lat,
             lon=api_lon,

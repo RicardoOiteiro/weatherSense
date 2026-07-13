@@ -702,8 +702,7 @@ function renderTimelineModelRow(modelData) {
 }
 
 function renderTimelineModelSummary(forecastData, modelName = 'ICON', provider = 'Open-Meteo') {
-    const first = forecastData[0];
-    if (!first) return '';
+    if (!forecastData.length) return '';
 
     const days = Object.values(
         forecastData.reduce((acc, item) => {
@@ -716,6 +715,29 @@ function renderTimelineModelSummary(forecastData, modelName = 'ICON', provider =
                     sunset: item.sunset
                 };
             }
+
+            if (item.minTemp != null) {
+                acc[item.dateRaw].minTemp =
+                    acc[item.dateRaw].minTemp != null
+                        ? Math.min(acc[item.dateRaw].minTemp, item.minTemp)
+                        : item.minTemp;
+            }
+
+            if (item.maxTemp != null) {
+                acc[item.dateRaw].maxTemp =
+                    acc[item.dateRaw].maxTemp != null
+                        ? Math.max(acc[item.dateRaw].maxTemp, item.maxTemp)
+                        : item.maxTemp;
+            }
+
+            if (!acc[item.dateRaw].sunrise && item.sunrise) {
+                acc[item.dateRaw].sunrise = item.sunrise;
+            }
+
+            if (!acc[item.dateRaw].sunset && item.sunset) {
+                acc[item.dateRaw].sunset = item.sunset;
+            }
+
             return acc;
         }, {})
     );
@@ -763,6 +785,7 @@ function renderTimelineModelSummary(forecastData, modelName = 'ICON', provider =
         </div>
     `;
 }
+
 
 function renderTimelineBlocks(forecastData, provider = '') {
     const isIpma = provider === 'IPMA';

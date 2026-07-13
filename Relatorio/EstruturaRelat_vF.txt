@@ -1,0 +1,79 @@
+Estrutura do Relatório:
+
+1. Introdução  [TRATADO - Rever]
+
+2. Enquadramento Teórico  
+	2.1 Meteorologia e apoio à decisão
+
+	2.2 Gestão de Operações Dependentes das Condições Meteorológicas
+
+	2.3 Fontes e APIs Meteorológicas
+		2.3.1 Critérios de Seleção
+		2.3.2 Comparação das APIs [FALTA IMAGENS A COMPARAR] 	
+		2.3.3 Limitações das fontes
+
+3. Análise e Conceção da Solução
+	3.1 Levantamento de Requisitos
+		3.1.1 Requisitos Funcionais
+		3.1.2 Requisitos Não Funcionais
+	
+	3.2 Arquitetura Geral do Sistema
+	3.3 Seleção e Justificação de Tecnologias 
+		3.3.1 Backend
+		3.3.2 Frontend
+		3.3.3 Base de Dados			[TRATADO] 
+		3.3.4 APIs Meteorológicas
+
+	3.4 Modelo de Dados			[TRATADO] Falta uma imagem;
+		3.4.1 Modelo Conceptual		[TRATADO - Revisto] 
+		3.4.2 Modelo Relacional		[TRATADO]
+		3.4.3 Organização Dimensional	[TRATADO] 
+
+	3.5 Estratégia de testes e avaliação
+
+4. Implementação
+	4.1 Backend
+		4.1.1 Estrutura do Backend 	[TRATADO]
+		4.1.2 Serviços de Recolha   	[TRATADO]
+		4.1.3 Scheduler e Automatização [TRATADO] FAZER FLUXOGRAMA -> ?
+	
+	4.2 Normalização e Tratamento de Dados		[TRATADO]
+		4.2.1 Observações Meteorológicas	[TRATADO]
+		4.2.2 Previsões Terrestres		[TRATADO]
+		4.2.3 Previsões Marítimas		[TRATADO]
+
+	4.3 Base de dados				[TRATADO]
+		4.3.1 Estrutura da Base de Dados	[TRATADO]
+		4.3.2 Processo de Armazenamento		[TRATADO]
+	
+	4.4 Endpoints e Disponibilização dos Dados		[TRATADO]
+		4.4.1 Endpoints de Observação			[TRATADO]
+		4.4.2 Endpoints de Previsões Terrestres		[TRATADO]
+		4.4.3 Endpoints de Previsões Marítimas		[TRATADO]
+	
+	4.5 Frontend						[TRATADO]
+		4.5.1 Mapa Interativo				[TRATADO]
+		4.5.2 Observações Meteorológicas		[TRATADO]
+		4.5.3 Previsões Terrestres			[TRATADO]
+		4.5.4 Previsões Marítima			[TRATADO]
+		4.5.5 Timeline de Previsões Futuras		[TRATADO]
+		4.5.6 Histórico e Registos			[TRATADO]
+		4.5.7 Concordância entre Fontes e Modelos	[TRATADO]
+		4.5.6 Análise Operacional			[TRATADO]
+
+5. Resultado e Validação
+	5.1 Ambiente de Testes
+	5.2 Testes Funcionais
+	5.3 Testes de Robustez
+	5.4 Testes de Desempenho
+	5.5 Avaliação em Cenários Operacionais
+	5.6 Análise Crítica dos Resultados
+	5.7 Limitações Identificadas
+
+6. Conclusão
+
+
+
+		
+
+

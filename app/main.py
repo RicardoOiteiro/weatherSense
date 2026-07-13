@@ -1644,5 +1644,3 @@ def get_marine_forecast_records(
 
     finally:
         conn.close()
-
-

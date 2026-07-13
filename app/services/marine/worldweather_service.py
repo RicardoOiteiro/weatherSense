@@ -3,6 +3,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import requests
+import json
 from fastapi import HTTPException
 
 from app.normalizers.marine_normalizer import normalize_wwo_marine
@@ -112,6 +113,12 @@ def get_wwo_marine(lat: float, lon: float):
         }
 
         resultados.append(resultado)
+
+        print("\n========== DADOS ORIGINAIS WWO ==========")
+        print(json.dumps(item["hourly"], indent=4, ensure_ascii=False))
+
+        print("\n========== DADOS NORMALIZADOS WWO ==========")
+        print(json.dumps(resultado, indent=4, ensure_ascii=False))
     
 
     conn = get_connection()

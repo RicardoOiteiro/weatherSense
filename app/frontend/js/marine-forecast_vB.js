@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-    setInterval(refreshCurrentData, 300000);
+    setInterval(refreshAfterLocationChange, 300000);
 });
 
 // ================================
@@ -78,6 +78,7 @@ function initializeMap() {
 
     addCoastalBoundary();
     addMarineMarkers();
+
 
     selectLocation(39.9300, -9.1200, "Vieira / Pedrógão ");
     map.on('click', function (e) {
@@ -192,7 +193,20 @@ function addMarineMarkers() {
     });
 }
 
-function selectLocation(lat, lng, name = null) {
+async function refreshAfterLocationChange() {
+    try {
+        await Promise.all([
+            refreshCurrentData(),
+            initializeMarineTimeline(),
+            loadMarineHistoricalForecast(),
+            loadMarineRecordsData(1)
+        ]);
+    } catch (error) {
+        console.error('Erro ao atualizar previsões marítimas:', error);
+    }
+}
+
+async function selectLocation(lat, lng, name = null) {
     appState.selectedLocation = {
         lat: lat,
         lng: lng,
@@ -225,10 +239,7 @@ function selectLocation(lat, lng, name = null) {
 
     selectedMarker = L.marker([lat, lng], { icon: selectedIcon }).addTo(map);
 
-    refreshCurrentData();
-    initializeMarineTimeline();
-    loadMarineHistoricalForecast();
-    loadMarineRecordsData(1);
+    await refreshAfterLocationChange();
 }
 
 

@@ -271,6 +271,7 @@ def normalize_openweather_terrestrial(lat, lon, data):
 
     wind_speed = para_float(wind.get("speed"))
     wind_gust = para_float(wind.get("gust"))
+    
     return {
         "source": "openweather",
 

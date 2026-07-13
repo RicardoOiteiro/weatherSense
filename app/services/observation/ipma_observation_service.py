@@ -2,6 +2,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import requests
+import json
 
 from app.normalizers.observation_normalizer import normalize_ipma_observation
 from app.db.database import get_connection
@@ -106,6 +107,15 @@ def get_ipma_observation(lat: float, lon: float):
         observacao=melhor_observacao,
         direcao_cardinal=direcao_cardinal
     )
+
+   
+
+    #print("\n========== DADOS ORIGINAIS IPMA ==========")
+    #print(json.dumps(melhor_observacao, indent=4, ensure_ascii=False))
+
+    #print("\n========== DADOS NORMALIZADOS IPMA ==========")
+    #print(json.dumps(normalized, indent=4, ensure_ascii=False))
+        
 
     normalized["requestedLocation"] = {
         "latitude": lat,

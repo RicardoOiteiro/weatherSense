@@ -77,8 +77,6 @@ def get_foreca_observation(lat: float, lon: float):
             context_type="drone"
         )
 
-
-
     finally:
         conn.close()
 
