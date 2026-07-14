@@ -60,6 +60,8 @@
 // ================================
 // 1. State
 // =================================
+
+// Guarda a localização selecionada e os dados atualmente apresentados
 const appState = {
     selectedLocation: {
         name: 'Leiria',
@@ -457,6 +459,7 @@ function updateLocationPanel() {
 // 7. Current Forecast Management
 // ================================
 
+// Carrega a previsão mais recente de todos os fornecedores
 async function fetchCurrentForecast() {
     try {
 
@@ -608,6 +611,7 @@ function initializeForecastTabs() {
     });
 }
 
+// Carrega e apresenta as próximas previsões do fornecedor selecionado
 async function initializeTimeline() {
     const timelineScroll = document.getElementById('timelineScroll');
     if (!timelineScroll) return;
@@ -787,6 +791,8 @@ function renderTimelineModelSummary(forecastData, modelName = 'ICON', provider =
 }
 
 
+// Gera os blocos horários apresentados na timeline
+
 function renderTimelineBlocks(forecastData, provider = '') {
     const isIpma = provider === 'IPMA';
 
@@ -880,6 +886,7 @@ function updateSpreadRow(valueId, indicatorId, spread, unit, thresholds) {
     return score;
 }
 
+// Calcula a concordância entre os diferentes modelos meteorológicos
 function updateForecastAgreement() {
     const models = [
         appState.currentData.icon,
@@ -946,6 +953,7 @@ function getWindDirection(models) {
     );
 }
 
+// Avalia as condições previstas para operações com drones
 function updateForecastDroneReadiness() {
     const models = getForecastModels();
     if (!models.length) return;
@@ -996,6 +1004,7 @@ function updateForecastDroneReadiness() {
     }
 }
 
+// Estima o risco meteorológico para propagação de incêndios
 function updateForecastFireRisk() {
     const models = getForecastModels();
     if (!models.length) return;
@@ -1095,6 +1104,7 @@ function initializeForecastHistoryChart() {
     });
 }
 
+// Carrega os dados históricos da variável atualmente selecionada
 async function loadHistoricalForecast() {
 
     try {
@@ -1216,6 +1226,7 @@ async function loadRecordsData(page = 1) {
     }
 }
 
+// Atualiza a tabela de registos da previsão
 function initializeTable() {
     renderTable();
     renderPagination();
@@ -1345,7 +1356,7 @@ function initializeEventListeners() {
 // 14. UI Updates
 // ================================
 
-
+// Atualiza todos os componentes quando a localização muda
 async function refreshAfterLocationChange() {
 
     await Promise.all([

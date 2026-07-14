@@ -1,4 +1,4 @@
--- limpar
+-- Limpa todas as tabelas e reinicia os identificadores antes de carregar os dados iniciais.
 TRUNCATE TABLE measurement_facts RESTART IDENTITY CASCADE;
 TRUNCATE TABLE variable_dimension RESTART IDENTITY CASCADE;
 TRUNCATE TABLE location_dimension RESTART IDENTITY CASCADE;
@@ -12,7 +12,7 @@ VALUES
 ('drone', 43, 43, 2, NULL, NULL),
 ('coastal', NULL, NULL, NULL, 7, 80);
 
-
+-- Fontes meteo utilizadas 
 INSERT INTO source_dimension (name, base_url, weather_model, update_interval_hour, data_nature, data_type)
 VALUES
 ('worldweatheronline', 'https://api.worldweatheronline.com/premium/v1/marine.ashx', 'WWO', NULL, 'forecast', 'marine'),
@@ -27,7 +27,7 @@ VALUES
 ('foreca', 'https://pfa.foreca.com/api/v1/observation/latest/{lon},{lat}', NULL, NULL, 'observation', 'terrestrial');
 
 
--- variavel_dimensao
+-- Variaveis meteorologicas - variavel_dimensao
 INSERT INTO variable_dimension (field_name, description, unit, category)
 VALUES
 --atmosfera
@@ -75,7 +75,7 @@ VALUES
 ('currentDirectionDegrees', 'Sea current direction (degrees)', 'degrees', 'Maritime');
 
 
--- local_dimensao
+-- Localizações -  local_dimensao
 INSERT INTO location_dimension (name, latitude, longitude, location_context, region, country)
 VALUES
 ('Porto', 41.1579, -8.6291, 'terrestrial', 'North', 'Portugal'),
@@ -116,7 +116,7 @@ VALUES
 
 
 
--- calendar_dimensao
+-- Gera automaticamente o calendário entre 2025 e 2030 - calendar_dimensao
 INSERT INTO calendar_dimension (date, year, month, day, month_name, day_of_week, day_name, semester, quarter, week_of_year)
 SELECT 
     d::date,
@@ -135,7 +135,7 @@ SELECT
 FROM generate_series('2025-01-01', '2030-12-31', interval '1 day') d;
 
 
--- hora_dimensao
+-- Gera todas as combinações possíveis de hora e minuto - hora_dimensao
 INSERT INTO hour_dimension (hour, minute, full_time, day_period)
 SELECT 
     h,

@@ -6,11 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-
 from app.db.database import get_connection
-
-
-
 
 app = FastAPI(title="Projeto WeatherSense API")
 
@@ -24,11 +20,9 @@ app.add_middleware(
 
 app.mount("/frontend", StaticFiles(directory="app/frontend"), name="frontend")
 
-
 @app.get("/")
 def root():
     return FileResponse("app/frontend/index.html")
-
 
 # =============================================================================
 # Observações
@@ -349,9 +343,10 @@ def get_current_terrestrial_forecast(lat: float, lon: float):
 
     try:
         with conn.cursor() as cursor:
-            cursor.execute(
+            # Seleciona a recolha mais recente de cada fonte/modelo
+            cursor.execute( 
                 """
-                WITH latest_requests AS (
+                WITH latest_requests AS ( 
                     SELECT DISTINCT ON (sd.name, sd.weather_model)
                         mf.request_id,
                         sd.name AS source,
@@ -403,7 +398,7 @@ def get_current_terrestrial_forecast(lat: float, lon: float):
 
             now = datetime.now(ZoneInfo("Europe/Lisbon")).replace(tzinfo=None)
 
-            grouped = {}
+            grouped = {} # Agrupa os valores pertencentes à mesma previsão
 
             for row in rows:
                 request_id = row[0]
@@ -439,8 +434,8 @@ def get_current_terrestrial_forecast(lat: float, lon: float):
                     "value": value
                 }
 
-            nearest_by_model = {}
-
+            nearest_by_model = {} # mantem apenas a previsão temporalmente mais próxima da hora atual
+ 
             for item in grouped.values():
                 source = item["source"].lower()
                 model = (item["model"] or "").upper()
@@ -580,7 +575,7 @@ def get_terrestrial_forecast_history(
 
             rows = cursor.fetchall()
 
-            grouped = {}
+            grouped = {} # Agrupa os valores por instante 
 
             for row in rows:
 
@@ -714,7 +709,8 @@ def get_terrestrial_forecast_records(
                     AND vd.field_name = %s
                 """
                 params.append(selected_variable)
-
+            
+             # # conta o número total de registos para paginação
             cursor.execute(
                 f"""
                 SELECT COUNT(*)
@@ -888,6 +884,8 @@ def get_terrestrial_forecast_timeline(
                 raw_value = row[3] if row[3] is not None else row[4]
                 forecast_dt = datetime.combine(row[5], row[6])
 
+                # Filtra apenas as previsões compreendidas no intervalo temporal pedido
+                
                 if forecast_dt < now or forecast_dt > end_date:
                     continue
 

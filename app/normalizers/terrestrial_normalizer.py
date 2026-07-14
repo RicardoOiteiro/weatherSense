@@ -3,6 +3,7 @@ from datetime import datetime
 # HELPERS
 # =====================================================
 
+# Converte o valor para float
 def para_float(valor):
     if valor in (None, "", "null"):
         return None
@@ -11,7 +12,7 @@ def para_float(valor):
     except (TypeError, ValueError):
         return None
 
-
+# Converte o valor para inteiro
 def para_int(valor):
     if valor in (None, "", "null"):
         return None
@@ -20,6 +21,7 @@ def para_int(valor):
     except (TypeError, ValueError):
         return None
 
+#Separa a data e a hora
 def split_date_hour(date_time):
     if not date_time:
         return None, None
@@ -34,6 +36,7 @@ def split_date_hour(date_time):
 
     return date, hour
 
+# Extrai apenas a hora de um valor temporal
 def extract_hour_only(datetime_text):
     if not datetime_text:
         return None
@@ -49,6 +52,8 @@ def extrair_data(data_hora: str):
 
     return data_hora.split("T")[0]
 
+# Obtém um valor de uma lista devolvida pela API sem provocar erro
+# quando o índice ou o campo não existem.
 def get_lista_valor(dados: dict, campo: str, index: int):
     valores = dados.get(campo)
 
@@ -59,7 +64,8 @@ def get_lista_valor(dados: dict, campo: str, index: int):
         return valores[index]
     except (IndexError, TypeError):
         return None
-    
+
+# Procura o índice correspondente à data nos dados diários do Open-Meteo
 def get_daily_index_by_date(daily: dict, data: str):
     datas = daily.get("time", [])
 
@@ -72,6 +78,7 @@ def get_daily_index_by_date(daily: dict, data: str):
         return None
 
 
+# Converte os identificadores dos modelos para os nomes apresentados e armazenados 
 def map_openmeteo_model(model: str):
     mapping = {
         "ecmwf_ifs": "ECMWF",
@@ -85,10 +92,14 @@ def map_openmeteo_model(model: str):
 # NORMALIZERS
 # =====================================================
 
+# Normaliza Open-Meteo - horário e diário
+
 def normalize_openmeteo_terrestrial(lat: float, lon: float, distance_km: float, hourly: dict, daily: dict, index: int, model: str):
     data_hora = get_lista_valor(hourly, "time", index)
     date, hour = split_date_hour(data_hora)
     data = extrair_data(data_hora)
+
+    # Associa cada previsão horária aos valores mínimos, máximos  e horários solares do dia
     daily_index = get_daily_index_by_date(daily, data)
 
     return {
@@ -116,6 +127,8 @@ def normalize_openmeteo_terrestrial(lat: float, lon: float, distance_km: float, 
             "humidityPercent": para_int(get_lista_valor(hourly, "relative_humidity_2m", index)),
             "pressureHpa": para_float(get_lista_valor(hourly, "pressure_msl", index)),
             "cloudCoverPercent": para_int(get_lista_valor(hourly, "cloud_cover", index)),
+
+            # devolve a visibilidade em metros.
             "visibilityKm": (
                 para_float(get_lista_valor(hourly, "visibility", index)) / 1000
                 if get_lista_valor(hourly, "visibility", index) is not None
@@ -144,6 +157,7 @@ def normalize_openmeteo_terrestrial(lat: float, lon: float, distance_km: float, 
         },
     }
 
+# Normaliza IPMA - horário e diário
 
 def normalize_ipma_terrestrial(
     requested_lat: float,
@@ -204,6 +218,7 @@ def normalize_ipma_terrestrial(
         },
     }
 
+# Normaliza OpenWeather - horário
 
 def normalize_openweather_terrestrial(lat, lon, data):
 
@@ -224,16 +239,9 @@ def normalize_openweather_terrestrial(lat, lon, data):
     main = bloco.get("main", {})
     clouds = bloco.get("clouds", {})
 
-    # =====================================
-    # TEMPERATURA ATUAL
-    # =====================================
-
     temp = para_float(main.get("temp"))
 
-    # =====================================
-    # MIN/MAX DO DIA
-    # =====================================
-
+    # Calcula a temperatura mínima e máxima com base nos blocos de previsão disponíveis para o mesmo dia
     temperaturas_dia = []
 
     for item in lista:
@@ -321,9 +329,9 @@ def normalize_openweather_terrestrial(lat, lon, data):
                 else None
             ),
         },
-
+        
+        # de  m/s e para para km/h
         "wind": {
-
             "windSpeedKmh": (
                 round(wind_speed * 3.6, 2)
                 if wind_speed is not None
@@ -343,8 +351,9 @@ def normalize_openweather_terrestrial(lat, lon, data):
             ),
 
             "windDirectionCardinal": None,
-        },
+        },  
 
+        # A probabilidade  0 e 1 e convertida para %
         "precipitation": {
 
             "precipitationMm": (

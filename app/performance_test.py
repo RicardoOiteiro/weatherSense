@@ -65,14 +65,14 @@ ENDPOINTS = [
     },
 ]
 
-
+# Alterna entre as localizações 
 def escolher_localizacao(endpoint_type, index):
     if endpoint_type == "marine":
         return MARINE_LOCATIONS[index % len(MARINE_LOCATIONS)]
 
     return TERRESTRIAL_LOCATIONS[index % len(TERRESTRIAL_LOCATIONS)]
 
-
+# Mede o tempo de resposta e regista os códigos HTTP devolvidos
 def executar_teste(endpoint):
     tempos = []
     erros = 0
@@ -106,10 +106,9 @@ def executar_teste(endpoint):
                 codigos_http.get(resposta.status_code, 0) + 1
             )
 
+            # As respostas diferentes de 200 são contabilizadas como erro
             if resposta.status_code != 200:
                 erros += 1
-
-            
 
         except requests.exceptions.RequestException:
             erros += 1
@@ -120,13 +119,14 @@ def executar_teste(endpoint):
     print(f"Latência máxima: {max(tempos):.2f} ms")
     print(f"Erros: {erros}")
     print(f"Taxa de erro: {(erros / TOTAL_PEDIDOS) * 100:.2f}%")
-    #print(f"Códigos HTTP: {codigos_http}")
 
 
+# Executa o teste sequencialmente 
 def main():
     print("=== INÍCIO DOS TESTES DE DESEMPENHO ===")
 
     for endpoint in ENDPOINTS:
+        
         executar_teste(endpoint)
 
     print("\n=== FIM DOS TESTES DE DESEMPENHO ===")

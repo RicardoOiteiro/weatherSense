@@ -40,7 +40,7 @@ TEXT_VARIABLES = {
 # =====================================================
 # HELPERS
 # =====================================================
-
+# Converte uma hora no formato HH:MM para hora e minuto.
 def parse_hour(hour_text):
     if not hour_text:
         return None, None
@@ -89,7 +89,7 @@ def get_hour_id(cursor, hour_text):
 
     return row[0]
 
-
+# Procura a localização na dimensão e cria um novo registo caso ainda não exista
 def get_location_id(cursor, location):
     latitude = location.get("latitude")
     longitude = location.get("longitude")
@@ -139,6 +139,9 @@ def get_source_id(cursor, normalized_data):
     data_type = "terrestrial"
     weather_model = meta.get("model")
 
+
+    # O Open-Meteo disponibiliza 3 modelos meteorológicos, sendo necessário
+    # considerar o weather_model para identificar corretamente a fonte.
     if source_name == "open-meteo":
         cursor.execute(
             """
@@ -231,6 +234,7 @@ def save_terrestrial_forecast(conn, normalized_data, request_id, context_type="d
     risk = normalized_data.get("risk", {})
     sun = normalized_data.get("sun", {})
 
+    # Agrupa todas as categorias da previsão para serem processadas de forma uniforme
     all_data = {
         **weather,
         **wind,
@@ -246,6 +250,7 @@ def save_terrestrial_forecast(conn, normalized_data, request_id, context_type="d
     request_date = now.date().isoformat()
     request_hour = now.strftime("%H:%M")
 
+    # Guarda a resposta normalizada completa para futuras consultas
     raw_json = json.dumps(normalized_data)
 
     inserted_count = 0
@@ -284,6 +289,8 @@ def save_terrestrial_forecast(conn, normalized_data, request_id, context_type="d
 
             id_variable = get_variable_id(cursor, field_name)
 
+            # Verifica se já existe uma medição com a mesma data, hora, localização,
+            # fonte, variável, contexto e localização inicialmente solicitada.
             cursor.execute(
                 """
                 SELECT id_measurement
@@ -313,6 +320,7 @@ def save_terrestrial_forecast(conn, normalized_data, request_id, context_type="d
                 )
             )
 
+            # Atualiza a medição existente com os dados da recolha mais recente
             existing = cursor.fetchone()
 
             if existing:
@@ -341,6 +349,7 @@ def save_terrestrial_forecast(conn, normalized_data, request_id, context_type="d
                     )
                 )
 
+            # Cria uma nova medição quando não existe qualquer registo correspondente
             else:
                 cursor.execute(
                     """

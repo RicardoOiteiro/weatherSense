@@ -41,13 +41,14 @@ TEXT_VARIABLES = {
 # HELPERS
 # =====================================================
 
+# Converte uma hora no formato HH:MM para hora e minuto.
 def parse_hour(hour_text):
     if not hour_text:
         return None, None
 
     parts = hour_text.split(":")
     return int(parts[0]), int(parts[1])
-
+""
 
 # =====================================================
 # DIMENSION LOOKUPS
@@ -146,11 +147,6 @@ def get_source_id(cursor, normalized_data):
     data_nature = meta.get("dataNature")
     data_type = "marine"
 
-    #print("DEBUG NORMALIZED META:", meta)
-    #print("DEBUG SOURCE NAME:", repr(source_name))
-    #print("DEBUG DATA NATURE:", repr(data_nature))
-    #print("DEBUG DATA TYPE:", repr(data_type))
-
     cursor.execute(
         """
         SELECT id_source
@@ -223,11 +219,13 @@ def save_marine_forecast(conn, normalized_data, request_id, context_type="coasta
 
     requested_location = normalized_data.get("requestedLocation", {})
 
+    # As coordenadas solicitadas são formatadas para quatro casas decimais para manter o mesmo formato 
     if requested_location.get("latitude") is not None:
         requested_location["latitude"] = f"{float(requested_location['latitude']):.4f}"
 
     if requested_location.get("longitude") is not None:
         requested_location["longitude"] = f"{float(requested_location['longitude']):.4f}"
+
     requested_lat = str(requested_location.get("latitude"))
     requested_lon = str(requested_location.get("longitude"))
 
@@ -244,9 +242,10 @@ def save_marine_forecast(conn, normalized_data, request_id, context_type="coasta
     request_date = now.date().isoformat()
     request_hour = now.strftime("%H:%M")
 
+    # Guarda a resposta normalizada completa para permitir futuras consultas
     raw_json = json.dumps(normalized_data)
 
-    inserted_count = 0
+    processed_count = 0
 
     with conn.cursor() as cursor:
         id_date_request = get_calendar_id(cursor, request_date)
@@ -309,6 +308,9 @@ def save_marine_forecast(conn, normalized_data, request_id, context_type="coasta
 
             existing = cursor.fetchone()
 
+            # Caso já exista uma medição para a mesma combinação de localização, instante,
+            # variável, fonte e coordenadas solicitadas, é atualizado em vez de criar um duplicado.
+            
             if existing:
                 cursor.execute(
                     """
@@ -335,6 +337,7 @@ def save_marine_forecast(conn, normalized_data, request_id, context_type="coasta
                     )
                 )
 
+            # Cria uma nova medição quando não existe qualquer registo correspondente.
             else:
                 cursor.execute(
                     """
@@ -378,7 +381,7 @@ def save_marine_forecast(conn, normalized_data, request_id, context_type="coasta
                     )
                 )
 
-            inserted_count += 1
+            inserteprocessed_countd_count += 1
 
     conn.commit()
-    return inserted_count
+    return processed_count

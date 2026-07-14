@@ -20,6 +20,7 @@ IPMA_OBS_URL = "https://api.ipma.pt/open-data/observation/meteorology/stations/o
 # HELPERS
 # =====================================================
 
+# Converte o identificador da direção do vento usado pelo IPMA para a respetiva direção cardinal
 def direcao_ipma_texto(id_direcc_vento):
     mapa = {
         0: "Sem rumo",
@@ -52,8 +53,11 @@ def get_ipma_observation(lat: float, lon: float):
     melhor_observacao = None
     melhor_distancia = None
 
+
+    # ordena os instantes do mais recente para o mais antigo
     timestamps = sorted(observations.keys(), reverse=True)
 
+    # Percorre as estações do IPMA e procura a observação mais recente disponível para cada uma
     for station in stations:
         coords = station.get("geometry", {}).get("coordinates", [])
         props = station.get("properties", {})
@@ -71,6 +75,7 @@ def get_ipma_observation(lat: float, lon: float):
         id_estacao = str(id_estacao)
         observacao_valida = None
 
+        # Seleciona a observação mais recente existente para esta estação
         for timestamp in timestamps:
             estacoes = observations[timestamp]
             if id_estacao in estacoes and estacoes[id_estacao] is not None:
@@ -82,7 +87,8 @@ def get_ipma_observation(lat: float, lon: float):
 
         if observacao_valida is None:
             continue
-
+        
+        # Calcula a distância entre as coordenadas pedidas e a estação
         distancia = haversine_km(lat, lon, station_lat, station_lon)
 
         if melhor_estacao is None or distancia < melhor_distancia:
@@ -96,6 +102,7 @@ def get_ipma_observation(lat: float, lon: float):
             melhor_observacao = observacao_valida
             melhor_distancia = distancia
 
+    # Mantém a estação válida mais próxima das coordenadas pedidaS
     if melhor_estacao is None or melhor_observacao is None:
         return None
 
@@ -117,6 +124,8 @@ def get_ipma_observation(lat: float, lon: float):
     #print(json.dumps(normalized, indent=4, ensure_ascii=False))
         
 
+    # Mantém as coordenadas inicialmente pedidas, mesmo quando os dados pertencem à estação IPMA mais próxima
+
     normalized["requestedLocation"] = {
         "latitude": lat,
         "longitude": lon    
@@ -125,6 +134,7 @@ def get_ipma_observation(lat: float, lon: float):
     conn = get_connection()
 
     try:
+        #GUARDA
         save_observation(
             conn=conn,
             normalized_data=normalized,

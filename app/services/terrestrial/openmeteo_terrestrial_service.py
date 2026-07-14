@@ -15,6 +15,7 @@ from app.db.save_terrestrial_forecast import save_terrestrial_forecast
 
 OPENMETEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 
+# Modelos do Open-Meteo =  usado na base de dados
 OPENMETEO_MODELS = [
     {
         "api_model": "ecmwf_ifs",
@@ -34,7 +35,7 @@ OPENMETEO_MODELS = [
 # HELPERS
 # =====================================================
 
-
+# Obtém o índice da primeira previsão correspondente à hora atual ou seguinte
 def get_next_hour_index(times: list[str]) -> int:
     now = datetime.now()
     times_dt = [datetime.fromisoformat(t) for t in times]
@@ -51,6 +52,7 @@ def get_next_hour_index(times: list[str]) -> int:
 # =====================================================
 
 def get_openmeteo_terrestrial(lat: float, lon: float, model: dict):
+    # Pede dados horários e diários para o modelo selecionado
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -93,15 +95,19 @@ def get_openmeteo_terrestrial(lat: float, lon: float, model: dict):
             status_code=404,
             detail=f"Sem dados terrestres devolvidos pelo Open-Meteo para o modelo {model}."
         )
-
+    
+    #A recolha começa na primeira previsão ainda não ultrapassada
     current_index = get_next_hour_index(hourly["time"])
 
+
+    # Calcula a distância entre as coordenadas pedidas e o ponto devolvido pela API
     api_lat = data.get("latitude", lat)
     api_lon = data.get("longitude", lon)
     distance_km = round(haversine_km(lat, lon, api_lat, api_lon), 2)
 
     resultados = []
 
+    # Normaliza no máximo as próximas 24 previsões horárias
     for index in range(
         current_index,
         min(current_index + 24, len(hourly["time"]))
@@ -117,6 +123,7 @@ def get_openmeteo_terrestrial(lat: float, lon: float, model: dict):
             model=model["db_model"],
         )
 
+        # Mantém as coordenadas inicialmente pedidas, mesmo quando a API devolve um ponto ligeiramente diferente
         resultado["requestedLocation"] = {
             "latitude": lat,
             "longitude": lon
@@ -132,6 +139,7 @@ def get_openmeteo_terrestrial(lat: float, lon: float, model: dict):
 def get_openmeteo_terrestrial_all_models(lat: float, lon: float):
     resultados = {}
 
+    # Executa a recolha separadamente para cada modelo configurado
     for model in OPENMETEO_MODELS:
         resultado = get_openmeteo_terrestrial(lat, lon, model)
         conn = get_connection()
@@ -139,7 +147,7 @@ def get_openmeteo_terrestrial_all_models(lat: float, lon: float):
         try:
             request_id = datetime.now().strftime("FOR_T-%y%m%d-%H%M")
             for previsao in resultado:
-
+                # identificador
                 save_terrestrial_forecast(
                     conn=conn,
                     normalized_data=previsao,
@@ -149,7 +157,7 @@ def get_openmeteo_terrestrial_all_models(lat: float, lon: float):
 
         finally:
             conn.close()
-
+        #Organiza os resultadods pelo modelo nome da bd
         resultados[model["db_model"]] = resultado
 
     return resultados

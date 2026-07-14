@@ -36,7 +36,7 @@ def format_remaining(seconds):
 
     return f"{sec}s"
 
-
+# Calcula o tempo restante até à próxima execução de uma recolha
 def next_run_seconds(last_run, interval):
     return max(0, interval - (time.time() - last_run))
 
@@ -55,7 +55,7 @@ def next_run_at(last_run, interval):
 def should_run(last_run, interval):
     return time.time() - last_run >= interval
 
-
+# Executa uma recolha e regista a duração ou o erro ocorrido
 def run_job(job_name, job_function):
     log(f"=== INÍCIO: {job_name} ===")
 
@@ -95,11 +95,13 @@ def run_scheduler():
 
     last_observations = 0
     last_forecasts = 0
-
+    
+    # Mantém o scheduler ativo e verifica periodicamente se cada recolha deve ser executada
     while True:
         try:
             log("Scheduler ativo...")
 
+            # As observações são recolhidas com maior frequência do que as previsões
             if should_run(last_observations, OBSERVATION_INTERVAL):
                 success = run_job(
                     "RECOLHA DE OBSERVAÇÕES",
@@ -110,7 +112,10 @@ def run_scheduler():
                     last_observations = time.time()
 
                 time.sleep(PAUSE_BETWEEN_BLOCKS)
-
+            
+            # As previsões terrestres e marítimas partilham o mesmo intervalo,
+            # mas são executadas separadamente para que uma falha não bloqueie a outra
+            
             if should_run(last_forecasts, FORECAST_INTERVAL):
                 success_terrestrial = run_job(
                     "RECOLHA DE PREVISÕES TERRESTRES",
@@ -123,6 +128,9 @@ def run_scheduler():
                     "RECOLHA DE PREVISÕES MARÍTIMAS",
                     run_marine_forecast_collection
                 )
+
+                # O instante da última recolha é atualizado quando pelo menos um dos
+                # dois processos de previsão termina com sucesso
 
                 if success_terrestrial or success_marine:
                     last_forecasts = time.time()

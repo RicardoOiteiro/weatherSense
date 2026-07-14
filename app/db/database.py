@@ -4,6 +4,7 @@ import psycopg2
 from dotenv import load_dotenv
 from pathlib import Path
 
+#.env
 BASE_DIR = Path(__file__).resolve().parents[2]
 ENV_PATH = BASE_DIR / ".env"
 

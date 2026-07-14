@@ -25,7 +25,7 @@ CREATE TABLE hour_dimension (
     UNIQUE (hour, minute)
 );
 
--- DIMENSÃO LOCAL
+-- DIMENSÃO LOCALIZAÇÃO
 CREATE TABLE location_dimension (
     id_location SERIAL PRIMARY KEY,
     name TEXT,
@@ -71,10 +71,8 @@ CREATE TABLE context_dimension (
 -- TABELA DE FACTOS
 CREATE TABLE measurement_facts (
     id_measurement SERIAL PRIMARY KEY,
-	
 	request_id TEXT NOT NULL,
 
-   
     value DOUBLE PRECISION,
     value_text TEXT, 
     raw_json JSONB,
@@ -95,13 +93,7 @@ CREATE TABLE measurement_facts (
 );
 
 
-
--- ÍNDICES (recomendado para pesquisas rápidas) 
---CREATE INDEX idx_request_id ON measurement_facts(request_id); 
---CREATE INDEX idx_request_time ON measurement_facts(id_date_request, id_hour_request);
---CREATE INDEX idx_data_time ON measurement_facts(id_date_data, id_hour_data);
-
--- ÍNDICES BASE
+-- Índices usados na identificação dos pedidos e na filtragem temporal
 CREATE INDEX IF NOT EXISTS idx_request_id 
 ON measurement_facts(request_id);
 
@@ -112,7 +104,7 @@ CREATE INDEX IF NOT EXISTS idx_data_time
 ON measurement_facts(id_date_data, id_hour_data);
 
 
--- ÍNDICES DE PERFORMANCE
+-- Índices compostos usados nas consultas sobre as medições
 CREATE INDEX IF NOT EXISTS idx_mf_request_desc
 ON measurement_facts (
     request_id DESC,

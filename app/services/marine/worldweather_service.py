@@ -31,7 +31,7 @@ def get_wwo_marine(lat: float, lon: float):
             detail="API key da WorldWeatherOnline não definida"
         )
 
-    # Pedido à API
+    # Pedido à API - parametros, resolução horaria
     params = {
         "key": api_key,
         "q": f"{lat},{lon}",
@@ -45,7 +45,7 @@ def get_wwo_marine(lat: float, lon: float):
 
     data = response.json()
 
-    # Extração dos dados
+     # Obtém os blocos diários devolvidos
     weather = data.get("data", {}).get("weather", [])
 
     if not weather:
@@ -58,13 +58,15 @@ def get_wwo_marine(lat: float, lon: float):
 
     hourly_filtrado = []
 
+    # Filtra previsões compreendidas entre a hora atual e as próximas 24 horas
     for dia in weather:
 
         date = dia.get("date")
         hourly = dia.get("hourly", [])
 
         for bloco in hourly:
-
+            
+            #  hora convetida para HH:MM
             raw_time = str(bloco.get("time", "0")).zfill(4)
 
             hour = int(raw_time[:2])
@@ -73,6 +75,8 @@ def get_wwo_marine(lat: float, lon: float):
             forecast_dt = datetime.fromisoformat(
                 f"{date} {hour:02d}:{minute:02d}"
             )
+
+            #calcula a diferença entre o instante previsto e o momento da recolha
 
             diff_hours = (
                 forecast_dt - now
@@ -97,6 +101,9 @@ def get_wwo_marine(lat: float, lon: float):
 
     resultados = []
 
+
+    # Normaliza cada bloco horário para a estrutura marítima 
+
     for item in hourly_filtrado:
 
         resultado = normalize_wwo_marine(
@@ -106,7 +113,8 @@ def get_wwo_marine(lat: float, lon: float):
             date=item["date"],
             hourly=item["hourly"]
         )
-
+        
+        # Mantém as coordenadas originais pedidas, já que não devolve um ponto alternativo associado à previsão
         resultado["requestedLocation"] = {
             "latitude": lat,
             "longitude": lon
@@ -124,6 +132,7 @@ def get_wwo_marine(lat: float, lon: float):
     conn = get_connection()
 
     try:
+        # O mesmo identificador agrupa todas as horas recolhidas nesta execução
         request_id = datetime.now(
             ZoneInfo("Europe/Lisbon")
         ).strftime("FOR_M-%y%m%d-%H%M")

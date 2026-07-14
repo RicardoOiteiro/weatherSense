@@ -4,6 +4,7 @@ import re
 # HELPERS
 # =====================================================
 
+# Extrai o valor numérico da distância devolvida pelo foreca
 def extrair_distancia_km(distance_text):
     if not distance_text:
         return None
@@ -15,11 +16,14 @@ def extrair_distancia_km(distance_text):
 
     return None
 
+
+# O IPMA usa -99 para indicar valores indisponíveis
 def valor_ipma(value):
     if value in (-99, -99.0):
         return None
     return value
 
+# Separa a data e a hora recebidas no formato ISO
 def split_date_hour(date_time):
     if not date_time:
         return None, None
@@ -33,14 +37,18 @@ def split_date_hour(date_time):
 # =====================================================
 # NORMALIZERS
 # =====================================================
+# Normaliza Foreca - observação horária
 
 def normalize_foreca_observation(obs: dict):
     visibilidade_m = obs.get("visibility")
     visibilidade_km = None
 
+    # Devolve a visibilidade em metros
     if visibilidade_m is not None:
         visibilidade_km = round(visibilidade_m / 1000, 2)
 
+
+    # Seleciona o período de precipitação mais curto disponível
     precipitacao_mm = None
     precipitacao_periodo = None
     prioridades = ["1h", "3h", "6h", "12h", "24h"]
@@ -93,10 +101,9 @@ def normalize_foreca_observation(obs: dict):
         },
     }
 
-
+# Normaliza IPMA - observação horária
 def normalize_ipma_observation(estacao: dict, observacao: dict, direcao_cardinal: str):
     dados = observacao.get("dados", {}) if observacao else {}
-
     data_hora = observacao.get("time") if observacao else None
     date, hour = split_date_hour(data_hora)
 

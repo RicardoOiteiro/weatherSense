@@ -26,6 +26,8 @@ FORECA_TOKEN = os.getenv("FORECA_TOKEN")
 # HELPERS
 # =====================================================
 
+
+# Extrai o valor numérico da distância devolvida 
 def extrair_distancia_km(distance_text):
     if not distance_text:
         return float("inf")
@@ -42,6 +44,7 @@ def get_foreca_observation(lat: float, lon: float):
     if not FORECA_TOKEN:
         raise ValueError("FORECA_TOKEN não encontrado no ficheiro .env")
 
+    # Pede as três estações mais próximas 
     url = (
         f"https://pfa.foreca.com/api/v1/observation/latest/{lon},{lat}"
         f"?token={FORECA_TOKEN}&stations=3&windunit=KMH&tempunit=C&rounding=0&prec=1"
@@ -57,12 +60,16 @@ def get_foreca_observation(lat: float, lon: float):
     if not observations:
         return None
 
+    # Seleciona a observação pertencente à estação mais próxima das coordenadas pedidas
+
     obs = min(
         observations,
         key=lambda item: extrair_distancia_km(item.get("distance"))
     )
     normalized = normalize_foreca_observation(obs)
 
+
+    # Mantém as coordenadas inicialmente pedidas, mesmo quando a observação pertence a uma estação próxima
     normalized["requestedLocation"] = {
         "latitude": lat,
         "longitude": lon
@@ -70,6 +77,7 @@ def get_foreca_observation(lat: float, lon: float):
     conn = get_connection()
 
     try:
+        #GUARDA 
         save_observation(
             conn=conn,
             normalized_data=normalized,

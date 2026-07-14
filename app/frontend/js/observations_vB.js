@@ -265,6 +265,7 @@ async function refreshCurrentData() {
     }
 }
 
+// Atualiza todos os componentes dependentes da localização selecionada
 async function refreshAllData() {
     try {
         await Promise.all([
@@ -307,6 +308,7 @@ function initializeMap() {
     addWeatherMarkers();
 
     map.on('click', e => {
+        // Atualiza o ponto selecionado no mapa e volta a carregar os dados da página
         selectLocation(e.latlng.lat, e.latlng.lng);
     });
 
@@ -447,6 +449,7 @@ async function loadCurrentObservations() {
     }
 }
 
+// Converte a resposta da API para a estrutura usada nos cartões das fontes
 function mapCurrentSummaryToCard(provider) {
     return {
         temperature: getSummaryValue(provider, 'temperatureC'),
@@ -504,6 +507,7 @@ async function loadHistoricalObservations() {
     }
 }
 
+// Atualiza o gráfico e calcula as estatísticas com os valores das duas fontes
 function updateHistoricalCharts(data) {
     if (historyChart) {
         historyChart.data.labels = data.labels;
@@ -661,6 +665,8 @@ function initializeHistoryChart() {
 // ================================
 // 9. Operational analysis
 // ================================
+
+// Calcula uma classificação operacional com base no vento, precipitação e visibilidade
 function updateDroneReadiness(data) {
     const wind = averageValues([data.ipma.windSpeed, data.foreca.windSpeed]);
     const precipitation = averageValues([data.ipma.precipitation, data.foreca.precipitation]);
@@ -712,6 +718,7 @@ function updateDroneReadiness(data) {
     }
 }
 
+// Estima o risco meteorológico através da temperatura, humidade, vento e precipitação
 function updateFireRisk(data) {
     const temp = averageValues([data.ipma.temperature, data.foreca.temperature]);
     const humidity = averageValues([data.ipma.humidity, data.foreca.humidity]);
@@ -771,6 +778,7 @@ function updateFireRisk(data) {
     }
 }
 
+// Compara os valores do IPMA e da Foreca e calcula o nível de concordância
 function updateComparison(data) {
     const comparisons = [
         { id: 'temp', ipma: data.ipma.temperature, foreca: data.foreca.temperature, unit: '°C' },
@@ -966,6 +974,7 @@ function renderPaginationButtons(totalItems) {
     });
 }
 
+// Exporta apenas os registos carregados na página atual da tabela
 function exportToCSV() {
     const headers = [
         'Data',

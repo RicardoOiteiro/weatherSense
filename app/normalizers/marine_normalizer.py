@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 # HELPERS
 # =====================================================
 
+# Converte o formato horário da WWO - para HH:MM
 def normalizar_hora_wwo(time_value):
     if time_value is None:
         return None
@@ -14,6 +15,8 @@ def normalizar_hora_wwo(time_value):
 
     return f"{horas}:{minutos}"
 
+
+# Converte valores recebidos das para float
 def para_float(valor):
     if valor in (None, "", "null"):
         return None
@@ -22,7 +25,7 @@ def para_float(valor):
     except (TypeError, ValueError):
         return None
 
-
+# Junta a data e a hora do mesmo formato que os outros normalizadores
 def juntar_data_hora_wwo(data, time_value):
     hora = normalizar_hora_wwo(time_value)
 
@@ -31,6 +34,8 @@ def juntar_data_hora_wwo(data, time_value):
 
     return f"{data}T{hora}"
 
+
+# Separa um valor no formato ISO em data e hora
 def split_date_hour(date_time):
     if not date_time:
         return None, None
@@ -46,6 +51,8 @@ def split_date_hour(date_time):
 # NORMALIZERS
 # =====================================================
 
+
+# Normaliza  World Weather Online - horario
 def normalize_wwo_marine(lat: float, lon: float, distance_km: float, date: str, hourly: dict):
     data_hora = juntar_data_hora_wwo(date, hourly.get("time"))
     date, hour = split_date_hour(data_hora)
@@ -100,7 +107,7 @@ def normalize_wwo_marine(lat: float, lon: float, distance_km: float, date: str, 
         
     }
 
-
+# Normaliza  OPEN-Meteo - horario
 def normalize_openmeteo_marine(lat: float, lon: float, distance_km: float, hourly: dict, index: int):
     data_hora = hourly.get("time", [None])[index]
     date, hour = split_date_hour(data_hora)
@@ -153,7 +160,9 @@ def normalize_openmeteo_marine(lat: float, lon: float, distance_km: float, hourl
         },
     }
 
+# Normaliza  IPMA - diario
 def normalize_ipma_marine(requested_lat, requested_lon, location, forecast, daily, id_day):
+    # O endpoint identifica o dia da previsão através de id_day, pelo que a data é calculada a partir do dia atual
     forecast_date = (
         datetime.now() + timedelta(days=id_day)
     ).strftime("%Y-%m-%d")

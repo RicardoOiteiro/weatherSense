@@ -20,6 +20,8 @@ IPMA_AGGREGATE_URL = "https://api.ipma.pt/public-data/forecast/aggregate/{global
 # HELPERS
 # =====================================================
 
+
+# Obtém a lista de localizações disponibilizadas pelo IPMA
 def get_ipma_locations():
     response = requests.get(IPMA_LOCATIONS_URL, timeout=20)
     response.raise_for_status()
@@ -27,7 +29,7 @@ def get_ipma_locations():
     data = response.json()
     return data.get("data", [])
 
-
+# Obtém a previsão agregada associada a uma localização IPMA
 def get_ipma_aggregate(global_id):
     url = IPMA_AGGREGATE_URL.format(global_id=global_id)
 
@@ -36,13 +38,14 @@ def get_ipma_aggregate(global_id):
 
     return response.json()
 
-
+# Seleciona o registo de previsão mais próximo do momento atual
 def get_nearest_aggregate_forecast(aggregate_data):
     if not isinstance(aggregate_data, list) or not aggregate_data:
         return {}
 
     now = datetime.now()
 
+    # Converte as datas válidas para poder comparar cada previsão com o momento atual
     forecasts_with_date = []
 
     for item in aggregate_data:
@@ -60,12 +63,13 @@ def get_nearest_aggregate_forecast(aggregate_data):
     if not forecasts_with_date:
         return aggregate_data[0]
 
+    # Escolhe a previsão cuja data está temporalmente mais próxima da hora atual
     return min(
         forecasts_with_date,
         key=lambda item: abs(item[1] - now)
     )[0]
 
-
+# Seleciona a localização IPMA com menor distância às coordenadas pedidas
 def find_nearest_ipma_location(lat: float, lon: float):
     locations = get_ipma_locations()
 
@@ -82,8 +86,10 @@ def find_nearest_ipma_location(lat: float, lon: float):
         loc_lat = float(location.get("latitude"))
         loc_lon = float(location.get("longitude"))
 
+        # Calcula a distância entre o ponto pedido e cada localização IPMA
         distance = haversine_km(lat, lon, loc_lat, loc_lon)
 
+        # Mantém a localização mais próxima encontrada 
         if nearest_distance is None or distance < nearest_distance:
             nearest = location
             nearest_distance = distance
@@ -126,6 +132,7 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
 
     agora = datetime.now()
 
+    # Mantém apenas as previsões cuja data ainda não foi ultrapassada
     forecasts_futuros = []
 
     for item in aggregate_data:
@@ -144,6 +151,7 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
         except ValueError:
             continue
     
+    # Agrupa as temperaturas mínima e máxima por dia
     daily_temperature_summary = {}
 
     for item in aggregate_data:
@@ -165,14 +173,15 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
                 "tMax": tmax
             }
 
+    # Processa no máximo as próximas 24 previsões disponíveis
     for aggregate_forecast in forecasts_futuros[:24]:
 
         date_key = aggregate_forecast.get("dataPrev", "")[:10]
 
         daily_summary = daily_temperature_summary.get(date_key, {})
 
+        # Associa a cada previsão horária os valores mínimo e máximo do respetivo dia
         aggregate_forecast["tMin"] = daily_summary.get("tMin")
-
         aggregate_forecast["tMax"] = daily_summary.get("tMax")
 
         resultado = normalize_ipma_terrestrial(
@@ -182,7 +191,7 @@ def get_ipma_terrestrial(lat: float, lon: float, day_index: int = 0):
             aggregate_current=aggregate_forecast,
             data_update=data.get("dataUpdate"),
         )
-
+        # Mantém as coordenadas inicialmente pedidas, mesmo quando o IPMA usa a localização disponível mais próxima
         resultado["requestedLocation"] = {
             "latitude": lat,
             "longitude": lon

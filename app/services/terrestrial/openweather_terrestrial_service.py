@@ -41,7 +41,7 @@ def get_openweather_terrestrial(lat: float, lon: float):
         "lat": lat,
         "lon": lon,
         "appid": api_key,
-        "units": "metric"  # importante → já vem em °C
+        "units": "metric"  # já vem em °C
     }
 
     response = requests.get(OPENWEATHER_URL, params=params, timeout=20)
@@ -59,8 +59,11 @@ def get_openweather_terrestrial(lat: float, lon: float):
 
     resultados = []
 
+    # Percorre todos os blocos de previsão devolvidos 
     for bloco in lista:
 
+        # Envia ao normalizador o bloco atual e a lista completa, usada no cálculo
+        # das temperaturas mínima e máxima do respetivo dia
         data_for_normalizer = {
             **data,
             "current_block": bloco,
@@ -73,6 +76,7 @@ def get_openweather_terrestrial(lat: float, lon: float):
             data=data_for_normalizer
         )
 
+        # Mantém as coordenadas inicialmente pedidas para identificar a consulta
         resultado["requestedLocation"] = {
             "latitude": lat,
             "longitude": lon
@@ -86,6 +90,7 @@ def get_openweather_terrestrial(lat: float, lon: float):
 
         request_id = datetime.now().strftime("FOR_T-%y%m%d-%H%M")
         for resultado in resultados:
+            #identificador
             save_terrestrial_forecast(
                 conn=conn,
                 normalized_data=resultado,

@@ -28,11 +28,9 @@ TEXT_VARIABLES = {
 # =====================================================
 
 
-
+# Converte uma hora no formato HH:MM para hora e minuto.
 def parse_hour(hour_text):
-    """
-    Recebe '14:30' e devolve (14, 30).
-    """
+    
     if not hour_text:
         return None, None
 
@@ -88,6 +86,7 @@ def get_location_id(cursor, station):
     if latitude is None or longitude is None:
         raise ValueError("Latitude e longitude são obrigatórias.")
     
+    # Normaliza as coordenadas da estação antes da pesquisa na dimensão de localizações.
     latitude = round(float(latitude), 2)
     longitude = round(float(longitude), 2)
 
@@ -232,7 +231,8 @@ def save_observation(conn, normalized_data, request_id, context_type):
                 continue
 
             if field_name in NUMERIC_VARIABLES:
-
+                
+                # O período de precipitação chega com a unidade ex: "1h".
                 if field_name == "precipitationPeriod":
                     value_numeric = float(str(value).replace("h", ""))
 
@@ -243,13 +243,16 @@ def save_observation(conn, normalized_data, request_id, context_type):
 
             elif field_name in TEXT_VARIABLES:
                 value_numeric = None
-                value_text = str(value)
+                value_text = str(value)# O período de precipitação chega com a unidade incluída, por exemplo "1h".
+
 
             else:
                 continue
 
             id_variable = get_variable_id(cursor, field_name)
 
+            # Verifica se já existe uma medição com a mesma data, hora, estação,
+            # fonte, variável, contexto e localização inicialmente solicitada.
             cursor.execute(
                 """
                 SELECT id_measurement
@@ -277,7 +280,8 @@ def save_observation(conn, normalized_data, request_id, context_type):
                     requested_lon,
                 )
             )
-
+            
+            # Caso já exista uma medição para a mesma combinação
             existing = cursor.fetchone()
 
             if existing:
@@ -307,6 +311,7 @@ def save_observation(conn, normalized_data, request_id, context_type):
                     )
                 )
 
+             # Cria uma nova medição quando não existe qualquer registo correspondente.
             else:
 
                 cursor.execute(

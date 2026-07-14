@@ -18,6 +18,8 @@ OPENMETEO_MARINE_URL = "https://marine-api.open-meteo.com/v1/marine"
 # =====================================================
 # HELPERS
 # =====================================================
+
+# Obtém o índice da primeira previsão correspondente à hora atual ou seguinte
 def get_next_hour_index(times: list[str]) -> int:
     now = datetime.now()
     times_dt = [datetime.fromisoformat(t) for t in times]
@@ -33,6 +35,7 @@ def get_next_hour_index(times: list[str]) -> int:
 # =====================================================
 
 def get_openmeteo_marine(lat: float, lon: float):
+    # Pede  dados horários utilizando o modelo marítimo dwd_ewam
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -65,8 +68,11 @@ def get_openmeteo_marine(lat: float, lon: float):
             detail="Sem dados marine devolvidos pelo Open-Meteo."
         )
     
+    # arecolha começa na primeira hora de previsão ainda não ultrapassada
+
     index = get_next_hour_index(hourly["time"])
 
+    # calcula a distância entre o ponto pedido e as coordenadas devolvidas  API
     api_lat = data.get("latitude", lat)
     api_lon = data.get("longitude", lon)
     distance_km = round(haversine_km(lat, lon, api_lat, api_lon), 2)
@@ -74,6 +80,7 @@ def get_openmeteo_marine(lat: float, lon: float):
 
     resultados = []
 
+    # normaliza as próximas 24 horas disponíveis
     for i in range(index, min(index + 24, len(hourly["time"]))):
 
         resultado = normalize_openmeteo_marine(
@@ -84,6 +91,8 @@ def get_openmeteo_marine(lat: float, lon: float):
             index=i,
         )
 
+        # Mantém as coordenadas inicialmente pedidas para distinguir consultas que possam ser associadas ao mesmo ponto devolvido pela API
+
         resultado["requestedLocation"] = {
             "latitude": lat,
             "longitude": lon
@@ -93,11 +102,13 @@ def get_openmeteo_marine(lat: float, lon: float):
     
     conn = get_connection()
 
-    try:
+    #mesmo identificador agrupa todas as horas recolhidas nesta execução
+    try:    
         request_id = datetime.now(
             ZoneInfo("Europe/Lisbon")
         ).strftime("FOR_M-%y%m%d-%H%M")
-
+    
+    # armazena cada hora normalizada como um conjunto de medições
         for resultado in resultados:
             save_marine_forecast(
                 conn=conn,

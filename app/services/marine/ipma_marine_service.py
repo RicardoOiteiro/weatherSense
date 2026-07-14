@@ -21,7 +21,7 @@ IPMA_SEA_FORECAST_URL = "https://api.ipma.pt/open-data/forecast/oceanography/dai
 # HELPERS
 # =====================================================
 
-
+# Converte km para milhas nauticas
 def km_to_nm(km: float) -> float:
     return km / 1.852
 
@@ -41,6 +41,8 @@ def get_nearest_ipma_sea_location(lat: float, lon: float) -> dict:
             detail="Sem locais marítimos devolvidos pelo IPMA."
         )
 
+    #seleciona o ponto marítimo do IPMA com menor distância às coordenadas pedidas
+
     nearest_location = min(
         locations,
         key=lambda location: haversine_km(
@@ -56,6 +58,7 @@ def get_nearest_ipma_sea_location(lat: float, lon: float) -> dict:
 
     distance_km = haversine_km(lat, lon, lat_loc, lon_loc)
 
+    #Guarda a distância ao ponto selecionado em quilómetros e milhas náuticas
     nearest_location["distanceKm"] = round(distance_km, 2)
     nearest_location["distanceNm"] = round(km_to_nm(distance_km), 2)
 
@@ -64,6 +67,7 @@ def get_nearest_ipma_sea_location(lat: float, lon: float) -> dict:
 def get_ipma_marine_3_days(lat: float, lon: float) -> list[dict]:
     resultados = []
 
+    # Recolhe a previsão marítima para hoje, amanhã e depois de amanhã
     for id_day in [0, 1, 2]:
 
         resultado = get_ipma_marine_daily(
@@ -79,13 +83,14 @@ def get_ipma_marine_3_days(lat: float, lon: float) -> list[dict]:
     conn = get_connection()
 
     try:
-
+        # mesmo identificador agrupa os três dias recolhidos nesta execução
         request_id = datetime.now(
             ZoneInfo("Europe/Lisbon")
         ).strftime("FOR_M-%y%m%d-%H%M")
 
         total_inserted = 0
 
+        # Guarda cada dia da previsão como um conjunto separado de medições
         for resultado in resultados:
 
             inserted_count = save_marine_forecast(
@@ -102,6 +107,8 @@ def get_ipma_marine_3_days(lat: float, lon: float) -> list[dict]:
     return resultados
 
 def get_ipma_marine_daily(lat: float, lon: float, id_day: int = 0) -> dict:
+
+    #endpoint do IPMA apenas disponibiliza previsões para três dias
     if id_day not in [0, 1, 2]:
         raise HTTPException(
             status_code=400,
@@ -126,6 +133,7 @@ def get_ipma_marine_daily(lat: float, lon: float, id_day: int = 0) -> dict:
 
     global_id_local = nearest_location.get("globalIdLocal")
 
+    # filtra a previsão correspondente ao local marítimo selecionado anteriormente
     forecast_for_location = next(
         (
             item for item in data

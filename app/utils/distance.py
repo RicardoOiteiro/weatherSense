@@ -1,5 +1,7 @@
 import math
 
+# Calcula a distância em quilómetros entre duas coordenadas geográficas
+# utilizando a fórmula de Haversine
 
 def haversine_km(lat1, lon1, lat2, lon2):
     raio_terra = 6371.0

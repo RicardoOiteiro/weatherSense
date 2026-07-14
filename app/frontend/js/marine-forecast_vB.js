@@ -1,11 +1,6 @@
-/**
- * WeatherSense - Marine Forecast Dashboard
- * JavaScript Module for Marine Forecast Page
- * Prepared for FastAPI integration
- */
-// ================================
-// State Management
-// ================================
+//Página de previsões marítimas 
+
+// Mantém a localização selecionada, os dados atuais e o estado da paginação
 const appState = {
     selectedLocation: {
         name: 'Costa de Nazaré',
@@ -35,14 +30,9 @@ function setText(id, value) {
 }
 
 // ================================
-// Mock Data for Development
-// ================================
-
-
-
-// ================================
 // Initialization
 // ================================
+// Inicia o mapa, os controlos, a tabela e os gráficos após carregar a página
 document.addEventListener('DOMContentLoaded', function () {
     initializeMap();
     initializeEventListeners();
@@ -52,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initializeMarineHistoryListeners();
 
 
-
+    // update a cada 5min
     setInterval(refreshAfterLocationChange, 300000);
 });
 
@@ -79,6 +69,7 @@ function initializeMap() {
     addCoastalBoundary();
     addMarineMarkers();
 
+    // Atualiza a localização ativa, o marcador e os dados apresentados na página
 
     selectLocation(39.9300, -9.1200, "Vieira / Pedrógão ");
     map.on('click', function (e) {
@@ -93,7 +84,7 @@ function initializeMap() {
 }
 
 function addCoastalBoundary() {
-    // Simplified Leiria coastal area
+    // Linha aproximada da costa usada como referência visual no mapa
     const coastalLine = [
         [39.95, -8.95],
         [39.85, -9.05],
@@ -111,7 +102,7 @@ function addCoastalBoundary() {
         dashArray: '10, 10'
     }).addTo(map);
 
-    // Ocean area polygon
+    // Área marítima destacada no mapa
     const oceanArea = [
         [40.0, -9.0],
         [40.0, -9.5],
@@ -136,7 +127,8 @@ function addCoastalBoundary() {
 }
 
 function addMarineMarkers() {
-
+    
+    // Pontos predefinidos usados na recolha e consulta das previsões marítimas
     const marinePoints = [
         { name: "Figueira da Foz", lat: 40.1234, lng: -9.0556 },
         { name: "Vieira / Pedrógão", lat: 39.9300, lng: -9.1200 },
@@ -193,6 +185,7 @@ function addMarineMarkers() {
     });
 }
 
+// Atualiza todos os componentes dependentes da localização selecionada
 async function refreshAfterLocationChange() {
     try {
         await Promise.all([
@@ -316,6 +309,7 @@ function initializeMarineHistoryChart() {
     });
 }
 
+// Obtém o histórico da variável e do intervalo selecionados pelo utilizador
 async function getMarineHistoricalForecastData() {
     const { lat, lng } = appState.selectedLocation;
 
@@ -345,6 +339,7 @@ async function loadMarineHistoricalForecast() {
     }
 }
 
+// Prepara os valores das séries antes de os apresentar no gráfico 
 function roundMarineSeries(values, decimals = 2) {
     return (values || []).map(value => {
         if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -377,6 +372,7 @@ function updateMarineHistoricalChart(data) {
 
     marineHistoryChart.update();
 
+    // Junta os valores das três fontes para calcular as estatísticas do histórico
     const allValues = [
         ...(data.ipma || []),
         ...(data.openmeteo || []),
@@ -453,14 +449,7 @@ function initializeEventListeners() {
         ?.addEventListener('click', exportTableToCsv);
 }
 
-
-
-
-
-
-
-
-
+// Obtém a previsão atual das três fontes para a localização selecionada 
 // ================================
 // Data Loading & Updates
 // ================================
@@ -493,6 +482,7 @@ async function refreshCurrentData() {
         console.error('Erro ao carregar previsão marítima atual:', error);
     }
 }
+// Converte a resposta da API para a estrutura usada pelos cartões da interface
 function mapMarineCurrent(sourceData) {
     if (!sourceData) return null;
 
@@ -514,6 +504,7 @@ function mapMarineCurrent(sourceData) {
 
     }
 
+// Cria um intervalo quando a fonte disponibiliza apenas valores mínimo e máximo
     function getRange(minField, maxField) {
         const min = getValue(minField);
         const max = getValue(maxField);
@@ -631,7 +622,7 @@ function initializeTable() {
     renderPagination();
 }
 
-
+// Preenche a tabela com os registos devolvidos para a página atual
 function renderTable() {
     const tbody = document.getElementById('recordsTableBody');
     const pageData = appState.tableData;
@@ -662,6 +653,7 @@ function updateTableInfo() {
         `Mostrando ${start}-${end} de ${appState.pagination.totalItems} registos`;
 }
 
+// Apresenta a página atual e até duas páginas adjacentes de cada lado 
 function renderPagination() {
     const totalPages = Math.ceil(appState.pagination.totalItems / appState.pagination.itemsPerPage);
     const pagination = document.getElementById('pagination');
@@ -700,7 +692,7 @@ function changePage(page) {
 }
 
 
-
+// Exporta os registos atualmente apresentados na tabela
 function exportTableToCsv() {
     const headers = [
         'Data Pedido',
@@ -741,12 +733,8 @@ function exportTableToCsv() {
     URL.revokeObjectURL(url);
 }
 
-// ================================
-// API Integration (Prepared for FastAPI)
-// ================================
 
-
-
+// Timeline de previsões marítimas
 async function getMarineFutureForecastData() {
     const { lat, lng } = appState.selectedLocation;
 
@@ -763,6 +751,8 @@ async function getMarineFutureForecastData() {
 
 
 let currentMarineForecastProvider = 'ipma';
+
+// Carrega e apresenta a timeline da fonte marítima selecionada
 async function initializeMarineTimeline() {
     const container = document.getElementById('timelineScroll');
     if (!container) return;
@@ -901,6 +891,8 @@ function renderMarineTimelineModelSummary(forecastData, modelName, provider, typ
         </div>
     `;
 }
+
+// Cria um bloco da timeline para cada instante de previsão disponível
 function renderMarineTimelineBlocks(records, provider) {
     return records.map((record, index) => {
 
@@ -932,7 +924,7 @@ function renderMarineTimelineBlocks(records, provider) {
             details.push(`
                 <span>
                     <i class="fas fa-water"></i>
-                    Swell: ${forecast.swellHeight} m
+                    Ondulação: ${forecast.swellHeight} m
                 </span>
             `);
         }
@@ -941,7 +933,7 @@ function renderMarineTimelineBlocks(records, provider) {
             details.push(`
                 <span>
                     <i class="fas fa-location-arrow"></i>
-                    Dir. Swell: ${forecast.swellDirection}
+                    Direção: ${forecast.swellDirection}
                 </span>
             `);
         }
@@ -950,7 +942,7 @@ function renderMarineTimelineBlocks(records, provider) {
             details.push(`
                 <span>
                     <i class="fas fa-clock"></i>
-                    Período Swell: ${forecast.swellPeriod} s
+                    Período: ${forecast.swellPeriod} s
                 </span>
             `);
         }
@@ -1147,6 +1139,7 @@ async function loadMarineRecordsData(page = 1) {
         renderTable();
     }
 }
+// Converte valores simples ou intervalos para um valor numérico comparável
 
 function parseMarineNumber(value) {
     if (value === null || value === undefined || value === '—') return null;
@@ -1173,6 +1166,7 @@ function getMarineModels() {
     ].filter(Boolean);
 }
 
+// Calcula a média dos valores disponíveis entre as fontes marítimas
 function averageMarineField(models, field) {
     const values = models
         .map(model => parseMarineNumber(model[field]))
@@ -1205,6 +1199,7 @@ function setOperationalClass(id, cssClass) {
     el.classList.add(cssClass);
 }
 
+// Combina os dados das fontes para atualizar os indicadores operacionais
 function updateMarineOperationalAnalysis() {
     const models = getMarineModels();
 
@@ -1244,7 +1239,7 @@ function updateMarineOperationalAnalysis() {
         seaScore
     );
 }
-
+// Calcula a classificação para operações costeiras com drone
 function updateMarineDroneConditions(wind, gust, waveHeight, wavePeriod) {
     let score = 100;
 
@@ -1300,6 +1295,8 @@ function updateMarineDroneConditions(wind, gust, waveHeight, wavePeriod) {
     return score;
 }
 
+
+// Calcula a classificação do estado do mar a partir da ondulação disponível
 function updateMarineSurfaceStability(waveHeight, wavePeriod, swellHeight, seaTemp, direction) {
     let score = 100;
 
@@ -1429,6 +1426,8 @@ function updateMarineStatusPanels(droneScore, seaScore) {
 
 }
 
+// Avalia a concordância entre fontes através da diferença entre
+// o valor máximo e o valor mínimo de cada variável
 function updateMarineAgreement() {
 
     const models = [
@@ -1586,11 +1585,15 @@ function getValidValues(models, field) {
         .map(model => parseMarineNumber(model?.[field]))
         .filter(value => value !== null);
 }
+
+// Calcula a amplitude dos valores devolvidos pelas fontes
 function calculateSpread(values) {
     if (!values.length) return null;
     return Math.max(...values) - Math.min(...values);
 }
 
+
+// Converte a amplitude num nível de concordância entre fontes
 function scoreFromSpread(spread, thresholds) {
     if (spread === null) return null;
     if (spread <= thresholds.excellent) return 100;
@@ -1670,6 +1673,8 @@ function updateMarineDistance() {
     );
 
 }
+
+// Converte uma direção em graus para  as direções cardinais
 function degreesToCardinal(degrees) {
 
     if (degrees == null) return '—';
