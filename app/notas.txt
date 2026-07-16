@@ -13,3 +13,6 @@
 -> Foreca renovar a cada 30 dias
 
 -> docker compose up
+
+# Teste endpoints relat
+-> ocker exec -it observacoes_api python /code/app/performance_test.py 
