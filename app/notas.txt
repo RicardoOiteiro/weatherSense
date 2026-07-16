@@ -1,0 +1,15 @@
+# Construir as imagens e contetores
+-> docker compose up --build
+
+# Apenas na 1 execução
+-> type db\seed.sql | docker exec -i weathersense_db psql -U postgres -d weathersense
+
+# Iniciar o scheduler das recolhas 
+-> docker exec -it observacoes_api python -m app.jobs.scheduler
+
+
+#KEYs
+-> .env KEYS das API's
+-> Foreca renovar a cada 30 dias
+
+-> docker compose up
