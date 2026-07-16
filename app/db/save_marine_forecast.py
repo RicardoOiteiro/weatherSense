@@ -381,7 +381,7 @@ def save_marine_forecast(conn, normalized_data, request_id, context_type="coasta
                     )
                 )
 
-            inserteprocessed_countd_count += 1
+            processed_count += 1
 
     conn.commit()
     return processed_count

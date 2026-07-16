@@ -1,6 +1,25 @@
-//Página de previsões marítimas 
+// ============================================================================
+// WeatherSense - Previsão Marítima
+// ============================================================================
+//
+// 1. State
+// 2. Utilities
+// 3. Data Mapping
+// 4. API Services
+// 5. Application Initialization
+// 6. Map Management
+// 7. Current Marine Forecast
+// 8. Marine Timeline
+// 9. Marine Agreement Analysis
+// 10. Operational Analysis
+// 11. Historical Analysis
+// 12. Records Table
+// 13. Event Listeners
+// ============================================================================
 
-// Mantém a localização selecionada, os dados atuais e o estado da paginação
+// ============================================================================
+// 1. State
+// ============================================================================
 const appState = {
     selectedLocation: {
         name: 'Costa de Nazaré',
@@ -22,6 +41,19 @@ const appState = {
     selectedVariable: 'waveHeight',
     selectedTimeRange: 24
 };
+
+let currentMarineForecastProvider = 'ipma';
+
+let map;
+let markers = [];
+let selectedMarker;
+let marineHistoryChart;
+
+
+// ============================================================================
+// 2. Utilities
+// ============================================================================
+
 function setText(id, value) {
     const el = document.getElementById(id);
     if (el) {
@@ -29,9 +61,421 @@ function setText(id, value) {
     }
 }
 
-// ================================
-// Initialization
-// ================================
+function formatValue(value, decimals = 1) {
+    if (value === null || value === undefined || value === '—') return '—';
+
+    const number = Number(value);
+
+    if (!Number.isNaN(number)) {
+        return number.toFixed(decimals);
+    }
+
+    return value;
+}
+
+// Converte uma direção em graus para  as direções cardinais
+function degreesToCardinal(degrees) {
+
+    if (degrees == null) return '—';
+
+    const directions = [
+        'N', 'NNE', 'NE', 'ENE',
+        'E', 'ESE', 'SE', 'SSE',
+        'S', 'SSW', 'SW', 'WSW',
+        'W', 'WNW', 'NW', 'NNW'
+    ];
+
+    const index = Math.round(degrees / 22.5) % 16;
+
+    return directions[index];
+
+}
+
+// Converte valores simples ou intervalos para um valor numérico comparável
+
+function parseMarineNumber(value) {
+    if (value === null || value === undefined || value === '—') return null;
+
+    if (typeof value === 'string' && value.includes('-')) {
+        const parts = value
+            .split('-')
+            .map(v => Number(v.trim()))
+            .filter(v => !Number.isNaN(v));
+
+        if (!parts.length) return null;
+        return parts.reduce((a, b) => a + b, 0) / parts.length;
+    }
+
+    const number = Number(value);
+    return Number.isNaN(number) ? null : number;
+}
+
+// Calcula a média dos valores disponíveis entre as fontes marítimas
+function averageMarineField(models, field) {
+    const values = models
+        .map(model => parseMarineNumber(model[field]))
+        .filter(value => value !== null);
+
+    if (!values.length) return null;
+
+    return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+function mostCommonMarineValue(values) {
+    const valid = values.filter(v => v !== null && v !== undefined && v !== '—');
+
+    if (!valid.length) return '—';
+
+    const counts = {};
+
+    valid.forEach(value => {
+        counts[value] = (counts[value] || 0) + 1;
+    });
+
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function setOperationalClass(id, cssClass) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    el.classList.remove('safe', 'warning', 'danger');
+    el.classList.add(cssClass);
+}
+
+// Prepara os valores das séries antes de os apresentar no gráfico 
+function roundMarineSeries(values, decimals = 2) {
+    return (values || []).map(value => {
+        if (value === null || value === undefined || Number.isNaN(Number(value))) {
+            return null;
+        }
+
+        return Number(Number(value).toFixed(decimals));
+    });
+}
+
+function getMarineHistoryUnit(variable) {
+    const units = {
+        waveHeight: ' m',
+        wavePeriod: ' s',
+        waveDirection: '°',
+        swellHeight: ' m',
+        swellPeriod: ' s',
+        swellDirection: '°',
+        waterTemperature: '°C',
+        seaTemperature: '°C',
+        currentSpeed: ' m/s',
+        currentDirection: '°'
+    };
+
+    return units[variable] || '';
+}
+
+function formatTimelineShortDate(dateString) {
+    return new Date(dateString).toLocaleDateString('pt-PT', {
+        day: '2-digit',
+        month: 'short'
+    });
+}
+
+function getValidValues(models, field) {
+    return models
+        .map(model => parseMarineNumber(model?.[field]))
+        .filter(value => value !== null);
+}
+
+// Calcula a amplitude dos valores devolvidos pelas fontes
+
+function calculateSpread(values) {
+    if (!values.length) return null;
+    return Math.max(...values) - Math.min(...values);
+}
+
+
+
+
+// Converte a amplitude num nível de concordância entre fontes
+function scoreFromSpread(spread, thresholds) {
+    if (spread === null) return null;
+    if (spread <= thresholds.excellent) return 100;
+    if (spread <= thresholds.good) return 85;
+    if (spread <= thresholds.medium) return 65;
+    if (spread <= thresholds.low) return 45;
+    return 25;
+}
+
+function updateSpreadRow(valueId, indicatorId, spread, unit, thresholds) {
+    const valueEl = document.getElementById(valueId);
+    const indicatorEl = document.getElementById(indicatorId);
+    if (!valueEl || !indicatorEl) return null;
+
+    if (spread === null) {
+        valueEl.textContent = '—';
+        indicatorEl.className = 'comp-indicator equal';
+        indicatorEl.innerHTML = '<i class="fas fa-minus"></i>';
+        return null;
+    }
+
+    valueEl.textContent = `${spread.toFixed(1)}${unit}`;
+
+    const score = scoreFromSpread(spread, thresholds);
+
+    if (score >= 85) {
+        indicatorEl.className = 'comp-indicator higher';
+        indicatorEl.innerHTML = '<i class="fas fa-check"></i>';
+    }
+    else if (score >= 65) {
+        indicatorEl.className = 'comp-indicator equal';
+        indicatorEl.innerHTML = '<i class="fas fa-minus"></i>';
+    }
+    else {
+        indicatorEl.className = 'comp-indicator lower';
+        indicatorEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i>';
+    }
+
+    return score;
+}
+
+
+
+// ============================================================================
+// 3. Data Mapping
+// ============================================================================
+
+// Converte a resposta da API para a estrutura usada pelos cartões da interface
+function mapMarineCurrent(sourceData) {
+    if (!sourceData) return null;
+
+    const values = sourceData.values || {};
+
+    function getValue(field) {
+        const value = values[field]?.value;
+
+        if (
+            value === null ||
+            value === undefined ||
+            value === -99 ||
+            value === -99.0
+        ) {
+            return null;
+        }
+
+        return Number(value) || value;
+
+    }
+
+    // Cria um intervalo quando a fonte disponibiliza apenas valores mínimo e máximo
+    function getRange(minField, maxField) {
+        const min = getValue(minField);
+        const max = getValue(maxField);
+
+        if (min == null && max == null) return null;
+        if (min === max) return min;
+
+        return `${min} - ${max}`;
+    }
+
+    return {
+        source: sourceData.source,
+        model: sourceData.model,
+        timestamp: sourceData.time?.slice(0, 5) ?? '—',
+        distanceKm: sourceData.location?.distanceKm ?? null,
+
+        waveHeight: getValue('waveHeightM') ?? getRange('waveHeightMinM', 'waveHeightMaxM'),
+        waveDirection:
+            values.waveDirectionCardinal?.value ??
+            getValue('waveDirectionDegrees'),
+        wavePeriod: getValue('wavePeriodS') ?? getRange('wavePeriodMinS', 'wavePeriodMaxS'),
+
+        swellHeight: getValue('swellHeightM'),
+        swellDirection:
+            values.swellDirectionCardinal?.value ??
+            getValue('swellDirectionDegrees'),
+        swellPeriod: getValue('swellPeriodS'),
+
+        seaTemp:
+            getValue('waterTemperatureC') ??
+            getRange('waterTemperatureMinC', 'waterTemperatureMaxC'),
+
+        windSpeed: getValue('windSpeedKmh'),
+        windGust: getValue('windGustKmh'),
+        windDirection:
+            values.windDirectionCardinal?.value ??
+            getValue('windDirectionDegrees'),
+
+        visibility: getValue('visibilityKm')
+    };
+}
+// Converte cada registo da API para a estrutura usada na timeline
+function mapMarineTimelineRecord(record, provider) {
+    const values = record.values || {};
+
+    function getValue(field) {
+        const value = values[field]?.value;
+
+        if (
+            value === null ||
+            value === undefined ||
+            value === -99 ||
+            value === -99.0
+        ) {
+            return null;
+        }
+
+        return Number(value) || value;
+    }
+
+    function getRange(minField, maxField) {
+        const min = getValue(minField);
+        const max = getValue(maxField);
+
+        if (min == null && max == null) return '—';
+        if (min === max) return formatValue(min);
+
+        return `${formatValue(min)} - ${formatValue(max)}`;
+    }
+
+    const isIpma = provider.includes('IPMA');
+
+    return {
+        date: formatTimelineShortDate(record.date),
+        time: isIpma ? 'Diário' : record.time?.slice(0, 5),
+
+        waveHeight:
+            getValue('waveHeightM') != null
+                ? formatValue(getValue('waveHeightM'))
+                : getRange('waveHeightMinM', 'waveHeightMaxM'),
+
+        waveDirection:
+            values.waveDirectionCardinal?.value ??
+            getValue('waveDirectionDegrees') ??
+            '—',
+
+        wavePeriod:
+            getValue('wavePeriodS') != null
+                ? formatValue(getValue('wavePeriodS'))
+                : getRange('wavePeriodMinS', 'wavePeriodMaxS'),
+
+        swellHeight:
+            getValue('swellHeightM') != null
+                ? formatValue(getValue('swellHeightM'))
+                : '—',
+
+        swellDirection:
+            values.swellDirectionCardinal?.value ??
+            getValue('swellDirectionDegrees') ??
+            '—',
+
+        swellPeriod:
+            getValue('swellPeriodS') != null
+                ? formatValue(getValue('swellPeriodS'))
+                : '—',
+
+        seaTemp:
+            getValue('waterTemperatureC') != null
+                ? formatValue(getValue('waterTemperatureC'))
+                : getRange('waterTemperatureMinC', 'waterTemperatureMaxC'),
+
+        windSpeed:
+            getValue('windSpeedKmh') != null
+                ? formatValue(getValue('windSpeedKmh'), 0)
+                : '—'
+    };
+}
+
+// ============================================================================
+// 4. API Services
+// ============================================================================
+
+// Obtém a timeline das previsões marítimas
+async function getMarineFutureForecastData() {
+    const { lat, lng } = appState.selectedLocation;
+
+    const response = await fetch(
+        `/data/forecast/marine/timeline?lat=${Number(lat).toFixed(4)}&lon=${Number(lng).toFixed(4)}&provider=${currentMarineForecastProvider}&hours=24`
+    );
+
+    if (!response.ok) {
+        throw new Error(`Erro HTTP ao carregar previsão marítima futura: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+// Obtém o histórico da variável e do intervalo selecionados pelo utilizador
+async function getMarineHistoricalForecastData() {
+    const { lat, lng } = appState.selectedLocation;
+
+    const variable =
+        document.getElementById('historyVariable')?.value || 'waveHeight';
+
+    const range =
+        document.querySelector('.forecast-history-range-buttons .btn.active')?.dataset.range || '24h';
+
+    const response = await fetch(
+        `/data/forecast/marine/history?lat=${Number(lat).toFixed(4)}&lon=${Number(lng).toFixed(4)}&variable=${variable}&range=${range}`
+    );
+
+    if (!response.ok) {
+        throw new Error(`Erro HTTP ao carregar histórico marítimo: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+async function getMarineForecastRecordsPage(page = 1) {
+
+    const { lat, lng } = appState.selectedLocation;
+
+    const pageSize = appState.pagination.itemsPerPage;
+
+    const search =
+        document.getElementById('tableSearch')?.value.trim() || '';
+
+    const variable =
+        document.getElementById('historyTableVariable')?.value || '';
+
+
+
+    const params = new URLSearchParams({
+        lat: Number(lat).toFixed(4),
+        lon: Number(lng).toFixed(4),
+        page,
+        page_size: pageSize,
+        search,
+        variable
+    });
+
+
+
+    if (search) {
+        params.append('search', search);
+    }
+
+
+    if (variable) {
+        params.append('variable', variable);
+    }
+
+
+    const response = await fetch(
+        `/data/forecast/marine/records?${params.toString()}`
+    );
+
+
+    if (!response.ok) {
+        throw new Error(`Erro HTTP: ${response.status}`);
+    }
+
+
+    return await response.json();
+
+}
+
+// ============================================================================
+// 5. Application Initialization
+// ============================================================================
+
 // Inicia o mapa, os controlos, a tabela e os gráficos após carregar a página
 document.addEventListener('DOMContentLoaded', function () {
     initializeMap();
@@ -46,12 +490,10 @@ document.addEventListener('DOMContentLoaded', function () {
     setInterval(refreshAfterLocationChange, 300000);
 });
 
-// ================================
-// Map Initialization
-// ================================
-let map;
-let markers = [];
-let selectedMarker;
+// ============================================================================
+// 6. Map Management
+// ============================================================================
+
 
 function initializeMap() {
     map = L.map('map', { zoomControl: false }).setView([39.7436, -8.8071], 8);
@@ -69,9 +511,6 @@ function initializeMap() {
     addCoastalBoundary();
     addMarineMarkers();
 
-    // Atualiza a localização ativa, o marcador e os dados apresentados na página
-
-    selectLocation(39.9300, -9.1200, "Vieira / Pedrógão ");
     map.on('click', function (e) {
         selectLocation(e.latlng.lat, e.latlng.lng);
     });
@@ -81,6 +520,11 @@ function initializeMap() {
     document.getElementById('centerMap')?.addEventListener('click', () => {
         map.setView([39.7436, -8.8071], 8);
     });
+
+    // Atualiza a localização ativa, o marcador e os dados apresentados na página
+
+    selectLocation(39.9300, -9.1200, "Vieira / Pedrógão ");
+
 }
 
 function addCoastalBoundary() {
@@ -127,7 +571,7 @@ function addCoastalBoundary() {
 }
 
 function addMarineMarkers() {
-    
+
     // Pontos predefinidos usados na recolha e consulta das previsões marítimas
     const marinePoints = [
         { name: "Figueira da Foz", lat: 40.1234, lng: -9.0556 },
@@ -185,20 +629,6 @@ function addMarineMarkers() {
     });
 }
 
-// Atualiza todos os componentes dependentes da localização selecionada
-async function refreshAfterLocationChange() {
-    try {
-        await Promise.all([
-            refreshCurrentData(),
-            initializeMarineTimeline(),
-            loadMarineHistoricalForecast(),
-            loadMarineRecordsData(1)
-        ]);
-    } catch (error) {
-        console.error('Erro ao atualizar previsões marítimas:', error);
-    }
-}
-
 async function selectLocation(lat, lng, name = null) {
     appState.selectedLocation = {
         lat: lat,
@@ -235,225 +665,25 @@ async function selectLocation(lat, lng, name = null) {
     await refreshAfterLocationChange();
 }
 
-
-// ================================
-// Charts Initialization
-// ================================
-
-
-
-
-
-
-
-
-let marineHistoryChart;
-
-function initializeMarineHistoryChart() {
-    const canvas = document.getElementById('historyChart');
-    if (!canvas) return;
-
-    marineHistoryChart = new Chart(canvas.getContext('2d'), {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [
-                {
-                    label: 'IPMA',
-                    data: [],
-                    borderColor: '#22d3ee',
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    tension: 0.35,
-                    pointRadius: 0,
-                    spanGaps: true
-                },
-                {
-                    label: 'Open-Meteo',
-                    data: [],
-                    borderColor: '#14b8a6',
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    tension: 0.35,
-                    pointRadius: 0,
-                    spanGaps: true
-                },
-                {
-                    label: 'WorldWeatherOnline',
-                    data: [],
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    tension: 0.35,
-                    pointRadius: 0,
-                    spanGaps: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { display: false } },
-            scales: {
-                x: {
-                    ticks: { color: '#64748b' },
-                    grid: { color: 'rgba(148,163,184,0.1)' }
-                },
-                y: {
-                    ticks: { color: '#64748b' },
-                    grid: { color: 'rgba(148,163,184,0.1)' }
-                }
-            }
-        }
-    });
-}
-
-// Obtém o histórico da variável e do intervalo selecionados pelo utilizador
-async function getMarineHistoricalForecastData() {
-    const { lat, lng } = appState.selectedLocation;
-
-    const variable =
-        document.getElementById('historyVariable')?.value || 'waveHeight';
-
-    const range =
-        document.querySelector('.forecast-history-range-buttons .btn.active')?.dataset.range || '24h';
-
-    const response = await fetch(
-        `/data/forecast/marine/history?lat=${Number(lat).toFixed(4)}&lon=${Number(lng).toFixed(4)}&variable=${variable}&range=${range}`
-    );
-
-    if (!response.ok) {
-        throw new Error(`Erro HTTP ao carregar histórico marítimo: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-async function loadMarineHistoricalForecast() {
+// Atualiza todos os componentes após a alteração da localização
+async function refreshAfterLocationChange() {
     try {
-        const data = await getMarineHistoricalForecastData();
-        updateMarineHistoricalChart(data);
+        await Promise.all([
+            refreshCurrentData(),
+            initializeMarineTimeline(),
+            loadMarineHistoricalForecast(),
+            loadMarineRecordsData(1)
+        ]);
     } catch (error) {
-        console.error('Erro ao carregar histórico marítimo:', error);
+        console.error('Erro ao atualizar previsões marítimas:', error);
     }
 }
 
-// Prepara os valores das séries antes de os apresentar no gráfico 
-function roundMarineSeries(values, decimals = 2) {
-    return (values || []).map(value => {
-        if (value === null || value === undefined || Number.isNaN(Number(value))) {
-            return null;
-        }
 
-        return Number(Number(value).toFixed(decimals));
-    });
-}
-
-function updateMarineHistoricalChart(data) {
-    if (!marineHistoryChart) return;
-    marineHistoryChart.data.labels = data.labels;
-    marineHistoryChart.data.datasets[0].data = roundMarineSeries(data.ipma, 2);
-    marineHistoryChart.data.datasets[1].data = roundMarineSeries(data.openmeteo, 2);
-    marineHistoryChart.data.datasets[2].data = roundMarineSeries(data.worldweatheronline, 2);
-
-    const unit = getMarineHistoryUnit(data.variable);
-
-    marineHistoryChart.options.scales.y.ticks.callback = value =>
-        `${formatValue(value, 2)}${unit}`;
-
-    marineHistoryChart.options.plugins.tooltip = {
-        callbacks: {
-            label: context => context.raw != null
-                ? `${context.dataset.label}: ${formatValue(context.raw, 2)}${unit}`
-                : `${context.dataset.label}: —`
-        }
-    };
-
-    marineHistoryChart.update();
-
-    // Junta os valores das três fontes para calcular as estatísticas do histórico
-    const allValues = [
-        ...(data.ipma || []),
-        ...(data.openmeteo || []),
-        ...(data.worldweatheronline || [])
-    ].filter(v => v != null && !Number.isNaN(Number(v)));
-
-    if (!allValues.length) {
-        setText('historyAvg', '—');
-        setText('historyMin', '—');
-        setText('historyMax', '—');
-        setText('historyTotal', '0');
-        return;
-    }
-
-    const numericValues = allValues.map(Number);
-    const avg = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
-
-    setText('historyAvg', `${avg.toFixed(2)}${unit}`);
-    setText('historyMin', `${Math.min(...numericValues).toFixed(2)}${unit}`);
-    setText('historyMax', `${Math.max(...numericValues).toFixed(2)}${unit}`);
-    setText('historyTotal', numericValues.length.toLocaleString('pt-PT'));
-}
-
-function getMarineHistoryUnit(variable) {
-    const units = {
-        waveHeight: ' m',
-        wavePeriod: ' s',
-        waveDirection: '°',
-        swellHeight: ' m',
-        swellPeriod: ' s',
-        swellDirection: '°',
-        waterTemperature: '°C',
-        seaTemperature: '°C',
-        currentSpeed: ' m/s',
-        currentDirection: '°'
-    };
-
-    return units[variable] || '';
-}
-
-function initializeMarineHistoryListeners() {
-    document.addEventListener('click', function (e) {
-        const button = e.target.closest('.forecast-history-range-buttons button');
-        if (!button) return;
-
-        const container = button.closest('.forecast-history-range-buttons');
-
-        container.querySelectorAll('button').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        button.classList.add('active');
-        loadMarineHistoricalForecast();
-    });
-
-    document.getElementById('historyVariable')?.addEventListener('change', () => {
-        loadMarineHistoricalForecast();
-    });
-}
-// ================================
-// Event Listeners
-// ================================
-function initializeEventListeners() {
-    document.getElementById('tableSearch')
-        ?.addEventListener('input', () => {
-            loadMarineRecordsData(1);
-        });
-
-    document.getElementById('historyTableVariable')
-        ?.addEventListener('change', () => {
-            loadMarineRecordsData(1);
-        });
-
-    document.getElementById('exportCsv')
-        ?.addEventListener('click', exportTableToCsv);
-}
-
-// Obtém a previsão atual das três fontes para a localização selecionada 
-// ================================
-// Data Loading & Updates
-// ================================
-
+// ============================================================================
+// 7. Current Marine Forecast
+// ============================================================================
+// Obtém e apresenta a previsão marítima atual das três fontes
 async function refreshCurrentData() {
     try {
 
@@ -482,83 +712,10 @@ async function refreshCurrentData() {
         console.error('Erro ao carregar previsão marítima atual:', error);
     }
 }
-// Converte a resposta da API para a estrutura usada pelos cartões da interface
-function mapMarineCurrent(sourceData) {
-    if (!sourceData) return null;
 
-    const values = sourceData.values || {};
 
-    function getValue(field) {
-        const value = values[field]?.value;
 
-        if (
-            value === null ||
-            value === undefined ||
-            value === -99 ||
-            value === -99.0
-        ) {
-            return null;
-        }
-
-        return Number(value) || value;
-
-    }
-
-// Cria um intervalo quando a fonte disponibiliza apenas valores mínimo e máximo
-    function getRange(minField, maxField) {
-        const min = getValue(minField);
-        const max = getValue(maxField);
-
-        if (min == null && max == null) return null;
-        if (min === max) return min;
-
-        return `${min} - ${max}`;
-    }
-
-    return {
-        source: sourceData.source,
-        model: sourceData.model,
-        timestamp: sourceData.time?.slice(0, 5) ?? '—',
-        distanceKm: sourceData.location?.distanceKm ?? null,
-
-        waveHeight: getValue('waveHeightM') ?? getRange('waveHeightMinM', 'waveHeightMaxM'),
-        waveDirection:
-            values.waveDirectionCardinal?.value ??
-            getValue('waveDirectionDegrees'),
-        wavePeriod: getValue('wavePeriodS') ?? getRange('wavePeriodMinS', 'wavePeriodMaxS'),
-
-        swellHeight: getValue('swellHeightM'),
-        swellDirection:
-            values.swellDirectionCardinal?.value ??
-            getValue('swellDirectionDegrees'),
-        swellPeriod: getValue('swellPeriodS'),
-
-        seaTemp:
-            getValue('waterTemperatureC') ??
-            getRange('waterTemperatureMinC', 'waterTemperatureMaxC'),
-
-        windSpeed: getValue('windSpeedKmh'),
-        windGust: getValue('windGustKmh'),
-        windDirection:
-            values.windDirectionCardinal?.value ??
-            getValue('windDirectionDegrees'),
-
-        visibility: getValue('visibilityKm')
-    };
-}
-
-function formatValue(value, decimals = 1) {
-    if (value === null || value === undefined || value === '—') return '—';
-
-    const number = Number(value);
-
-    if (!Number.isNaN(number)) {
-        return number.toFixed(decimals);
-    }
-
-    return value;
-}
-
+// Atualiza os cartões com os dados marítimos mais recentes
 function updateCurrentConditions(data) {
 
     // IPMA Marine
@@ -614,144 +771,50 @@ function updateCurrentConditions(data) {
     }
 }
 
-// ================================
-// Table Management
-// ================================
-function initializeTable() {
-    renderTable();
-    renderPagination();
-}
 
-// Preenche a tabela com os registos devolvidos para a página atual
-function renderTable() {
-    const tbody = document.getElementById('recordsTableBody');
-    const pageData = appState.tableData;
+// Atualiza a distância entre a localização pedida 
+function updateMarineDistance() {
 
-    tbody.innerHTML = pageData.map(record => `
-    <tr>
-        <td>${record.requestDate}</td>
-        <td>${record.requestTime}</td>
-        <td>${record.forecastDate}</td>
-        <td>${record.forecastTime}</td>
-        <td>${record.source}</td>
-        <td>${record.variable}</td>
-        <td>${record.value}</td>
-        <td>${record.unit}</td>
-        <td>${record.lat}</td>
-        <td>${record.lng}</td>
-    </tr>
-`).join('');
+    setText(
 
-    updateTableInfo();
-    renderPagination();
-}
+        'ipmaCardDistance',
 
-function updateTableInfo() {
-    const start = (appState.pagination.currentPage - 1) * appState.pagination.itemsPerPage + 1;
-    const end = Math.min(start + appState.pagination.itemsPerPage - 1, appState.pagination.totalItems);
-    document.getElementById('tableInfo').textContent =
-        `Mostrando ${start}-${end} de ${appState.pagination.totalItems} registos`;
-}
+        appState.currentData.ipma?.distanceKm != null
 
-// Apresenta a página atual e até duas páginas adjacentes de cada lado 
-function renderPagination() {
-    const totalPages = Math.ceil(appState.pagination.totalItems / appState.pagination.itemsPerPage);
-    const pagination = document.getElementById('pagination');
+            ? `${appState.currentData.ipma.distanceKm.toFixed(2)} km`
 
-    if (!pagination) return;
+            : '—'
 
-    const currentPage = appState.pagination.currentPage;
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, currentPage + 2);
-
-    let html = '';
-
-    html += `<button ${currentPage === 1 ? 'disabled' : ''} onclick="changePage(${currentPage - 1})">
-        <i class="fas fa-chevron-left"></i>
-    </button>`;
-
-    for (let i = startPage; i <= endPage; i++) {
-        html += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
-    }
-
-    html += `<button ${currentPage >= totalPages ? 'disabled' : ''} onclick="changePage(${currentPage + 1})">
-        <i class="fas fa-chevron-right"></i>
-    </button>`;
-
-    pagination.innerHTML = html;
-}
-
-function changePage(page) {
-    const totalPages = Math.ceil(
-        appState.pagination.totalItems / appState.pagination.itemsPerPage
     );
 
-    if (page < 1 || page > totalPages) return;
+    setText(
 
-    loadMarineRecordsData(page);
-}
+        'openmeteoCardDistance',
 
+        appState.currentData.openmeteo?.distanceKm != null
 
-// Exporta os registos atualmente apresentados na tabela
-function exportTableToCsv() {
-    const headers = [
-        'Data Pedido',
-        'Hora Pedido',
-        'Data Previsão',
-        'Hora Previsão',
-        'Fonte',
-        'Variável',
-        'Valor',
-        'Unidade',
-        'Latitude',
-        'Longitude'
-    ];
+            ? `${appState.currentData.openmeteo.distanceKm.toFixed(2)} km`
 
-    const rows = appState.tableData.map(r =>
-        [
-            r.requestDate,
-            r.requestTime,
-            r.forecastDate,
-            r.forecastTime,
-            r.source,
-            r.variable,
-            r.value,
-            r.unit,
-            r.lat,
-            r.lng
-        ].join(',')
+            : '—'
+
+    );
+    setText(
+
+        'wwoCardDistance',
+
+        appState.currentData.wwo?.distanceKm != null
+
+            ? `${appState.currentData.wwo.distanceKm.toFixed(2)} km`
+
+            : '—'
+
     );
 
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'marine_forecast_records.csv';
-    a.click();
-    URL.revokeObjectURL(url);
 }
 
-
-// Timeline de previsões marítimas
-async function getMarineFutureForecastData() {
-    const { lat, lng } = appState.selectedLocation;
-
-    const response = await fetch(
-        `/data/forecast/marine/timeline?lat=${Number(lat).toFixed(4)}&lon=${Number(lng).toFixed(4)}&provider=${currentMarineForecastProvider}&hours=24`
-    );
-
-    if (!response.ok) {
-        throw new Error(`Erro HTTP ao carregar previsão marítima futura: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-
-let currentMarineForecastProvider = 'ipma';
-
+// ============================================================================
+// 8. Marine Timeline
+// ============================================================================
 // Carrega e apresenta a timeline da fonte marítima selecionada
 async function initializeMarineTimeline() {
     const container = document.getElementById('timelineScroll');
@@ -987,176 +1050,166 @@ function renderMarineTimelineBlocks(records, provider) {
         `;
     }).join('');
 }
-function mapMarineTimelineRecord(record, provider) {
-    const values = record.values || {};
 
-    function getValue(field) {
-        const value = values[field]?.value;
+// ============================================================================
+// 9. Marine Agreement Analysis
+// ============================================================================
 
-        if (
-            value === null ||
-            value === undefined ||
-            value === -99 ||
-            value === -99.0
-        ) {
-            return null;
+function updateMarineAgreement() {
+
+    const models = [
+        appState.currentData.ipma,
+        appState.currentData.openmeteo,
+        appState.currentData.wwo
+    ].filter(Boolean);
+
+
+    if (!models.length) return;
+
+
+
+    const rows = [
+
+        {
+            field: 'waveHeight',
+            valueId: 'marineWaveSpread',
+            indicatorId: 'marineWaveIndicator',
+            unit: ' m',
+            thresholds: {
+                excellent: 0.1,
+                good: 0.3,
+                medium: 0.6,
+                low: 1
+            }
+        },
+
+        {
+            field: 'wavePeriod',
+            valueId: 'marinePeriodSpread',
+            indicatorId: 'marinePeriodIndicator',
+            unit: ' s',
+            thresholds: {
+                excellent: 0.5,
+                good: 1,
+                medium: 2,
+                low: 3
+            }
+        },
+
+
+        {
+            field: 'swellHeight',
+            valueId: 'marineSwellSpread',
+            indicatorId: 'marineSwellIndicator',
+            unit: ' m',
+            thresholds: {
+                excellent: 0.1,
+                good: 0.3,
+                medium: 0.5,
+                low: 1
+            }
+        },
+
+
+        {
+            field: 'swellPeriod',
+            valueId: 'marineSwellPeriodSpread',
+            indicatorId: 'marineSwellPeriodIndicator',
+            unit: ' s',
+            thresholds: {
+                excellent: 0.5,
+                good: 1,
+                medium: 2,
+                low: 3
+            }
+        },
+
+        {
+            field: 'seaTemp',
+            valueId: 'marineTempSpread',
+            indicatorId: 'marineTempIndicator',
+            unit: ' °C',
+            thresholds: {
+                excellent: 0.5,
+                good: 1,
+                medium: 2,
+                low: 3
+            }
+        },
+
+
+        {
+            field: 'windSpeed',
+            valueId: 'marineWindSpread',
+            indicatorId: 'marineWindIndicator',
+            unit: ' km/h',
+            thresholds: {
+                excellent: 3,
+                good: 7,
+                medium: 12,
+                low: 20
+            }
         }
 
-        return Number(value) || value;
-    }
-
-    function getRange(minField, maxField) {
-        const min = getValue(minField);
-        const max = getValue(maxField);
-
-        if (min == null && max == null) return '—';
-        if (min === max) return formatValue(min);
-
-        return `${formatValue(min)} - ${formatValue(max)}`;
-    }
-
-    const isIpma = provider.includes('IPMA');
-
-    return {
-        date: formatTimelineShortDate(record.date),
-        time: isIpma ? 'Diário' : record.time?.slice(0, 5),
-
-        waveHeight:
-            getValue('waveHeightM') != null
-                ? formatValue(getValue('waveHeightM'))
-                : getRange('waveHeightMinM', 'waveHeightMaxM'),
-
-        waveDirection:
-            values.waveDirectionCardinal?.value ??
-            getValue('waveDirectionDegrees') ??
-            '—',
-
-        wavePeriod:
-            getValue('wavePeriodS') != null
-                ? formatValue(getValue('wavePeriodS'))
-                : getRange('wavePeriodMinS', 'wavePeriodMaxS'),
-
-        swellHeight:
-            getValue('swellHeightM') != null
-                ? formatValue(getValue('swellHeightM'))
-                : '—',
-
-        swellDirection:
-            values.swellDirectionCardinal?.value ??
-            getValue('swellDirectionDegrees') ??
-            '—',
-
-        swellPeriod:
-            getValue('swellPeriodS') != null
-                ? formatValue(getValue('swellPeriodS'))
-                : '—',
-
-        seaTemp:
-            getValue('waterTemperatureC') != null
-                ? formatValue(getValue('waterTemperatureC'))
-                : getRange('waterTemperatureMinC', 'waterTemperatureMaxC'),
-
-        windSpeed:
-            getValue('windSpeedKmh') != null
-                ? formatValue(getValue('windSpeedKmh'), 0)
-                : '—'
-    };
-}
-
-function formatTimelineShortDate(dateString) {
-    return new Date(dateString).toLocaleDateString('pt-PT', {
-        day: '2-digit',
-        month: 'short'
-    });
-}
+    ];
 
 
-async function getMarineForecastRecordsPage(page = 1) {
-
-    const { lat, lng } = appState.selectedLocation;
-
-    const pageSize = appState.pagination.itemsPerPage;
-
-    const search =
-        document.getElementById('tableSearch')?.value.trim() || '';
-
-    const variable =
-        document.getElementById('historyTableVariable')?.value || '';
+    const scores = [];
 
 
+    rows.forEach(row => {
 
-    const params = new URLSearchParams({
-        lat: Number(lat).toFixed(4),
-        lon: Number(lng).toFixed(4),
-        page,
-        page_size: pageSize,
-        search,
-        variable
+        const values = getValidValues(models, row.field);
+
+        const spread = calculateSpread(values);
+
+
+        const score = updateSpreadRow(
+
+            row.valueId,
+            row.indicatorId,
+            spread,
+            row.unit,
+            row.thresholds
+
+        );
+
+
+        if (score != null)
+            scores.push(score);
+
+
     });
 
 
 
-    if (search) {
-        params.append('search', search);
-    }
+    const agreement = scores.length
+        ? Math.round(scores.reduce((a, b) => a + b) / scores.length)
+        : null;
 
 
-    if (variable) {
-        params.append('variable', variable);
-    }
+
+    document.getElementById(
+        'marineAgreementProgress'
+    ).style.width =
+        agreement != null
+            ? `${agreement}%`
+            : '0%';
 
 
-    const response = await fetch(
-        `/data/forecast/marine/records?${params.toString()}`
-    );
 
-
-    if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
-    }
-
-
-    return await response.json();
+    document.getElementById(
+        'marineAgreementValue'
+    ).textContent =
+        agreement != null
+            ? `${agreement}%`
+            : '—';
 
 }
 
-async function loadMarineRecordsData(page = 1) {
-    try {
-        const data = await getMarineForecastRecordsPage(page);
-        appState.tableData = data.rows;
-        appState.pagination.currentPage = data.page;
-        appState.pagination.itemsPerPage = data.pageSize;
-        appState.pagination.totalItems = data.total;
-
-        renderTable();
-
-    } catch (error) {
-        console.error('Erro ao carregar registos marítimos:', error);
-
-        appState.tableData = [];
-        appState.pagination.totalItems = 0;
-
-        renderTable();
-    }
-}
-// Converte valores simples ou intervalos para um valor numérico comparável
-
-function parseMarineNumber(value) {
-    if (value === null || value === undefined || value === '—') return null;
-
-    if (typeof value === 'string' && value.includes('-')) {
-        const parts = value
-            .split('-')
-            .map(v => Number(v.trim()))
-            .filter(v => !Number.isNaN(v));
-
-        if (!parts.length) return null;
-        return parts.reduce((a, b) => a + b, 0) / parts.length;
-    }
-
-    const number = Number(value);
-    return Number.isNaN(number) ? null : number;
-}
+// ============================================================================
+// 10. Operational Analysis
+// ============================================================================
 
 function getMarineModels() {
     return [
@@ -1166,38 +1219,7 @@ function getMarineModels() {
     ].filter(Boolean);
 }
 
-// Calcula a média dos valores disponíveis entre as fontes marítimas
-function averageMarineField(models, field) {
-    const values = models
-        .map(model => parseMarineNumber(model[field]))
-        .filter(value => value !== null);
 
-    if (!values.length) return null;
-
-    return values.reduce((a, b) => a + b, 0) / values.length;
-}
-
-function mostCommonMarineValue(values) {
-    const valid = values.filter(v => v !== null && v !== undefined && v !== '—');
-
-    if (!valid.length) return '—';
-
-    const counts = {};
-
-    valid.forEach(value => {
-        counts[value] = (counts[value] || 0) + 1;
-    });
-
-    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-}
-
-function setOperationalClass(id, cssClass) {
-    const el = document.getElementById(id);
-    if (!el) return;
-
-    el.classList.remove('safe', 'warning', 'danger');
-    el.classList.add(cssClass);
-}
 
 // Combina os dados das fontes para atualizar os indicadores operacionais
 function updateMarineOperationalAnalysis() {
@@ -1239,6 +1261,7 @@ function updateMarineOperationalAnalysis() {
         seaScore
     );
 }
+
 // Calcula a classificação para operações costeiras com drone
 function updateMarineDroneConditions(wind, gust, waveHeight, wavePeriod) {
     let score = 100;
@@ -1426,268 +1449,305 @@ function updateMarineStatusPanels(droneScore, seaScore) {
 
 }
 
-// Avalia a concordância entre fontes através da diferença entre
-// o valor máximo e o valor mínimo de cada variável
-function updateMarineAgreement() {
 
-    const models = [
-        appState.currentData.ipma,
-        appState.currentData.openmeteo,
-        appState.currentData.wwo
-    ].filter(Boolean);
+// ============================================================================
+// 11. Historical Analysis
+// ============================================================================
 
+function initializeMarineHistoryChart() {
+    const canvas = document.getElementById('historyChart');
+    if (!canvas) return;
 
-    if (!models.length) return;
-
-
-
-    const rows = [
-
-        {
-            field: 'waveHeight',
-            valueId: 'marineWaveSpread',
-            indicatorId: 'marineWaveIndicator',
-            unit: ' m',
-            thresholds: {
-                excellent: 0.1,
-                good: 0.3,
-                medium: 0.6,
-                low: 1
-            }
+    marineHistoryChart = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'IPMA',
+                    data: [],
+                    borderColor: '#22d3ee',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.35,
+                    pointRadius: 0,
+                    spanGaps: true
+                },
+                {
+                    label: 'Open-Meteo',
+                    data: [],
+                    borderColor: '#14b8a6',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.35,
+                    pointRadius: 0,
+                    spanGaps: true
+                },
+                {
+                    label: 'WorldWeatherOnline',
+                    data: [],
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.35,
+                    pointRadius: 0,
+                    spanGaps: true
+                }
+            ]
         },
-
-        {
-            field: 'wavePeriod',
-            valueId: 'marinePeriodSpread',
-            indicatorId: 'marinePeriodIndicator',
-            unit: ' s',
-            thresholds: {
-                excellent: 0.5,
-                good: 1,
-                medium: 2,
-                low: 3
-            }
-        },
-
-
-        {
-            field: 'swellHeight',
-            valueId: 'marineSwellSpread',
-            indicatorId: 'marineSwellIndicator',
-            unit: ' m',
-            thresholds: {
-                excellent: 0.1,
-                good: 0.3,
-                medium: 0.5,
-                low: 1
-            }
-        },
-
-
-        {
-            field: 'swellPeriod',
-            valueId: 'marineSwellPeriodSpread',
-            indicatorId: 'marineSwellPeriodIndicator',
-            unit: ' s',
-            thresholds: {
-                excellent: 0.5,
-                good: 1,
-                medium: 2,
-                low: 3
-            }
-        },
-
-        {
-            field: 'seaTemp',
-            valueId: 'marineTempSpread',
-            indicatorId: 'marineTempIndicator',
-            unit: ' °C',
-            thresholds: {
-                excellent: 0.5,
-                good: 1,
-                medium: 2,
-                low: 3
-            }
-        },
-
-
-        {
-            field: 'windSpeed',
-            valueId: 'marineWindSpread',
-            indicatorId: 'marineWindIndicator',
-            unit: ' km/h',
-            thresholds: {
-                excellent: 3,
-                good: 7,
-                medium: 12,
-                low: 20
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { display: false } },
+            scales: {
+                x: {
+                    ticks: { color: '#64748b' },
+                    grid: { color: 'rgba(148,163,184,0.1)' }
+                },
+                y: {
+                    ticks: { color: '#64748b' },
+                    grid: { color: 'rgba(148,163,184,0.1)' }
+                }
             }
         }
-
-    ];
-
-
-    const scores = [];
+    });
+}
 
 
-    rows.forEach(row => {
 
-        const values = getValidValues(models, row.field);
-
-        const spread = calculateSpread(values);
-
-
-        const score = updateSpreadRow(
-
-            row.valueId,
-            row.indicatorId,
-            spread,
-            row.unit,
-            row.thresholds
-
-        );
+async function loadMarineHistoricalForecast() {
+    try {
+        const data = await getMarineHistoricalForecastData();
+        updateMarineHistoricalChart(data);
+    } catch (error) {
+        console.error('Erro ao carregar histórico marítimo:', error);
+    }
+}
 
 
-        if (score != null)
-            scores.push(score);
+function updateMarineHistoricalChart(data) {
+    if (!marineHistoryChart) return;
+    marineHistoryChart.data.labels = data.labels;
+    marineHistoryChart.data.datasets[0].data = roundMarineSeries(data.ipma, 2);
+    marineHistoryChart.data.datasets[1].data = roundMarineSeries(data.openmeteo, 2);
+    marineHistoryChart.data.datasets[2].data = roundMarineSeries(data.worldweatheronline, 2);
+
+    const unit = getMarineHistoryUnit(data.variable);
+
+    marineHistoryChart.options.scales.y.ticks.callback = value =>
+        `${formatValue(value, 2)}${unit}`;
+
+    marineHistoryChart.options.plugins.tooltip = {
+        callbacks: {
+            label: context => context.raw != null
+                ? `${context.dataset.label}: ${formatValue(context.raw, 2)}${unit}`
+                : `${context.dataset.label}: —`
+        }
+    };
+
+    marineHistoryChart.update();
+
+    // Junta os valores das três fontes para calcular as estatísticas do histórico
+    const allValues = [
+        ...(data.ipma || []),
+        ...(data.openmeteo || []),
+        ...(data.worldweatheronline || [])
+    ].filter(v => v != null && !Number.isNaN(Number(v)));
+
+    if (!allValues.length) {
+        setText('historyAvg', '—');
+        setText('historyMin', '—');
+        setText('historyMax', '—');
+        setText('historyTotal', '0');
+        return;
+    }
+
+    const numericValues = allValues.map(Number);
+    const avg = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+
+    setText('historyAvg', `${avg.toFixed(2)}${unit}`);
+    setText('historyMin', `${Math.min(...numericValues).toFixed(2)}${unit}`);
+    setText('historyMax', `${Math.max(...numericValues).toFixed(2)}${unit}`);
+    setText('historyTotal', numericValues.length.toLocaleString('pt-PT'));
+}
 
 
+
+function initializeMarineHistoryListeners() {
+    document.addEventListener('click', function (e) {
+        const button = e.target.closest('.forecast-history-range-buttons button');
+        if (!button) return;
+
+        const container = button.closest('.forecast-history-range-buttons');
+
+        container.querySelectorAll('button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        button.classList.add('active');
+        loadMarineHistoricalForecast();
     });
 
-
-
-    const agreement = scores.length
-        ? Math.round(scores.reduce((a, b) => a + b) / scores.length)
-        : null;
-
-
-
-    document.getElementById(
-        'marineAgreementProgress'
-    ).style.width =
-        agreement != null
-            ? `${agreement}%`
-            : '0%';
-
-
-
-    document.getElementById(
-        'marineAgreementValue'
-    ).textContent =
-        agreement != null
-            ? `${agreement}%`
-            : '—';
-
-}
-
-function getValidValues(models, field) {
-    return models
-        .map(model => parseMarineNumber(model?.[field]))
-        .filter(value => value !== null);
-}
-
-// Calcula a amplitude dos valores devolvidos pelas fontes
-function calculateSpread(values) {
-    if (!values.length) return null;
-    return Math.max(...values) - Math.min(...values);
+    document.getElementById('historyVariable')?.addEventListener('change', () => {
+        loadMarineHistoricalForecast();
+    });
 }
 
 
-// Converte a amplitude num nível de concordância entre fontes
-function scoreFromSpread(spread, thresholds) {
-    if (spread === null) return null;
-    if (spread <= thresholds.excellent) return 100;
-    if (spread <= thresholds.good) return 85;
-    if (spread <= thresholds.medium) return 65;
-    if (spread <= thresholds.low) return 45;
-    return 25;
+
+// ============================================================================
+// 12. Records Table
+// ============================================================================
+function initializeTable() {
+    renderTable();
+    renderPagination();
 }
 
-function updateSpreadRow(valueId, indicatorId, spread, unit, thresholds) {
-    const valueEl = document.getElementById(valueId);
-    const indicatorEl = document.getElementById(indicatorId);
-    if (!valueEl || !indicatorEl) return null;
+async function loadMarineRecordsData(page = 1) {
+    try {
+        const data = await getMarineForecastRecordsPage(page);
+        appState.tableData = data.rows;
+        appState.pagination.currentPage = data.page;
+        appState.pagination.itemsPerPage = data.pageSize;
+        appState.pagination.totalItems = data.total;
 
-    if (spread === null) {
-        valueEl.textContent = '—';
-        indicatorEl.className = 'comp-indicator equal';
-        indicatorEl.innerHTML = '<i class="fas fa-minus"></i>';
-        return null;
+        renderTable();
+
+    } catch (error) {
+        console.error('Erro ao carregar registos marítimos:', error);
+
+        appState.tableData = [];
+        appState.pagination.totalItems = 0;
+
+        renderTable();
+    }
+}
+
+// Preenche a tabela com os registos devolvidos para a página atual
+function renderTable() {
+    const tbody = document.getElementById('recordsTableBody');
+    const pageData = appState.tableData;
+
+    tbody.innerHTML = pageData.map(record => `
+    <tr>
+        <td>${record.requestDate}</td>
+        <td>${record.requestTime}</td>
+        <td>${record.forecastDate}</td>
+        <td>${record.forecastTime}</td>
+        <td>${record.source}</td>
+        <td>${record.variable}</td>
+        <td>${record.value}</td>
+        <td>${record.unit}</td>
+        <td>${record.lat}</td>
+        <td>${record.lng}</td>
+    </tr>
+`).join('');
+
+    updateTableInfo();
+    renderPagination();
+}
+
+function updateTableInfo() {
+    const start = (appState.pagination.currentPage - 1) * appState.pagination.itemsPerPage + 1;
+    const end = Math.min(start + appState.pagination.itemsPerPage - 1, appState.pagination.totalItems);
+    document.getElementById('tableInfo').textContent =
+        `Mostrando ${start}-${end} de ${appState.pagination.totalItems} registos`;
+}
+
+// Apresenta a página atual e até duas páginas adjacentes de cada lado 
+function renderPagination() {
+    const totalPages = Math.ceil(appState.pagination.totalItems / appState.pagination.itemsPerPage);
+    const pagination = document.getElementById('pagination');
+
+    if (!pagination) return;
+
+    const currentPage = appState.pagination.currentPage;
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+
+    let html = '';
+
+    html += `<button ${currentPage === 1 ? 'disabled' : ''} onclick="changePage(${currentPage - 1})">
+        <i class="fas fa-chevron-left"></i>
+    </button>`;
+
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
     }
 
-    valueEl.textContent = `${spread.toFixed(1)}${unit}`;
+    html += `<button ${currentPage >= totalPages ? 'disabled' : ''} onclick="changePage(${currentPage + 1})">
+        <i class="fas fa-chevron-right"></i>
+    </button>`;
 
-    const score = scoreFromSpread(spread, thresholds);
-
-    if (score >= 85) {
-        indicatorEl.className = 'comp-indicator higher';
-        indicatorEl.innerHTML = '<i class="fas fa-check"></i>';
-    }
-    else if (score >= 65) {
-        indicatorEl.className = 'comp-indicator equal';
-        indicatorEl.innerHTML = '<i class="fas fa-minus"></i>';
-    }
-    else {
-        indicatorEl.className = 'comp-indicator lower';
-        indicatorEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i>';
-    }
-
-    return score;
+    pagination.innerHTML = html;
 }
 
-function updateMarineDistance() {
-
-    setText(
-
-        'ipmaCardDistance',
-
-        appState.currentData.ipma?.distanceKm != null
-
-            ? `${appState.currentData.ipma.distanceKm.toFixed(2)} km`
-
-            : '—'
-
+function changePage(page) {
+    const totalPages = Math.ceil(
+        appState.pagination.totalItems / appState.pagination.itemsPerPage
     );
 
-    setText(
+    if (page < 1 || page > totalPages) return;
 
-        'openmeteoCardDistance',
-
-        appState.currentData.openmeteo?.distanceKm != null
-
-            ? `${appState.currentData.openmeteo.distanceKm.toFixed(2)} km`
-
-            : '—'
-
-    );
-    setText(
-
-        'wwoCardDistance',
-
-        appState.currentData.wwo?.distanceKm != null
-
-            ? `${appState.currentData.wwo.distanceKm.toFixed(2)} km`
-
-            : '—'
-
-    );
-
+    loadMarineRecordsData(page);
 }
 
-// Converte uma direção em graus para  as direções cardinais
-function degreesToCardinal(degrees) {
 
-    if (degrees == null) return '—';
-
-    const directions = [
-        'N', 'NNE', 'NE', 'ENE',
-        'E', 'ESE', 'SE', 'SSE',
-        'S', 'SSW', 'SW', 'WSW',
-        'W', 'WNW', 'NW', 'NNW'
+// Exporta os registos atualmente apresentados na tabela
+function exportTableToCsv() {
+    const headers = [
+        'Data Pedido',
+        'Hora Pedido',
+        'Data Previsão',
+        'Hora Previsão',
+        'Fonte',
+        'Variável',
+        'Valor',
+        'Unidade',
+        'Latitude',
+        'Longitude'
     ];
 
-    const index = Math.round(degrees / 22.5) % 16;
+    const rows = appState.tableData.map(r =>
+        [
+            r.requestDate,
+            r.requestTime,
+            r.forecastDate,
+            r.forecastTime,
+            r.source,
+            r.variable,
+            r.value,
+            r.unit,
+            r.lat,
+            r.lng
+        ].join(',')
+    );
 
-    return directions[index];
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
 
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'marine_forecast_records.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ============================================================================
+// 13. Event Listeners
+// ============================================================================
+function initializeEventListeners() {
+    document.getElementById('tableSearch')
+        ?.addEventListener('input', () => {
+            loadMarineRecordsData(1);
+        });
+
+    document.getElementById('historyTableVariable')
+        ?.addEventListener('change', () => {
+            loadMarineRecordsData(1);
+        });
+
+    document.getElementById('exportCsv')
+        ?.addEventListener('click', exportTableToCsv);
 }
